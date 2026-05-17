@@ -6,7 +6,27 @@ North-star journey, v1 wedge, presets, metrics, and operator onboarding.
 
 > **A persistent stage for AI characters—memory-grounded, spatial, operator-run.**
 
-WorldEngine is not a chat skin (SillyTavern) or a coding agent (Hermes). It is a **single-machine narrative studio** with durable geography and memory discipline. The same stage supports **in-world work**—research commissions, deliberation at locations, team focus areas—without a separate product mode or bypassing spatial rules ([23-in-world-work.md](23-in-world-work.md)).
+WorldEngine is not a chat skin (SillyTavern) or a coding agent (Hermes). It is a **single-machine narrative studio** with durable geography and memory discipline. The same stage supports **in-world work**—research commissions, deliberation at locations, team focus areas—without a separate product mode or bypassing spatial rules ([23-in-world-work.md](23-in-world-work.md)) — **Act 3**, not v1.
+
+### Product narrative (Acts)
+
+| Act | Milestone | Outcome |
+|-----|-----------|---------|
+| **Act 1** | **v1** | Spatial wedge — multi-scene play, presence, memory, persona-first UI |
+| **Act 2** | **v1.1** | Persistence layer — heartbeat when UI away, phone, world package |
+| **Act 3** | Phase 4+ | In-world work — commissions, debate, commons |
+
+Detail: [ROADMAP.md](ROADMAP.md). Personas: [personas.md](personas.md).
+
+### Planned capability by milestone
+
+| Milestone | Operator expectation |
+|-----------|---------------------|
+| **v1** | Spatial play while the application is running; tab-visible idle ticks acceptable when global heartbeat is off |
+| **v1.1** | World continues idle orchestration when UI disconnected; phone; portable world packages |
+| **Rationale** | Scope and risk for first implementation—not a retreat from “persistent world” vision |
+
+A world that only runs while the Web UI tab is open is an **anti-pattern** for long-term vision; v1 **MAY** use tab-visible idle until heartbeat ships in v1.1 ([08-real-world-capabilities.md](08-real-world-capabilities.md) §8).
 
 ## 2. Primary operator (confirmed)
 
@@ -59,6 +79,8 @@ See [17-acceptance-criteria.md](17-acceptance-criteria.md).
 Orchestration detail: [13-agent-orchestration.md](13-agent-orchestration.md) §6.2.
 
 ## 7. Success metrics (targets)
+
+**Design-phase note:** Targets below are **design goals**. Baselines (reference GPU profile, measured p95) are **TBD at implementation**. Where metrics surface (CI, in-app queue strip) is deferred until a runnable build exists — see [ROADMAP.md](ROADMAP.md).
 
 | Metric | Target |
 |--------|--------|
@@ -128,7 +150,7 @@ These capabilities are specified for later phases; they preserve prior design in
 | Phone play | [04-communication.md](04-communication.md), [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1.1 bundle with heartbeat and world package |
 | World package import/export | [11-data-model.md](11-data-model.md) DM-4 | v1.1 |
 
-A world that only runs while the Web UI tab is open is an **anti-pattern** for the product vision; v1 MAY use tab-visible idle ticks when global heartbeat is off. Operators enable heartbeat in **server settings** (default off at v1.1).
+Operators enable global heartbeat in **server settings** when v1.1 ships (default off at first v1.1 release). See **Planned capability by milestone** above.
 
 ## 11. Implementation phases
 
@@ -155,6 +177,9 @@ v1 golden path and MUST-ship list are **unchanged**. In-world work MUST NOT dilu
 
 ## Related documents
 
+- [ROADMAP.md](ROADMAP.md)
+- [personas.md](personas.md)
+- [guides/first-run-experience.md](guides/first-run-experience.md)
 - [14-web-ui.md](14-web-ui.md)
 - [17-acceptance-criteria.md](17-acceptance-criteria.md)
 - [23-in-world-work.md](23-in-world-work.md)

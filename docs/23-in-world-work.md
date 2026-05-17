@@ -1,5 +1,7 @@
 # 23 — In-World Work
 
+> **Not part of the v1 release gate.** This spec is design-complete for **Act 3** (Phase 4+ runtime). v1 proves the spatial wedge only ([ROADMAP.md](ROADMAP.md), [20-product-principles.md](20-product-principles.md)). In-world work MUST NOT dilute spatial golden path acceptance.
+
 Commissions, debate activity, briefing fixtures, and world commons extend the spatial world model for research, deliberation, and team focus—**without** a separate product mode or bypassing presence, perception, or MP-1.
 
 > **Not a second product.** In-world work uses the same worlds, scenes, cast, orchestrator, and memory pools as narrative play ([01-world-model.md](01-world-model.md), [02-memory.md](02-memory.md)).

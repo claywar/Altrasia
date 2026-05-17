@@ -14,6 +14,8 @@ In practice:
 
 This specification describes *what* the system MUST do. Implementation uses SQLite, a TypeScript monorepo, and a professional Web UI ([14-web-ui.md](14-web-ui.md)).
 
+**Repository status:** design specifications complete; **implementation not started**. Milestones: [ROADMAP.md](ROADMAP.md). Personas: [personas.md](personas.md). Target first session: [guides/first-run-experience.md](guides/first-run-experience.md).
+
 ## Reading order
 
 | # | Document | Topics |
@@ -45,6 +47,9 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | 24 | [24-character-authoring.md](24-character-authoring.md) | AI draft → approve character creation |
 | — | [appendix-glossary.md](appendix-glossary.md) | Term definitions |
 | — | [appendix-provenance.md](appendix-provenance.md) | SillyTavern source map (non-normative) |
+| — | [ROADMAP.md](ROADMAP.md) | Milestones, feature matrix, design vs shipped status |
+| — | [personas.md](personas.md) | Operator personas (non-normative) |
+| — | [guides/first-run-experience.md](guides/first-run-experience.md) | Target first session (non-normative) |
 
 ## Architecture overview
 
