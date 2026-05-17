@@ -368,20 +368,20 @@ Full table scans on `Locus` / `DiarySegment` for tool search are **forbidden** (
 - **Default:** In-process cosine top-k over `EmbeddingRecord.vectorBlob` for modest N (&lt;20k rows per scope).
 - **Scale-out:** Optional LanceDB sidecar if p95 semantic search &gt;100ms or N &gt;50k — keyed by `ownerScope`. Not MemPalace ChromaDB.
 
-## 5. PersistencePort (`packages/persistence`)
+## 5. PersistencePort (`backend/altrasia/persistence`)
 
 | ID | Requirement |
 |----|-------------|
-| DM-8 | All durable reads/writes go through a **`PersistencePort`** interface in `packages/persistence`. |
-| DM-9 | v1 implementation: **SQLite** via `better-sqlite3` or `libsql` (single file per operator, DM-1). |
+| DM-8 | All durable reads/writes go through a **`PersistencePort`** protocol in `backend/altrasia/persistence/`. |
+| DM-9 | v1 implementation: **SQLite** via the Python standard library `sqlite3` or `aiosqlite` (single file per operator, DM-1). |
 | DM-10 | Port exposes: loci CRUD, diary append/query, FTS search, mandatory-recall assembly inputs, embed record upsert — no scattered SQL in orchestrator/memory packages. |
 
-Suggested layout:
+Suggested layout ([26-system-architecture.md](26-system-architecture.md)):
 
 ```
-packages/persistence/
-  src/port.ts          # PersistencePort types
-  src/sqlite/          # migration 001, FTS sync, indexes
+backend/altrasia/persistence/
+  port.py              # PersistencePort protocol
+  sqlite/              # migration 001, FTS sync, indexes
 ```
 
 ### 5.1 Layout drafts (Phase 6, non-normative columns)

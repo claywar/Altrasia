@@ -8,7 +8,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 
 | Step | Deliverable | Spec | Fixture / test |
 |------|-------------|------|----------------|
-| 1 | Migration 001 + `PersistencePort` | [11-data-model.md](11-data-model.md), [packages/persistence](../packages/persistence/README.md) | — |
+| 1 | Migration 001 + `PersistencePort` | [11-data-model.md](11-data-model.md), [26-system-architecture.md](26-system-architecture.md) §2.3 | — |
 | 2 | Memory: loci, diary, mandatory recall, MP-1 | [02-memory.md](02-memory.md) | [tests/fixtures/memory-scale/](../tests/fixtures/memory-scale/README.md) (later) |
 | 3 | `GpuResourceQueue` + llama.cpp adapter | [00-inference-runtime.md](00-inference-runtime.md) | INF-5* integration tests |
 | 4 | Tool registry + invoke loop | [05-tool-calling.md](05-tool-calling.md) | Mock LLM |

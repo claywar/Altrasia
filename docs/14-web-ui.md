@@ -2,6 +2,8 @@
 
 Professional **operator console** for Altrasia. **Persona-first** play; **Observer Studio** for tuning and world control.
 
+**Delivery:** First-class **Web UI SPA** (separate from the Python backend); stack and boundaries in [26-system-architecture.md](26-system-architecture.md) (SYS-2, SYS-4, SYS-11–SYS-14). API binding: [12-api-sketch.md](12-api-sketch.md).
+
 **Product bar:** Net-new **spatial operator console** (memory + places)—not a chat skin. **Platform:** desktop-first ([§2](#2-application-shell-and-layout)).
 
 Component names in [§19](#19-component-inventory-spec-vocabulary) are **spec vocabulary** for implementers—not implied to exist in any given milestone until an implementation plan says so.

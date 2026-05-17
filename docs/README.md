@@ -12,7 +12,7 @@ In practice:
 - A single **GPU** runs primary chat (Qwen3.6-35B-A3B via llama.cpp) and embeddings under a unified **GpuResourceQueue**.
 - Optional tools (web, filesystem, schedules) and future maps/ComfyUI follow the same memory and queue rules.
 
-This specification describes *what* the system MUST do. Normative specs are `00`–`25`. Implementation uses SQLite, a TypeScript monorepo, and a professional Web UI ([14-web-ui.md](14-web-ui.md)).
+This specification describes *what* the system MUST do. Normative specs are `00`–`25`. **Implementation stack:** Python-first extensible backend + professional Web UI frontend — [26-system-architecture.md](26-system-architecture.md). Persistence: SQLite ([11-data-model.md](11-data-model.md)). Operator console: [14-web-ui.md](14-web-ui.md).
 
 **Repository status:** design specifications complete; **implementation not started**. Milestones: [ROADMAP.md](ROADMAP.md). Personas: [personas.md](personas.md). Target first session: [guides/first-run-experience.md](guides/first-run-experience.md).
 
@@ -46,6 +46,7 @@ This specification describes *what* the system MUST do. Normative specs are `00`
 | 23 | [23-in-world-work.md](23-in-world-work.md) | Commissions, debate activity, briefing fixtures, commons (post-v1) |
 | 24 | [24-character-authoring.md](24-character-authoring.md) | AI draft → approve character creation |
 | 25 | [25-map-authoring.md](25-map-authoring.md) | MapDraft, evolving geography, LLM layout + operator ack |
+| 26 | [26-system-architecture.md](26-system-architecture.md) | Python-first backend, professional Web UI, repo layout |
 | — | [appendix-glossary.md](appendix-glossary.md) | Term definitions |
 | — | [appendix-provenance.md](appendix-provenance.md) | SillyTavern source map (non-normative) |
 | — | [ROADMAP.md](ROADMAP.md) | Milestones, feature matrix, design vs shipped status |
@@ -62,13 +63,13 @@ This specification describes *what* the system MUST do. Normative specs are `00`
 
 ```mermaid
 flowchart TB
-  subgraph client [Operator]
-    WebUI[Web UI]
+  subgraph client [Web UI — professional SPA]
+    WebUI[Operator console]
     Persona[Persona compose]
     Studio[Observer Studio]
   end
 
-  subgraph core [Altrasia Core]
+  subgraph api [Python backend — REST / WS / SSE]
     AO[Agent orchestrator]
     IQ[GpuResourceQueue]
     Mem[Memory]
@@ -82,9 +83,9 @@ flowchart TB
 
   DB[(SQLite)]
 
-  WebUI --> AO
-  Persona --> AO
-  Studio --> AO
+  WebUI -->|API| AO
+  Persona -->|API| AO
+  Studio -->|API| AO
   AO --> IQ
   AO --> Mem
   AO --> Perc
@@ -93,6 +94,8 @@ flowchart TB
   Mem --> DB
   AO --> DB
 ```
+
+Stack detail: [26-system-architecture.md](26-system-architecture.md).
 
 ## v1 wedge and non-goals
 

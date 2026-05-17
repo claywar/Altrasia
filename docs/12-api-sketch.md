@@ -2,6 +2,8 @@
 
 REST and realtime surfaces for Altrasia v1 (single-operator). This is a sketch, not a full OpenAPI document.
 
+**Implementation:** Served by the **Python backend**; consumed by the **Web UI SPA** and CLI ([26-system-architecture.md](26-system-architecture.md) SYS-3, SYS-6, SYS-13). Payloads are JSON; this sketch is language-agnostic.
+
 **Single domain path:** Web UI actions, agent tools, narrative presence ([03-locations-and-presence.md](03-locations-and-presence.md) §7), and future scheduled jobs MUST call the same core services (presence, comms, memory, scene CRUD)—not parallel state machines with divergent rules.
 
 ## 1. Transport

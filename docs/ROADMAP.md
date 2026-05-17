@@ -101,6 +101,8 @@ Specs use both **version tags** and **implementation phase** numbers:
 
 ## Planned build order (not started)
 
+**Stack:** [26-system-architecture.md](26-system-architecture.md) (Python backend + Web UI SPA).
+
 Proposed sequence for the first implementation — see root [README.md](../README.md):
 
 1. **Sprint 1** — SQLite, memory, GpuResourceQueue, llama.cpp adapter, tool loop, CLI or single-scene API
@@ -135,7 +137,7 @@ Reuse of [20-product-principles.md](20-product-principles.md) §10:
 
 | Artifact | Trigger |
 |----------|---------|
-| [guides/getting-started.md](guides/getting-started.md) (install/run) | First runnable Web UI or CLI |
+| [guides/getting-started.md](guides/getting-started.md) (install/run) | First runnable Python API + Web UI or CLI |
 | `CHANGELOG.md` | First merged implementation PR |
 | Measured p95 / reference hardware profile | First benchmark on reference GPU |
 | OpenAPI from code | API implemented per [12-api-sketch.md](12-api-sketch.md) |

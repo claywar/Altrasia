@@ -288,7 +288,7 @@ Operator memory inspector shows provenance. In-character prompts cite sources on
 | Commons loci | `worldId` |
 | Settings | Operator / world config |
 
-Persistence: SQLite per [11-data-model.md](11-data-model.md). Implement via `PersistencePort` in `packages/persistence` (indexes + FTS5 in migration 001).
+Persistence: SQLite per [11-data-model.md](11-data-model.md). Implement via `PersistencePort` in `backend/altrasia/persistence/` (indexes + FTS5 in migration 001).
 
 ### 6.2 Legacy migration
 

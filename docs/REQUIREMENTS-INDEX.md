@@ -1,6 +1,6 @@
 # Requirements Index
 
-Reverse lookup for normative requirement IDs (`00`–`25`). **Authoritative definitions** live in the home document for each prefix; this index is for navigation and traceability.
+Reverse lookup for normative requirement IDs (`00`–`26`). **Authoritative definitions** live in the home document for each prefix; this index is for navigation and traceability.
 
 **Test mapping:** [17-acceptance-criteria.md](17-acceptance-criteria.md) (spatial golden path, requirement matrix, future gates).
 
@@ -26,6 +26,7 @@ Reverse lookup for normative requirement IDs (`00`–`25`). **Authoritative defi
 | `AO-*` | [13-agent-orchestration.md](13-agent-orchestration.md) | Scheduler, jobs |
 | `UI-*`, `UI-MAP-*`, `UI-A11Y-*` | [14-web-ui.md](14-web-ui.md) | Operator console (**v1 subset:** §0) |
 | `PL-*` | [15-plugin-platform.md](15-plugin-platform.md) | Plugins (post-v1) |
+| `SYS-*` | [26-system-architecture.md](26-system-architecture.md) | Python backend, Web UI stack, extensibility |
 | (learning) | [16-learning.md](16-learning.md) | stripReasoning, embeddings |
 | `CHAR-*` | [24-character-authoring.md](24-character-authoring.md) | Character draft |
 | `OQ-*` | [22-output-quality.md](22-output-quality.md) | Output quality policy |

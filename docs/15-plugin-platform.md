@@ -23,23 +23,27 @@ v1 ships **zero required plugins**. This document defines the target extension m
 
 ## 3. Discovery (implementation sketch)
 
+Python-first backend ([26-system-architecture.md](26-system-architecture.md) SYS-1, SYS-9):
+
 | Source | Path |
 |--------|------|
 | Operator | `~/.altrasia/plugins/` |
 | Project | `./plugins/` |
-| Package | npm-style entry points (future) |
+| Package | `pyproject.toml` entry points group `altrasia.plugins` (future) |
 
 ## 4. Hook contract
 
 Hooks receive world-scoped context:
 
-```typescript
-// Illustrative — not normative code
-interface PluginContext {
-  worldId: string;
-  characterId?: string;
-  sceneId?: string;
-}
+```python
+# Illustrative — not normative code
+from dataclasses import dataclass
+
+@dataclass
+class PluginContext:
+    world_id: str
+    character_id: str | None = None
+    scene_id: str | None = None
 ```
 
 Hooks MUST NOT mutate mind pools across characters (MP-1).
@@ -59,6 +63,7 @@ Plugins are **not loaded** in v1. Core implements fixed tool registry only.
 
 ## Related documents
 
+- [26-system-architecture.md](26-system-architecture.md) — backend extensibility
 - [05-tool-calling.md](05-tool-calling.md)
 - [07-approvals.md](07-approvals.md)
 - [18-location-maps.md](18-location-maps.md)

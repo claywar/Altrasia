@@ -40,7 +40,7 @@ Scope sequencing—not a retreat from the persistent-world vision. Detail: [docs
 | Future operators | [docs/guides/first-run-experience.md](docs/guides/first-run-experience.md) |
 | Implementers | [docs/README.md](docs/README.md), [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
 
-All normative specifications live under [`docs/`](docs/README.md). Extended topics: inference runtime (`00`), data model (`11`), API sketch (`12`), orchestration (`13`), Web UI (`14`), acceptance (`17`), output quality (`22`), in-world work (`23`), character authoring (`24`), map authoring (`25`). Requirement IDs: [docs/REQUIREMENTS-INDEX.md](docs/REQUIREMENTS-INDEX.md).
+All normative specifications live under [`docs/`](docs/README.md). **Stack:** Python-first extensible backend + professional Web UI — [docs/26-system-architecture.md](docs/26-system-architecture.md). Extended topics: inference runtime (`00`), data model (`11`), API sketch (`12`), orchestration (`13`), Web UI (`14`), acceptance (`17`), output quality (`22`), in-world work (`23`), character authoring (`24`), map authoring (`25`). Requirement IDs: [docs/REQUIREMENTS-INDEX.md](docs/REQUIREMENTS-INDEX.md).
 
 Concepts were extracted from a prior SillyTavern deployment and reframed greenfield. Lineage (implementers): [`docs/appendix-provenance.md`](docs/appendix-provenance.md).
 
@@ -50,13 +50,15 @@ Primary LLM: **Qwen3.6-35B-A3B** via local llama.cpp router ([`config/models/qwe
 
 ## Planned implementation (not started)
 
+**Architecture:** [docs/26-system-architecture.md](docs/26-system-architecture.md) — Python backend (`backend/altrasia/…`) + professional Web UI SPA (`web/`).
+
 Proposed build order when implementation begins:
 
 ### Sprint 1 — inference + memory spike
 
 De-risk GPU queue, tool loop, and memory before Web UI.
 
-1. SQLite migration 001 per [docs/11-data-model.md](docs/11-data-model.md) and [packages/persistence](packages/persistence/README.md)
+1. SQLite migration 001 + `PersistencePort` per [docs/11-data-model.md](docs/11-data-model.md) (`backend/altrasia/persistence/`)
 2. Memory subsystem per [docs/02-memory.md](docs/02-memory.md)
 3. GpuResourceQueue per [docs/00-inference-runtime.md](docs/00-inference-runtime.md)
 4. llama.cpp adapter with profile `qwen3.6-35b-a3b`
@@ -64,11 +66,9 @@ De-risk GPU queue, tool loop, and memory before Web UI.
 6. `stripReasoning` + mandatory recall per [docs/16-learning.md](docs/16-learning.md)
 7. Single scene, one NPC, CLI or `POST /api/v1/worlds/{id}/generate`
 
-Suggested monorepo layout: `packages/domain, memory, perception, orchestrator, inference, tools, persistence, api`
-
 ### Sprint 2 — spatial wedge
 
-Two scenes, presence, whisper perception, elsewhere roster, Web UI with streaming ([docs/14-web-ui.md](docs/14-web-ui.md)).
+Two scenes, presence, whisper perception, elsewhere roster, **Web UI** with streaming ([docs/14-web-ui.md](docs/14-web-ui.md)) against the Python API ([docs/12-api-sketch.md](docs/12-api-sketch.md)).
 
 **First run (when built):** load demo world `demo-spatial-v1` ([tests/fixtures/demo-world/README.md](tests/fixtures/demo-world/README.md)).
 

@@ -21,6 +21,9 @@
 | **Mind pool** | Private memory loci per character |
 | **Observer** | Control-surface character: digest, Studio meta-chat, narrator/deus ex modes |
 | **Observer Studio** | Web UI slide-over for meta channel tuning ([14-web-ui.md](14-web-ui.md)) |
+| **Python backend** | Core Altrasia process: domain, memory, orchestration, API ([26-system-architecture.md](26-system-architecture.md)) |
+| **Web UI** | Professional operator-console SPA; sole v1 client for spatial play ([14-web-ui.md](14-web-ui.md), SYS-2) |
+| **PersistencePort** | Backend protocol for all durable reads/writes; SQLite v1 impl ([11-data-model.md](11-data-model.md) DM-8) |
 | **GpuResourceQueue** | Single-GPU scheduler for chat, embed, and future image jobs |
 | **channelKind** | `scene` (in-fiction transcript) or `meta` (Observer Studio only) |
 | **CrossSceneSignal** | Durable knock/ring/buzz between scenes; v1 tracks state; response emergent (CC-11a) |

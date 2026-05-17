@@ -1,9 +1,0 @@
-{
-  "profileId": "qwen3.6-35b-a3b",
-  "description": "Inline think tags in assistant content (MP-14, OQ-3)",
-  "rawModelOutput": {
-    "content": "<think>\nAlice considers whether to greet the stranger.\n</think>\n\nAlice smiles. \"Good evening. Can I help you?\""
-  },
-  "expectedOutputText": "Alice smiles. \"Good evening. Can I help you?\"",
-  "mustNotContain": ["<think>", "considers whether"]
-}
