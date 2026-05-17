@@ -122,6 +122,23 @@ Fixtures: `tests/fixtures/output-quality/` (see §9). Integration CI MUST run OQ
 | CC-5 | Message with phone metadata parses; UI does not send phone in v1 |
 | — | Meta messages excluded from cast prompt assembly |
 
+### Web UI (v1 — when implemented)
+
+Normative UI requirements: [14-web-ui.md](14-web-ui.md). Wireframes: [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md).
+
+| ID | Test |
+|----|------|
+| UI-LAY-6 | Scene switch updates center header and right rail Places/People |
+| UI-R1–R2 | Markdown list and mermaid diagram render in finalized NPC message |
+| UI-R3 | During streaming, transcript shows plain text; markdown after finalize |
+| UI-R5 | Invalid mermaid shows fallback text, not blank bubble |
+| UI-TRN-1 | No delete or edit control on committed message bubbles |
+| UI-REG-1 | Cancel in-flight generation via queue strip; no regen on committed lines |
+| UI-2 | GPU enqueue shows visible wait within 500ms |
+| UI-SET-* | Change world preset and persona auto-join without editing raw JSON |
+| UI-WLD-1 | One active world; load demo without multi-world home |
+| UI-S4 / CC-11a | Knock shows banner + Signals; no auto NPC line on knock create |
+
 ### Meta channel
 
 | ID | Test |

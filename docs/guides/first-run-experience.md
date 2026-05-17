@@ -30,7 +30,7 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 - Persona starts in **Hall** (`scene-hall`); Alice present in Hall; Bob in **Kitchen**
 - Preset: Solo story
 
-**UI affordances ([14-web-ui.md](../14-web-ui.md)):** Scene list in sidebar; presence roster shows who is here vs elsewhere.
+**UI affordances ([14-web-ui.md](../14-web-ui.md)):** Load demo via WF-9 / UI-WLD-1; right rail **Places** + **People**; center transcript + compose.
 
 ### 2. Public conversation
 
@@ -83,7 +83,17 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 - Scene framing updates on next generation (OBS-2)
 - Meta thread separate from scene transcript (UI-O1)
 
-### 7. Restart continuity
+### 7. Rich message rendering (when UI exists)
+
+**Operator action:** Receive an NPC reply that includes a markdown list or fenced `mermaid` diagram.
+
+**Expected:**
+
+- Finalized message renders markdown (UI-R1)
+- Mermaid diagram displays or shows explicit error fallback (UI-R2, UI-R5)
+- Streaming shows plain text until finalize (UI-R3)
+
+### 8. Restart continuity
 
 **Operator action:** Restart server or reload world.
 
@@ -118,6 +128,7 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 | Move scenes | Step 3 |
 | Knock | Step 4 |
 | Observer tweak | Step 5 |
+| Markdown / Mermaid in reply | UI-R (see §7) |
 | Restart | Step 6 |
 | Group diary (optional extended session) | Step 7 |
 

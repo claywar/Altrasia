@@ -190,7 +190,15 @@ The operator UI SHOULD offer scope selector above send: **v1** public / whisper 
 
 `sendScopedMessage(world, scene, { scope, text, targetCharacterId })` attaches metadata before append.
 
-Badges on messages indicate scope; non-audible lines MAY render dimmed for current viewer.
+Badges on messages indicate scope; non-audible lines MAY render dimmed for current viewer ([14-web-ui.md](14-web-ui.md) UI-3, `PerceptionDimming`).
+
+### 6.1 Rich text in transcript
+
+Message `outputText` MAY contain GitHub-flavored markdown and fenced `mermaid` diagrams. Scope badges and narrator typography MUST remain visible alongside formatted body copy (UI-R1–R2, UI-3). Reasoning blocks MUST NOT appear in rendered transcript (UI-R6, OQ-3).
+
+### 6.2 Transcript immutability
+
+The Web UI MUST NOT offer delete or inline edit of committed scene or meta messages (UI-TRN-1–UI-TRN-3). Operator guides story via new messages, Observer modes, and tools—not erasure.
 
 ## 7. Tools and commands
 

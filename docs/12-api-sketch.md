@@ -60,6 +60,8 @@ All world-scoped routes assume one operator; no multi-tenant headers.
 
 Scopes v1: `public`, `whisper`, `dm`. v1.1 adds `phone` ([21-cross-scene-awareness.md](21-cross-scene-awareness.md)).
 
+**Presentation (Web UI):** `text` is stored as plain string; MAY include markdown and fenced `mermaid` blocks. Optional request field `contentFormat: "markdown"` is a hint for compose preview only—persistence unchanged. Rendering rules: [14-web-ui.md](14-web-ui.md) UI-R1–R7. Committed messages MUST NOT be deleted via API (UI-TRN-1).
+
 ## 5. Presence
 
 | Method | Path | Description |

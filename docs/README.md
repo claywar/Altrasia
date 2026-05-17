@@ -50,6 +50,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | — | [ROADMAP.md](ROADMAP.md) | Milestones, feature matrix, design vs shipped status |
 | — | [personas.md](personas.md) | Operator personas (non-normative) |
 | — | [guides/first-run-experience.md](guides/first-run-experience.md) | Target first session (non-normative) |
+| — | [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) | ASCII wireframes for Web UI (non-normative) |
 
 ## Architecture overview
 
