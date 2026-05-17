@@ -194,6 +194,16 @@ v1.1+: `nodes[].mapShape`, `structureId`; `structures[].boundary`; `edges[].exit
 - `nodes[].mapPositionAuthor` — present only when world data supplied `mapPosition`; informational.
 - `edges[]` — one row per exit from source scene; bidirectional worlds MAY emit reverse edges or client synthesizes reverse with same `travelSteps`.
 
+### 6.1 World map and levels (Phase 6)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/worlds/{worldId}/world-map` | `worldMapArtifact`, site bounds, structure placements ([18-location-maps.md](18-location-maps.md) §7) |
+| GET | `/worlds/{worldId}/structures/{structureId}/levels` | Scenes by `mapLevel`, `verticalEdges`, stack layout hints (§8) |
+| GET | `/worlds/{worldId}/scenes/{sceneId}/map` | Per-scene `mapArtifact` floor plan (MAP-1) |
+
+`spatial-graph` nodes (v1.1+): add `mapLevel`, `levelLabel`, `planPosition`; response MAY include `verticalEdges[]` where `exit.vertical === true`.
+
 ## 7. Generation
 
 | Method | Path | Description |

@@ -39,6 +39,7 @@ erDiagram
 | `activeSceneId` | TEXT FK | Operator focus |
 | `defaultModelProfile` | TEXT | Default `qwen3.6-35b-a3b` |
 | `configJson` | TEXT | World-level settings blob |
+| `worldMapJson` | TEXT NULL | Site-scale `worldMapArtifact` (Phase 6, [18-location-maps.md](18-location-maps.md) §7) |
 | `createdAt` | TEXT ISO | |
 | `updatedAt` | TEXT ISO | |
 
@@ -71,6 +72,10 @@ Optional building envelope for mini-map and navigation ([14-web-ui.md](14-web-ui
 | `sceneId` | TEXT PK | |
 | `worldId` | TEXT FK | |
 | `structureId` | TEXT FK NULL | Parent building envelope (v1.1+) |
+| `mapLevel` | INTEGER | Default `0`; vertical floor index (Phase 6, MAP-9) |
+| `levelLabel` | TEXT NULL | e.g. `Ground floor` |
+| `planPositionJson` | TEXT NULL | `{ planX, planY }` within structure for stack alignment |
+| `mapArtifactJson` | TEXT NULL | Per-scene floor plan (MAP-1, Phase 6) |
 | `locationName` | TEXT | |
 | `locationDescription` | TEXT | |
 | `presentJson` | TEXT | Array of characterId or `__persona__` |
@@ -124,6 +129,11 @@ Optional building envelope for mini-map and navigation ([14-web-ui.md](14-web-ui
 |-------|------|-------------|
 | `exitAnchor` | `{ "side": "N"\|"E"\|"S"\|"W", "offset": number }` | Edge attachment on source footprint (`0–1` along side) |
 | `crossesStructure` | boolean | `true` when target is outside source `structureId` ([14-web-ui.md](14-web-ui.md) §21.3) |
+| `vertical` | boolean | `true` for stairs/ladder/shaft between levels ([18-location-maps.md](18-location-maps.md) MAP-10) |
+| `levelDelta` | integer | `+1` / `-1` when `vertical` |
+| `planPosition` | object | `{ planX, planY }` for stack alignment |
+
+Exit `kind` MAY include `stairs` \| `ladder` \| `elevator` \| `shaft` when vertical.
 
 Omission of layout fields MUST NOT break CC-1 round-trip ([17-acceptance-criteria.md](17-acceptance-criteria.md)).
 

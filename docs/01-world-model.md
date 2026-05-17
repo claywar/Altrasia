@@ -51,6 +51,8 @@ A **structure** is an optional grouping of one or more scenes under one named bu
 
 Structures MUST NOT change presence or communication rules; they are **navigational and visual** only. A scene belongs to at most one structure in v1.1+.
 
+**Multi-level (Phase 6):** Scenes in the same structure MAY share `planPosition` but differ in `mapLevel` (e.g. ground-floor Hall vs upper gallery). Vertical connectivity uses `stairs` / `ladder` / `shaft` exits ([18-location-maps.md](18-location-maps.md) §8).
+
 ### 1.3 Character
 
 A **character** is an agent (typically LLM-driven) with:

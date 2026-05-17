@@ -75,7 +75,10 @@ Act 3 is fully specified for later phases; it is **not** part of the v1 release 
 | Character authoring UI wizard | | | Phase 3 | [24](24-character-authoring.md) |
 | Commissions / in-world work runtime | | | Phase 4+ | [23](23-in-world-work.md) |
 | Filesystem / web-tools / scheduler | | | Phase 4+ | [06](06-web-tools.md), [08](08-real-world-capabilities.md) |
-| Maps, ComfyUI, plugins | | | Phase 6 / future | [18](18-location-maps.md), [19](19-comfyui-media.md), [15](15-plugin-platform.md) |
+| Mini-map (structured, envelopes) | | yes | | [14](14-web-ui.md) §21.1–§21.3 |
+| World map + floor plans (Phase 6a) | | | Phase 6 | [18](18-location-maps.md) §7, [14](14-web-ui.md) §21.4 |
+| Multi-level stack + vertical exits (Phase 6b) | | | Phase 6 | [18](18-location-maps.md) §8 |
+| ComfyUI, plugins | | | Phase 6+ | [19](19-comfyui-media.md), [15](15-plugin-platform.md) |
 
 ## Phase number glossary
 

@@ -38,7 +38,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | 15 | [15-plugin-platform.md](15-plugin-platform.md) | Future plugins |
 | 16 | [16-learning.md](16-learning.md) | Output-only storage, stripReasoning |
 | 17 | [17-acceptance-criteria.md](17-acceptance-criteria.md) | Test matrix, golden path |
-| 18 | [18-location-maps.md](18-location-maps.md) | Future maps |
+| 18 | [18-location-maps.md](18-location-maps.md) | World map, floor plans, multi-level stack (Phase 6) |
 | 19 | [19-comfyui-media.md](19-comfyui-media.md) | Future ComfyUI |
 | 20 | [20-product-principles.md](20-product-principles.md) | Wedge, presets, metrics |
 | 21 | [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1 track / v1.1 phone |

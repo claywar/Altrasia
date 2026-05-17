@@ -316,6 +316,7 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 | `SettingsModal`, `WorldSettingsTab`, `PersonaSettingsTab`, `SceneEditorTab` | v1 |
 | `ServerSettingsTab`, `DataPackageTab` | v1.1 |
 | `CharacterPortrait`, `SceneEstablishingShot`, `ReferenceSheetPanel` | post-v1 |
+| `WorldMapCanvas`, `FloorPlanView`, `LevelStackView`, `LevelSelector`, `MapViewChrome` | Phase 6 ([§21.4](#214-world-map-and-multi-level-views)) |
 
 ## 20. Locations UX (v1)
 
@@ -328,6 +329,8 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 | How do I go elsewhere? | Click scene in **Places**; exits in left **SpatialPanel** |
 | How do I signal another room? | Knock on exit → banner + **Signals** |
 | What is in this room? | Fixture chips + description |
+| Site / campus layout? | **WorldMapCanvas** (Phase 6a) — [18-location-maps.md](18-location-maps.md) §7 |
+| Which floor am I on? | **LevelSelector** + **LevelStackView**; mini-map level badge (Phase 6b) — [18-location-maps.md](18-location-maps.md) §8 |
 
 ## 21. Map UX (phased)
 
@@ -335,7 +338,8 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 |-------|-----|
 | v1 | `SpatialGraphMiniMap` — structured layout ([§21.1](#211-spatialgraphminimap-v1-structured-layout)); rectangular nodes default |
 | v1.1 | **Architectural shapes** ([§21.2](#212-architectural-shapes-and-diagrams)); **building envelopes** ([§21.3](#213-building-envelopes-and-navigation)); optional scene thumbnail |
-| Post-v1 | `MapCanvas` + `mapArtifact` footprints feed mini-map simplification ([18-location-maps.md](18-location-maps.md)) |
+| Post-v1 Phase 6a | **`WorldMapCanvas`** site view, **`FloorPlanView`**, `mapArtifact` ([18-location-maps.md](18-location-maps.md) §7, [§21.4](#214-world-map-and-multi-level-views)) |
+| Post-v1 Phase 6b | **`LevelStackView`**, vertical exits, level selector, mini-map level ghosts ([18-location-maps.md](18-location-maps.md) §8) |
 
 ### 21.1 SpatialGraphMiniMap (v1 structured layout)
 
@@ -535,6 +539,7 @@ Draw order (back → front): `mapZone` band → **structure envelope** → scene
 |----|------|
 | UI-MAP-N1 | When active scene has `structureId`, `SceneHeader` subtitle or breadcrumb: **`{structure.displayName} › {locationName}`** (e.g. `Manor House › Hall`). Outdoor scene: scene name only |
 | UI-MAP-N2 | Clicking structure name in breadcrumb MAY pan mini-map to fit that envelope (does not change active scene) |
+| UI-MAP-N3 | When `mapLevel` / `levelLabel` set, breadcrumb: **`{structure} › {levelLabel} › {locationName}`** (Phase 6b) |
 
 #### Examples
 
@@ -564,6 +569,59 @@ One `structures[]` entry: `displayName: Manor House`, `boundary.shape: hull` aro
 | UI-MAP-ACC6 | Manor demo: three rooms show inside one labeled outer boundary; active room highlighted inside envelope |
 | UI-MAP-ACC7 | Exit from Hall to Bailey crosses envelope wall; Hall ↔ Kitchen edge stays interior |
 | UI-MAP-ACC8 | `SceneHeader` shows `Manor House › Hall` when persona in Hall |
+
+### 21.4 World map and multi-level views
+
+Large-scale and vertical navigation are specified in [18-location-maps.md](18-location-maps.md). This section defines Web UI surfaces and how they connect to the mini-map (§21.1–§21.3).
+
+#### UI surfaces
+
+| Component | Phase | Role |
+|-----------|-------|------|
+| `SpatialGraphMiniMap` | v1–v1.1 | Always-on local diagram in left panel |
+| `WorldMapCanvas` | 6a | Site/campus pan/zoom overlay or full mode |
+| `FloorPlanView` | 6a | Single-floor detail from `mapArtifact` |
+| `LevelStackView` | 6b | Exploded vertical stack for one structure |
+| `LevelSelector` | 6b | Tabs or list: Ground / Upper / Basement |
+| `MapViewChrome` | 6a | Mode switch: site \| structure \| floor \| stack |
+
+#### Goals (UI-MAP-W* / UI-MAP-L*)
+
+| ID | Goal |
+|----|------|
+| UI-MAP-W1 | **Site orientation** — see all structures and outdoors at once |
+| UI-MAP-W2 | **Continuity** — opening world map does not lose play context; Esc returns to transcript |
+| UI-MAP-L1 | **Level clarity** — operator always knows `mapLevel` and sees floors stacked, not confused with distant site geography |
+| UI-MAP-L2 | **Vertical navigation** — stairs/shafts readable; click target floor or scene to move |
+| UI-MAP-L3 | **Mini-map sync** — level badge + ghosts match World/Stack selection |
+
+#### Launch and layout (UI-MAP-W*)
+
+| ID | Rule |
+|----|------|
+| UI-MAP-W3 | **TopBar** and **SceneHeader** expose `Map` control; opens `WorldMapCanvas` overlay (default 85% viewport) |
+| UI-MAP-W4 | Overlay: transcript + right rail remain visible but dimmed; map is focus-trapped until Esc |
+| UI-MAP-W5 | **Dedicated map mode** (optional): operator toggles full-screen map; compose hidden; Places collapses to drawer |
+| UI-MAP-W6 | Picture-in-picture mini-map in map overlay corner shows viewport bounds on site |
+| UI-MAP-W7 | Fit: world \| active structure \| active scene |
+
+#### Level UI (UI-MAP-L*)
+
+| ID | Rule |
+|----|------|
+| UI-MAP-L4 | **LevelSelector** in map chrome when `structureId` has scenes on >1 `mapLevel` |
+| UI-MAP-L5 | **LevelStackView**: plates separated by fixed gap; vertical exits as labeled connectors (▲▼ + `kind` icon) |
+| UI-MAP-L6 | **FloorPlanView**: one level only; fixtures and exits from MAP-4 hotspots |
+| UI-MAP-L7 | **SceneHeader** breadcrumb extends to **`{structure} › {levelLabel} › {scene}`** (UI-MAP-N3) |
+| UI-MAP-L8 | Mini-map: level badge; ghost footprints for other levels in same structure (MAP-15) |
+
+#### Wireframes
+
+See [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-14 (world map overlay), WF-15 (level stack).
+
+#### Acceptance
+
+[17-acceptance-criteria.md](17-acceptance-criteria.md) MAP-ACC-*; [18-location-maps.md](18-location-maps.md) §11.
 
 ## 22. UX acceptance (implementation gate)
 
@@ -739,6 +797,7 @@ Groupings for implementers — names match [§19](#19-component-inventory-spec-v
 | 2026-05 | SpatialGraphMiniMap structured layout (UI-MAP-*), §21.1 |
 | 2026-05 | Architectural shapes and diagram style (§21.2); v1.1 footprint primitives |
 | 2026-05 | Building envelopes and navigation context (§21.3); structures in data model |
+| 2026-05 | World map + multi-level plan (§21.4); [18-location-maps.md](18-location-maps.md) Phase 6 |
 
 ## Related documents
 
