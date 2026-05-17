@@ -199,6 +199,19 @@ LLM tools example: `comm_whisper`, `comm_phone` — whisper MAY send immediately
 
 When narrative presence is in `auto` or `llm` mode, detected whispers and phone answers SHOULD set appropriate scope metadata and MAY trigger join/leave side effects (see [03-locations-and-presence.md](03-locations-and-presence.md)).
 
+## 8.1 Debate activity (post-v1)
+
+When `scene.activity.kind=debate` ([23-in-world-work.md](23-in-world-work.md)):
+
+| Rule | Level |
+|------|-------|
+| Debate lines use `scope: public` unless operator uses whisper/DM per normal rules | MUST |
+| Only `speakingOrder[currentIndex]` is generation-eligible for debate turns (DEB-2) | MUST |
+| MP-20 diary fan-out applies to witnessed debate lines | MUST |
+| Phase `synthesis` MAY add a narrator or chair line; per-debater mind loci written per DEB-1 | MUST |
+
+Debate is not a separate channel; it uses the scene transcript and existing scope matrix.
+
 ## 9. Requirements summary
 
 | ID | Requirement |
@@ -214,9 +227,11 @@ When narrative presence is in `auto` or `llm` mode, detected whispers and phone 
 | C-9 | Handset bystanders hear only messages whose `speakerSceneId` matches their present scene (one side). |
 | C-10 | `speakerphone` is per endpoint; default false; toggling one end does not toggle the other. |
 | C-11 | Speakerphone on at an endpoint lets present bystanders at **that scene only** hear both sides. |
+| C-12 | Debate activity uses public scope and DEB-2 turn eligibility (post-v1). |
 
 ## Related documents
 
 - [03-locations-and-presence.md](03-locations-and-presence.md) — present roster
 - [09-roles-and-privilege.md](09-roles-and-privilege.md) — persona speak guards
 - [05-tool-calling.md](05-tool-calling.md) — communication tools
+- [23-in-world-work.md](23-in-world-work.md) — debate activity

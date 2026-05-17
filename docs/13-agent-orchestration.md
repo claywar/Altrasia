@@ -43,6 +43,9 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 | `agent_continue` | Optional | Public line → optional NPC chain |
 | `phone_target` | v1.1 | CC-12 |
 | `knock_answered` | v1.1 | CC-11 |
+| `commission_started` | Post-v1 | Operator/API started commission ([23-in-world-work.md](23-in-world-work.md)) |
+| `commission_tick` | Post-v1 | Scheduler tick while commission `running` |
+| `debate_turn` | Post-v1 | Debate phase advance at scene with `activity.kind=debate` |
 
 ## 4. Eligibility (AO-3)
 
@@ -54,6 +57,10 @@ A character MAY be scheduled when:
 - Passes communication eligibility ([04-communication.md](04-communication.md))
 
 **Observer:** excluded from **ambient idle** pools; included when operator requests Watch/Narrate/Intervene/Direct (AO-3a, elevated priority).
+
+**Commission (COM-6, post-v1):** Assignee MUST be present at commission `targetSceneId` for `commission_started` / `commission_tick` jobs. Status `queued` or `blocked` until presence matches.
+
+**Debate (DEB-2, post-v1):** When `scene.activity.kind=debate`, only `speakingOrder[currentIndex]` is eligible for `debate_turn` jobs at that scene (overrides AO-4 round-robin until phase advances).
 
 ## 5. Fairness and caps
 
@@ -68,6 +75,9 @@ A character MAY be scheduled when:
 | AO-11 | No overlapping GPU leases across jobs. |
 | AO-12 | Skip idle tick when GpuResourceQueue at maxDepth (INF-5d). |
 | AO-13 | Mandatory-recall blocking steps use queue slots—no parallel LLM. |
+| AO-14 | `commission_*` jobs priority below `operator_message` and `whisper_target`. |
+| AO-15 | Commission `done` requires mind-pool `memory_store` per COM-2 unless force-complete. |
+| AO-16 | Debate `synthesis` phase writes mind loci per DEB-1 before marking activity complete. |
 
 ## 6. Tool loop integration
 
@@ -93,7 +103,7 @@ Post-generation **reflection** job MAY propose `memory_store` mind loci from out
 
 | ID | Requirement |
 |----|-------------|
-| AO-1–AO-13 | Scheduler, triggers, eligibility, caps, GPU integration |
+| AO-1–AO-16 | Scheduler, triggers, eligibility, caps, GPU integration, in-world work |
 
 ## Related documents
 
@@ -101,3 +111,4 @@ Post-generation **reflection** job MAY propose `memory_store` mind loci from out
 - [03-locations-and-presence.md](03-locations-and-presence.md)
 - [05-tool-calling.md](05-tool-calling.md)
 - [09-roles-and-privilege.md](09-roles-and-privilege.md)
+- [23-in-world-work.md](23-in-world-work.md)

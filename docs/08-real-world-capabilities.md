@@ -152,8 +152,13 @@ Operator MUST paste **Architect system prompt** fragment covering: mandatory rec
 | RW-5 | Character admin separate from FS binary writes. |
 | RW-6 | Architect allowlist gates real-world tools. |
 
+## 7. Commissions (post-v1)
+
+Filesystem and web tools invoked during a **commission** ([23-in-world-work.md](23-in-world-work.md)) follow the same approval and allowlist rules. Commission completion MUST persist findings to assignee mind pool by default (COM-2), not transcript-only.
+
 ## Related documents
 
 - [07-approvals.md](07-approvals.md)
+- [23-in-world-work.md](23-in-world-work.md)
 - [09-roles-and-privilege.md](09-roles-and-privilege.md)
 - [05-tool-calling.md](05-tool-calling.md)

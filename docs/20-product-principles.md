@@ -6,7 +6,7 @@ North-star journey, v1 wedge, presets, metrics, and operator onboarding.
 
 > **A persistent stage for AI characters—memory-grounded, spatial, operator-run.**
 
-WorldEngine is not a chat skin (SillyTavern) or a coding agent (Hermes). It is a **single-machine narrative studio** with durable geography and memory discipline.
+WorldEngine is not a chat skin (SillyTavern) or a coding agent (Hermes). It is a **single-machine narrative studio** with durable geography and memory discipline. The same stage supports **in-world work**—research commissions, deliberation at locations, team focus areas—without a separate product mode or bypassing spatial rules ([23-in-world-work.md](23-in-world-work.md)).
 
 ## 2. Primary operator (confirmed)
 
@@ -119,11 +119,24 @@ A world that only runs while the Web UI tab is open is an **anti-pattern** for t
 | 2 | Spatial wedge + Web UI streaming |
 | 2.5 | Cross-scene comms (v1.1) |
 | 3 | Observer polish, approvals, inspector |
-| 4+ | Embeddings, Architect tools, plugins |
+| 3.5 | In-world work spec (commissions, debate activity, commons) — schema only; no v1 ship |
+| 4+ | Embeddings, Architect tools, web-tools, commission runtime |
+| 4.5 | Debate `scene.activity` + acceptance paths |
 | 6 | Maps, ComfyUI |
+
+### In-world work (post-v1, not wedge replacement)
+
+| Capability | Spec | Phase |
+|------------|------|-------|
+| Commissions (research errands; default deliverable → assignee mind pool) | [23-in-world-work.md](23-in-world-work.md) | 3.5 spec; Phase 4+ runtime with web/FS |
+| Debate `scene.activity` | [23-in-world-work.md](23-in-world-work.md) | 4.5 |
+| World commons, provenance on external facts | [02-memory.md](02-memory.md) MP-21–MP-22 | 3.5 spec; Phase 4+ |
+
+v1 golden path and MUST-ship list are **unchanged**. In-world work MUST NOT dilute spatial wedge acceptance.
 
 ## Related documents
 
 - [14-web-ui.md](14-web-ui.md)
 - [17-acceptance-criteria.md](17-acceptance-criteria.md)
+- [23-in-world-work.md](23-in-world-work.md)
 - [README.md](README.md)

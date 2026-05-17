@@ -2,12 +2,12 @@
 
 ## Vision
 
-WorldEngine is a **persistent stage for AI characters—memory-grounded, spatial, operator-run.**
+WorldEngine is a **persistent stage for AI characters—memory-grounded, spatial, operator-run.** The same world supports narrative play and **in-world work** (commissions, deliberation at locations, evidence grounded in scenes) without abandoning presence or diegesis.
 
 In practice:
 
 - You play primarily as the **persona** across **scenes** with tangible presence, exits, and scoped communication.
-- **Characters** retain structured memory (mind/world pools, diary) without cross-leaking private knowledge.
+- **Characters** retain structured memory (mind/world pools, diary) without cross-leaking private knowledge; research commissions default to the assignee's **mind pool** so they can answer later in any scene ([23-in-world-work.md](23-in-world-work.md)).
 - The **Observer** is your studio side-channel and world-control surface (narrate, intervene, tune)—not the main play voice.
 - A single **GPU** runs primary chat (Qwen3.6-35B-A3B via llama.cpp) and embeddings under a unified **GpuResourceQueue**.
 - Optional tools (web, filesystem, schedules) and future maps/ComfyUI follow the same memory and queue rules.
@@ -41,6 +41,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | 20 | [20-product-principles.md](20-product-principles.md) | Wedge, presets, metrics |
 | 21 | [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1 track / v1.1 phone |
 | 22 | [22-output-quality.md](22-output-quality.md) | Convergence, anti-repetition, reasoning hygiene |
+| 23 | [23-in-world-work.md](23-in-world-work.md) | Commissions, debate activity, briefing fixtures, commons (post-v1) |
 | — | [appendix-glossary.md](appendix-glossary.md) | Term definitions |
 | — | [appendix-provenance.md](appendix-provenance.md) | SillyTavern source map (non-normative) |
 
@@ -101,6 +102,7 @@ flowchart TB
 - Multi-tenant accounts
 - Required plugins ([15-plugin-platform.md](15-plugin-platform.md))
 - FS / scheduler / web-tools (Phase 4+)
+- Commissions, debate `scene.activity`, world commons (**post-v1** — [23-in-world-work.md](23-in-world-work.md); schema in v1.5 spec)
 
 ## Normative language
 

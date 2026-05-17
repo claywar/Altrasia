@@ -60,6 +60,8 @@ When `observerDigestMultiScene` is enabled, generation for Observer MAY include:
 
 Observer MAY use digest for planning but MUST still run memory tools before stating continuity facts as narrator (MP-8–MP-10).
 
+**Diegesis rule (ROLE-6, post-v1):** World **commons** loci and **briefing fixture** mirrors are institutional or room-visible records—not telepathy. Cast treat commons as known in dialogue only after witnessed briefing (public line, perceivable board at scene, or narrator). Commission status in operator UI is not cast knowledge until stored in mind pool or communicated in play (COM-1–COM-2).
+
 ### 2.5 Meta channel (Observer Studio)
 
 Operator ↔ Observer tuning uses `channelKind=meta` ([11-data-model.md](11-data-model.md)):
@@ -140,6 +142,7 @@ All roles that generate—including Observer—MUST follow MP-8–MP-19 ([02-mem
 | ROLE-3 | Location admin gates scene CRUD tools. |
 | ROLE-4 | Architect gates FS and scheduler (when enabled). |
 | ROLE-5 | Persona presence rules enforced when configured. |
+| ROLE-6 | Commons and briefing boards are not in-character knowledge until witnessed or communicated (post-v1). |
 | OBS-1–OBS-7 | Observer control surface and modes. |
 
 ## Related documents
@@ -149,3 +152,4 @@ All roles that generate—including Observer—MUST follow MP-8–MP-19 ([02-mem
 - [04-communication.md](04-communication.md)
 - [14-web-ui.md](14-web-ui.md)
 - [16-learning.md](16-learning.md)
+- [23-in-world-work.md](23-in-world-work.md)

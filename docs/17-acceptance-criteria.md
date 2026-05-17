@@ -143,7 +143,18 @@ Path: `tests/fixtures/memory-scale/` (seed script + SQLite snapshot or generator
 
 Performance tests (MEM-PERF-2, MEM-PERF-3) run against this fixture on every CI integration job. Leakage tests (MEM-ACC-1) run 10k randomized queries.
 
-## 8. stripReasoning fixtures
+## 8. In-world work (post-v1, non-blocking v1)
+
+| ID | Test |
+|----|------|
+| COM-ACC-1 | Commission (e.g. GitHub repo research) reaches `done` with mind-pool loci; ask assignee a **stored** detail in a **different** scene → grounded answer from mind pool (not transcript-only). |
+| COM-ACC-2 | Commission does not run until assignee present at `targetSceneId` (COM-6). |
+| COM-ACC-3 | `done` rejected without mind `memory_store` unless force-complete with reason. |
+| DEB-ACC-1 | Debate completes; ask debater in another scene about their position → grounded from `debate:{sceneId}:` mind loci. |
+
+See [23-in-world-work.md](23-in-world-work.md).
+
+## 9. stripReasoning fixtures
 
 Maintain `tests/fixtures/strip-reasoning/` with:
 
@@ -158,3 +169,4 @@ Maintain `tests/fixtures/strip-reasoning/` with:
 - [20-product-principles.md](20-product-principles.md)
 - [00-inference-runtime.md](00-inference-runtime.md)
 - [16-learning.md](16-learning.md)
+- [23-in-world-work.md](23-in-world-work.md)

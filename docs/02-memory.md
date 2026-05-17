@@ -29,6 +29,27 @@ Facts live in one of two **pools**:
 
 Pool aliases for tools (SHOULD accept): `mind` ← `character`, `self`; `world` ← `global`, `scene`.
 
+### 1.2.1 World commons (optional, post-v1)
+
+**World commons** are institutional records in the **world aggregate** ([01-world-model.md](01-world-model.md)), keyed `world:{worldId}:commons:{key}`. They are not mind pool (MP-1) and not scene-local world pool.
+
+| Rule | Level |
+|------|-------|
+| Commons appear in mandatory recall only for `characterId` on `commonsAccessIds` for that world | MUST (MP-22) |
+| Commons MUST NOT bypass MP-1 for characters not on the allowlist | MUST |
+| Prompt inject labels commons as records available to the character, not facts everyone already knows | SHOULD (ROLE-6) |
+
+See [23-in-world-work.md](23-in-world-work.md) §5.
+
+### 1.2.2 Commission and debate loci (post-v1)
+
+Research **commissions** default to **mind pool** storage (COM-1, COM-2 in [23-in-world-work.md](23-in-world-work.md)). Recommended key prefixes:
+
+| Prefix | Pool | Owner |
+|--------|------|-------|
+| `commission:{commissionId}:` | mind | assignee `characterId` |
+| `debate:{sceneId}:` | mind | each debate participant |
+
 ### 1.3 Diary (witnessed episodic memory)
 
 The **diary** is **witnessed episodic memory**: what a character could have heard or seen in play, captured automatically after each completed cast reply. It is **not** a log of that character's own monologue alone.
@@ -222,6 +243,28 @@ Prior keys with the same `location:{sceneId}:` prefix MUST be cleared before rew
 
 Sync SHOULD run when the active scene's metadata is flushed.
 
+### 5.1 Briefing fixture mirror (post-v1)
+
+Briefing fixtures ([23-in-world-work.md](23-in-world-work.md) §4) MAY sync one-way into world pool:
+
+| Key pattern | Content |
+|-------------|---------|
+| `briefing:{sceneId}:{fixtureKey}` | Shared board text at that location |
+
+Same one-way invariant as MP-2.
+
+### 5.2 Provenance (MP-21, post-v1)
+
+Facts stored from web, filesystem, or commission ingest SHOULD link an **EvidenceRecord** ([11-data-model.md](11-data-model.md) §3.15):
+
+| Field | Purpose |
+|-------|---------|
+| `sourceKind` | `dialogue` \| `web` \| `file` \| `operator` |
+| `sourceRef` | URL, path, or `messageId` |
+| `retrievedAt` | ISO timestamp |
+
+Operator memory inspector shows provenance. In-character prompts cite sources only when world config `citeProvenanceInPrompt` is enabled.
+
 ## 6. Storage and migration
 
 ### 6.1 Storage scopes
@@ -231,6 +274,7 @@ Sync SHOULD run when the active scene's metadata is flushed.
 | Mind loci | `characterId` |
 | Diary | `characterId` |
 | World loci | `sceneId` |
+| Commons loci | `worldId` |
 | Settings | Operator / world config |
 
 Persistence: SQLite per [11-data-model.md](11-data-model.md). Implement via `PersistencePort` in `packages/persistence` (indexes + FTS5 in migration 001).
@@ -278,6 +322,8 @@ Optional post-v1 **reflection** jobs MAY propose `memory_store` mind loci with o
 | MEM-ACC-3 | `memory_store` append-only unless operator overwrite API. |
 | MEM-ACC-4 | Golden-path restart continuity ([17-acceptance-criteria.md](17-acceptance-criteria.md)). |
 | MEM-ACC-5 | Assembled mandatory recall ≤ `mandatoryRecallMaxChars`. |
+| MP-21 | External facts from web/FS/commission SHOULD attach EvidenceRecord provenance. |
+| MP-22 | World commons recall gated by `commonsAccessIds`; no MP-1 violation. |
 
 Extended requirements **MP-8–MP-19** (universal memory discipline, output-only storage, `stripReasoning`) are defined in [16-learning.md](16-learning.md).
 
@@ -289,3 +335,4 @@ Extended requirements **MP-8–MP-19** (universal memory discipline, output-only
 - [11-data-model.md](11-data-model.md) — SQLite schema, indexes, FTS5
 - [16-learning.md](16-learning.md) — MP-8–MP-19, stripReasoning
 - [17-acceptance-criteria.md](17-acceptance-criteria.md) — performance benchmarks
+- [23-in-world-work.md](23-in-world-work.md) — commissions, debate, briefing fixtures

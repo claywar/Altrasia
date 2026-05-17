@@ -4,7 +4,10 @@
 |------|------------|
 | **Architect** | Builder-role character with filesystem, scheduler, and character admin tools |
 | **Approval** | Operator gate before side-effecting tools apply |
+| **Briefing fixture** | Scene fixture that mirrors shared text into world pool (`briefing:{sceneId}:…`) |
 | **Cast** | All characters who are members of a world |
+| **Commission** | Diegetic errand assigned to a cast member; research defaults to assignee mind pool (COM-1) |
+| **Commons (world)** | World-scoped institutional loci; recall gated by allowlist (MP-22) |
 | **Diary** | Witnessed episodic memory: rolling perceivable scene snippets, stored per character |
 | **Diary fan-out** | On capture, the same segment appended to every present cast member's diary (MP-20) |
 | **Witnessed diary** | Episodic memory of dialogue a character could perceive in play—not speaker-only monologue |
@@ -21,6 +24,9 @@
 | **GpuResourceQueue** | Single-GPU scheduler for chat, embed, and future image jobs |
 | **channelKind** | `scene` (in-fiction transcript) or `meta` (Observer Studio only) |
 | **CrossSceneSignal** | Durable knock/ring/buzz between scenes (v1 track) |
+| **Debate activity** | `scene.activity` overlay with phased turns and mind-pool synthesis (DEB-1) |
+| **EvidenceRecord** | Provenance metadata linked to a locus (MP-21) |
+| **focusTags** | Optional character definition tags for commission filtering |
 | **outputText** | Post–stripReasoning message text used for durable memory |
 | **Narrator scope** | Observer scene lines perceivable by all present at scene |
 | **Phone endpoint** | One scene side of a call; has its own `speakerphone` flag |

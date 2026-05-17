@@ -51,6 +51,7 @@ erDiagram
 | `presentJson` | TEXT | Array of characterId or `__persona__` |
 | `fixturesJson` | TEXT | Map fixtureKey → fixture record |
 | `exitsJson` | TEXT | Array of exit records (CC-1) |
+| `activityJson` | TEXT NULL | Optional debate overlay ([23-in-world-work.md](23-in-world-work.md)) |
 | `updatedAt` | TEXT ISO | |
 
 **Exit record shape:**
@@ -126,8 +127,8 @@ Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`.
 | Column | Type | Notes |
 |--------|------|-------|
 | `locusKey` | TEXT | |
-| `pool` | TEXT | `mind` \| `world` |
-| `ownerId` | TEXT | characterId (mind) or sceneId (world) |
+| `pool` | TEXT | `mind` \| `world` \| `commons` |
+| `ownerId` | TEXT | characterId (mind), sceneId (world), or worldId (commons) |
 | `value` | TEXT | Append-only text (output only) |
 | `updatedAt` | TEXT ISO | |
 
@@ -210,6 +211,39 @@ Per [07-approvals.md](07-approvals.md); unified pending store with `approvalId`,
 
 Table MUST exist in **migration 001** (MAY be empty until embed jobs run). Re-embed on write per [00-inference-runtime.md](00-inference-runtime.md) INF-13. Semantic search assists tools only ([02-memory.md](02-memory.md) §7).
 
+### 3.14 Commission (post-v1 schema)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `commissionId` | TEXT PK | |
+| `worldId` | TEXT FK | |
+| `assigneeCharacterId` | TEXT FK | |
+| `targetSceneId` | TEXT FK | |
+| `brief` | TEXT | |
+| `status` | TEXT | `queued` \| `running` \| `blocked` \| `done` \| `failed` |
+| `deliverablePolicy` | TEXT | Default `mind` (COM-1) |
+| `deliverableLocusPrefix` | TEXT | Default `commission:{commissionId}:` |
+| `deliverableLocusKeysJson` | TEXT | Set on `done` (COM-3) |
+| `allowedToolsJson` | TEXT NULL | |
+| `forceCompleteReason` | TEXT NULL | Operator skip audit |
+| `createdAt` | TEXT ISO | |
+| `updatedAt` | TEXT ISO | |
+
+Table MAY ship in migration 001 as empty schema; runtime Phase 4+.
+
+### 3.15 EvidenceRecord (post-v1 schema)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `evidenceId` | TEXT PK | |
+| `locusKey` | TEXT | Linked locus |
+| `pool` | TEXT | `mind` \| `world` \| `commons` |
+| `ownerId` | TEXT | |
+| `sourceKind` | TEXT | `dialogue` \| `web` \| `file` \| `operator` |
+| `sourceRef` | TEXT | URL, path, messageId |
+| `retrievedAt` | TEXT ISO | |
+| `commissionId` | TEXT NULL FK | |
+
 ## 4. Indexes and full-text search (migration 001)
 
 | ID | Requirement |
@@ -278,6 +312,7 @@ Implementations SHOULD emit events with monotonic per-world `eventSeq`:
 | `generation.error` | `jobId`, `error` |
 | `approval.updated` | `approvalId`, `state` |
 | `signal.created` | `signalId`, `targetSceneId` |
+| `commission.updated` | `commissionId`, `status` |
 | `queue.updated` | `busy`, `depth`, `currentJob` |
 
 ## 7. Requirements summary
@@ -303,3 +338,4 @@ Implementations SHOULD emit events with monotonic per-world `eventSeq`:
 - [12-api-sketch.md](12-api-sketch.md)
 - [17-acceptance-criteria.md](17-acceptance-criteria.md)
 - [21-cross-scene-awareness.md](21-cross-scene-awareness.md)
+- [23-in-world-work.md](23-in-world-work.md)

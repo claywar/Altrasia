@@ -105,6 +105,10 @@ Agents SHOULD use **memory tools** ([02-memory.md](02-memory.md)) for endogenous
 
 Mandatory recall blocking enforces step 1 before other tools when enabled.
 
+### 5.1 Commissions (post-v1)
+
+During an active **commission** ([23-in-world-work.md](23-in-world-work.md)), web/FS tools MAY run only when listed in `allowedTools`. Fetched facts MUST be stored via `memory_store` to the assignee **mind pool** by default (COM-1, COM-2) with **EvidenceRecord** provenance (MP-21). Post-completion Q&A MUST follow COM-5 (memory before re-fetch).
+
 ## 6. Operator checklist
 
 1. Enable server plugins and deploy `web-tools` plugin package.
@@ -129,3 +133,4 @@ Mandatory recall blocking enforces step 1 before other tools when enabled.
 - [05-tool-calling.md](05-tool-calling.md)
 - [07-approvals.md](07-approvals.md)
 - [02-memory.md](02-memory.md)
+- [23-in-world-work.md](23-in-world-work.md)

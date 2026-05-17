@@ -8,11 +8,11 @@ This repository is the **normative specification** for a greenfield implementati
 
 All specifications live under [`docs/`](docs/README.md). Start with the docs index for reading order, architecture, and v1 scope.
 
-**Magnum opus extensions** (inference runtime, data model, API, orchestration, Web UI, cross-scene roadmap, acceptance criteria, output quality) are documented in docs `00` and `11`–`22`.
+**Magnum opus extensions** (inference runtime, data model, API, orchestration, Web UI, cross-scene roadmap, acceptance criteria, output quality, in-world work) are documented in docs `00` and `11`–`23`.
 
 ## Status
 
-- **Specs:** v1 design package complete (docs 00–22)
+- **Specs:** v1 design package complete (docs 00–23; in-world work post-v1)
 - **Implementation:** not started — see [Development](#development) below
 
 Concepts were extracted from a prior SillyTavern deployment and reframed greenfield. See [`docs/appendix-provenance.md`](docs/appendix-provenance.md) for source mapping (implementers only).

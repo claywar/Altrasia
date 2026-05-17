@@ -121,7 +121,31 @@ v1.1: `/worlds/{worldId}/channels`, phone send; `PATCH .../channels/{id}/endpoin
 
 Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-memory.md](02-memory.md)).
 
-## 10. Approvals
+## 10. Commissions (post-v1)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/worlds/{worldId}/commissions` | List commissions |
+| POST | `/worlds/{worldId}/commissions` | Create; default `deliverablePolicy: mind` (COM-1) |
+| GET | `/worlds/{worldId}/commissions/{commissionId}` | Detail + `deliverableLocusKeys` |
+| PATCH | `/worlds/{worldId}/commissions/{commissionId}` | Update status; `done` requires COM-2 |
+| POST | `/worlds/{worldId}/commissions/{commissionId}/start` | Enqueue if assignee present at `targetSceneId` (COM-6) |
+| POST | `/worlds/{worldId}/commissions/{commissionId}/force-complete` | Body `{ "reason": "..." }` |
+
+**POST create body (illustrative):**
+
+```json
+{
+  "assigneeCharacterId": "char-researcher",
+  "targetSceneId": "scene-archives",
+  "brief": "Summarize the WorldEngine GitHub README and API surface.",
+  "deliverablePolicy": "mind"
+}
+```
+
+Debate activity: `PATCH .../scenes/{sceneId}` with `activityJson` ([23-in-world-work.md](23-in-world-work.md)).
+
+## 11. Approvals
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -129,7 +153,7 @@ Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-me
 | POST | `/approvals/{approvalId}/approve` | |
 | POST | `/approvals/{approvalId}/deny` | |
 
-## 11. Inference health
+## 12. Inference health
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -137,7 +161,7 @@ Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-me
 | GET | `/health/embeddings` | Embed up |
 | GET | `/inference/queue` | INF-5f global queue |
 
-## 12. WebSocket events
+## 13. WebSocket events
 
 Subscribe: `WS /api/v1/worlds/{worldId}/events`
 
@@ -152,10 +176,11 @@ Subscribe: `WS /api/v1/worlds/{worldId}/events`
 | `approval.updated` | approvalId, state |
 | `queue.updated` | busy, depth, currentJob |
 | `signal.created` | signalId, targetSceneId |
+| `commission.updated` | commissionId, status |
 
 Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then apply events where `eventSeq > lastSeen`.
 
-## 13. Requirements summary
+## 14. Requirements summary
 
 | ID | Requirement |
 |----|-------------|
@@ -169,3 +194,4 @@ Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then ap
 - [11-data-model.md](11-data-model.md)
 - [14-web-ui.md](14-web-ui.md)
 - [00-inference-runtime.md](00-inference-runtime.md)
+- [23-in-world-work.md](23-in-world-work.md)

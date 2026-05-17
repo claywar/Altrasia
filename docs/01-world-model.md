@@ -31,6 +31,7 @@ A **scene** is one place-and-time context within a world. Each scene has:
 - Its own **fixtures** (persistent scene objects).
 - Metadata: human-readable name, description, timestamps.
 - **Exits** to other scenes (`exits[]` — doors, paths, portals) for cross-scene tracking ([21-cross-scene-awareness.md](21-cross-scene-awareness.md)).
+- Optional **`activity`** overlay for in-world work (e.g. debate phases) — post-v1 ([23-in-world-work.md](23-in-world-work.md)).
 
 Scenes are the unit of spatial separation. Characters in Scene A do not automatically hear or see Scene B's public traffic unless communication rules bridge them (see [04-communication.md](04-communication.md)).
 
@@ -39,7 +40,7 @@ Scenes are the unit of spatial separation. Characters in Scene A do not automati
 A **character** is an agent (typically LLM-driven) with:
 
 - A stable `characterId` and display name.
-- A **definition** (persona, instructions, model binding)—implementation-specific.
+- A **definition** (persona, instructions, model binding, optional `focusTags[]`)—implementation-specific.
 - **Global** per-character state: mind loci, diary segments (see [02-memory.md](02-memory.md)).
 - **World-scoped** inventory (worn, held, containers) while a member of a world.
 
@@ -95,7 +96,7 @@ The persona SHOULD follow the same rule when `persona_auto_join_on_scene_switch`
 |-------|------------|------------------|
 | **Scene transcript** | Durable per scene | Messages, tool invocations, communication metadata |
 | **Scene header metadata** | Durable per scene | Name, description, present[], fixtures, updatedAt |
-| **World aggregate** | Durable per world | Inventory by character, active channels, mirrored summaries |
+| **World aggregate** | Durable per world | Inventory by character, active channels, mirrored summaries, optional **commons** loci |
 | **Character global** | Durable per character | Mind loci, diary segments |
 | **Runtime cache** | Ephemeral | Assembled prompts, pending approvals UI state |
 
@@ -144,3 +145,4 @@ Separating **world**, **scene**, and **character** allows persistent geography (
 - [02-memory.md](02-memory.md) — memory pools and diary
 - [03-locations-and-presence.md](03-locations-and-presence.md) — presence operations and fixtures
 - [09-roles-and-privilege.md](09-roles-and-privilege.md) — operator and admin roles
+- [23-in-world-work.md](23-in-world-work.md) — commissions, debate activity
