@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { MarkdownBody } from "./components/MarkdownBody";
+import { GpuQueueStrip } from "./components/GpuQueueStrip";
+import { MemoryInspector } from "./components/MemoryInspector";
+import { MessageRationale } from "./components/MessageRationale";
 import {
   api,
   connectWorldEvents,
   streamGeneration,
   type Message,
+  type QueueSnapshot,
   type Scene,
   type SpatialGraph,
   type World,
@@ -35,7 +39,7 @@ export default function App() {
   const [graph, setGraph] = useState<SpatialGraph | null>(null);
   const [roster, setRoster] = useState<Awaited<ReturnType<typeof api.roster>> | null>(null);
   const [signals, setSignals] = useState<Awaited<ReturnType<typeof api.signals>>>([]);
-  const [queueBusy, setQueueBusy] = useState(false);
+  const [queue, setQueue] = useState<QueueSnapshot>({ busy: false, depth: 0 });
   const [text, setText] = useState("");
   const [scope, setScope] = useState("public");
   const [loading, setLoading] = useState(false);
@@ -44,6 +48,10 @@ export default function App() {
   const [metaText, setMetaText] = useState("");
   const [whisperTarget, setWhisperTarget] = useState("");
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [memoryFor, setMemoryFor] = useState<{
+    characterId: string;
+    displayName: string;
+  } | null>(null);
 
   const refresh = useCallback(async (w: World) => {
     const [scList, g, r, sig, q] = await Promise.all([
@@ -57,7 +65,7 @@ export default function App() {
     setGraph(g);
     setRoster(r);
     setSignals(sig);
-    setQueueBusy(q.busy);
+    setQueue(q);
     const active = scList.find((s) => s.sceneId === w.activeSceneId) ?? scList[0];
     setScene(active);
     const msgs = await api.listMessages(w.worldId, active.sceneId);
@@ -102,13 +110,14 @@ export default function App() {
       await refresh(world);
       if (res.generationJob?.jobId) {
         setCurrentJobId(res.generationJob.jobId);
-        setQueueBusy(true);
+        const q0 = await api.queue(world.worldId);
+        setQueue(q0);
         streamGeneration(world.worldId, res.generationJob.jobId, async (ev) => {
           if (ev === "generation.done" || ev === "generation.error") {
             await refresh(world);
             const q = await api.queue(world.worldId);
-            setQueueBusy(q.busy);
-            setCurrentJobId(null);
+            setQueue(q);
+            setCurrentJobId(q.currentJob?.jobId ?? null);
           }
         });
       }
@@ -139,15 +148,21 @@ export default function App() {
     if (!world) return;
     return connectWorldEvents(world.worldId, (payload) => {
       if (payload.event === "queue.updated") {
-        const d = payload.data as { busy?: boolean; currentJob?: { jobId: string } };
-        setQueueBusy(!!d.busy);
+        const d = payload.data as QueueSnapshot;
+        setQueue({
+          busy: !!d.busy,
+          depth: d.depth ?? 0,
+          estimatedWaitMs: d.estimatedWaitMs,
+          currentJob: d.currentJob ?? null,
+        });
         setCurrentJobId(d.currentJob?.jobId ?? null);
       }
       if (
         payload.event.startsWith("generation.") ||
         payload.event === "scene.changed" ||
         payload.event === "presence.changed" ||
-        payload.event === "signal.created"
+        payload.event === "signal.created" ||
+        payload.event === "signal.updated"
       ) {
         refresh(world);
       }
@@ -172,15 +187,24 @@ export default function App() {
     return (
       <div className="launcher">
         <h1>Altrasia</h1>
-        <p style={{ color: "var(--muted)", maxWidth: 420, textAlign: "center" }}>
+        <p className="launcher-tagline">
           Persistent stage for AI characters — memory-grounded, spatial, operator-run.
         </p>
-        <button type="button" onClick={loadDemo} disabled={loading}>
+        <button type="button" className="launcher-primary" onClick={loadDemo} disabled={loading}>
           {loading ? "Loading…" : "Load demo world"}
         </button>
+        <p className="launcher-hint">demo-spatial-v1 · Hall + Kitchen · Alice &amp; Bob</p>
+        <ol className="launcher-steps">
+          <li>Public line in Hall → NPC reply</li>
+          <li>Whisper one character · switch to Kitchen</li>
+          <li>Knock on exit · Observer Studio for tweaks</li>
+        </ol>
       </div>
     );
   }
+
+  const sceneLabel = (id: string) =>
+    scenes.find((s) => s.sceneId === id)?.locationName ?? id.replace("scene-", "");
 
   const pendingForScene = signals.filter((s) => s.targetSceneId === scene?.sceneId);
   const exits = scene ? JSON.parse(scene.exitsJson || "[]") : [];
@@ -189,21 +213,21 @@ export default function App() {
     <div className="app-shell">
       <header className="top-bar">
         <h1>Altrasia — {world.name}</h1>
-        <span className={`queue-strip ${queueBusy ? "busy" : ""}`}>
-          GPU {queueBusy ? "busy" : "idle"}
-        </span>
-        {currentJobId && (
-          <button
-            type="button"
-            onClick={async () => {
-              await api.cancelJob(currentJobId);
-              setCurrentJobId(null);
-              if (world) await refresh(world);
-            }}
-          >
-            Cancel
-          </button>
-        )}
+        <GpuQueueStrip
+          busy={queue.busy}
+          depth={queue.depth}
+          estimatedWaitMs={queue.estimatedWaitMs}
+          currentJob={queue.currentJob ?? undefined}
+          onCancel={
+            currentJobId
+              ? async () => {
+                  await api.cancelJob(currentJobId);
+                  setCurrentJobId(null);
+                  await refresh(world);
+                }
+              : undefined
+          }
+        />
         <button type="button" onClick={() => setObserverOpen(true)}>
           Observer Studio
         </button>
@@ -211,8 +235,18 @@ export default function App() {
 
       {pendingForScene.length > 0 && (
         <div className="signal-banner">
-          Knock from {pendingForScene[0].sourceSceneId.replace("scene-", "")} (
-          {pendingForScene[0].kind})
+          <span>
+            Knock from {sceneLabel(pendingForScene[0].sourceSceneId)} ({pendingForScene[0].kind})
+          </span>
+          <button
+            type="button"
+            onClick={async () => {
+              await api.dismissSignal(world.worldId, pendingForScene[0].signalId);
+              await refresh(world);
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -287,6 +321,9 @@ export default function App() {
                 >
                   <div className="bubble-header">
                     {label} · {sc}
+                    {m.role === "assistant" && m.generationJobId && (
+                      <MessageRationale worldId={world.worldId} jobId={m.generationJobId} />
+                    )}
                   </div>
                   <MarkdownBody>{m.outputText}</MarkdownBody>
                 </article>
@@ -353,11 +390,33 @@ export default function App() {
             <h3>People</h3>
             <ul className="rail-list">
               {roster?.atLocation.map((p) => (
-                <li key={p.characterId}>{p.displayName} (here)</li>
+                <li key={p.characterId} className="people-row">
+                  <span>{p.displayName} (here)</span>
+                  <button
+                    type="button"
+                    className="people-memory"
+                    onClick={() =>
+                      setMemoryFor({ characterId: p.characterId, displayName: p.displayName })
+                    }
+                  >
+                    Memory
+                  </button>
+                </li>
               ))}
               {roster?.elsewhere.map((p) => (
-                <li key={p.characterId}>
-                  {p.displayName} — {p.locationName ?? "away"}
+                <li key={p.characterId} className="people-row">
+                  <span>
+                    {p.displayName} — {p.locationName ?? "away"}
+                  </span>
+                  <button
+                    type="button"
+                    className="people-memory"
+                    onClick={() =>
+                      setMemoryFor({ characterId: p.characterId, displayName: p.displayName })
+                    }
+                  >
+                    Memory
+                  </button>
                 </li>
               ))}
             </ul>
@@ -375,6 +434,15 @@ export default function App() {
           </div>
         </aside>
       </div>
+
+      {memoryFor && world && (
+        <MemoryInspector
+          worldId={world.worldId}
+          characterId={memoryFor.characterId}
+          displayName={memoryFor.displayName}
+          onClose={() => setMemoryFor(null)}
+        />
+      )}
 
       {observerOpen && (
         <div className="observer-overlay" role="dialog" aria-label="Observer Studio">

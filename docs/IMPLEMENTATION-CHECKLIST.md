@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** Sprint 1/2 **~95%** — golden path + MP-9 + AO-4 + mermaid + MEM-PERF ci; see gaps below. **25+ pytest** + golden path 1–8.
+**Status:** Sprint 1/2 **~97%** — v1 wedge feature-complete; manual first-run UX pass remains. **25 pytest** + golden path 1–8.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -23,7 +23,10 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | memory_read | Doc 02 tool | Done |
 | MEM-PERF | Scale fixtures + perf gates | Done (ci profile; `pytest -m slow` for reference) |
 | HB-1 | Global heartbeat idle | v1.1 |
-| First-run UX pass | guides/first-run-experience.md | Manual |
+| UI-1 / UI-2 | Queue strip + selection rationale | Done (`GpuQueueStrip`, message ⓘ) |
+| UI-M4 | Memory inspector from People | Done |
+| CC-11b | Dismiss knock signal | Done (PATCH signal) |
+| First-run UX pass | guides/first-run-experience.md | Manual walkthrough |
 
 ### Remaining for v1 tag
 

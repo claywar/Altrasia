@@ -54,14 +54,43 @@ select {
   letter-spacing: 0.02em;
 }
 
-.queue-strip {
+.queue-strip-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
   font-size: 12px;
   font-family: ui-monospace, monospace;
   color: var(--muted);
+  flex: 1;
+  min-width: 0;
 }
 
-.queue-strip.busy {
+.queue-strip-panel.busy .queue-status {
   color: var(--accent);
+}
+
+.queue-meta,
+.queue-job,
+.queue-rationale {
+  color: var(--muted);
+}
+
+.queue-rationale {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-cancel {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  color: var(--fg);
+  cursor: pointer;
 }
 
 .main-grid {
@@ -139,6 +168,10 @@ select {
 }
 
 .bubble-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: 12px;
   color: var(--muted);
   margin-bottom: 6px;
@@ -231,11 +264,25 @@ select {
 }
 
 .signal-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   background: hsl(235, 45%, 22%);
   color: var(--fg);
   padding: 8px 16px;
   font-size: 13px;
   border-bottom: 1px solid var(--border);
+}
+
+.signal-banner button {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  color: var(--fg);
+  cursor: pointer;
 }
 
 .launcher {
@@ -247,7 +294,14 @@ select {
   gap: 16px;
 }
 
-.launcher button {
+.launcher-tagline {
+  color: var(--muted);
+  max-width: 420px;
+  text-align: center;
+  margin: 0;
+}
+
+.launcher-primary {
   background: var(--accent);
   color: white;
   border: none;
@@ -255,6 +309,146 @@ select {
   border-radius: 8px;
   font-size: 16px;
   cursor: pointer;
+}
+
+.launcher-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.launcher-steps {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+  max-width: 360px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.msg-info {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.msg-rationale {
+  position: relative;
+}
+
+.msg-rationale-pop {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  color: var(--muted);
+  max-width: 100%;
+}
+
+.msg-rationale-pop code {
+  display: block;
+  margin-top: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.people-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.people-memory {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: none;
+  background: var(--surface-3);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.people-memory:hover {
+  color: var(--fg);
+}
+
+.memory-inspector {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(400px, 92vw);
+  height: 100%;
+  background: var(--surface-2);
+  border-left: 1px solid var(--border);
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+.memory-inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.memory-inspector-header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.memory-inspector-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.memory-inspector-body section {
+  margin-bottom: 20px;
+}
+
+.memory-inspector-body h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.memory-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.memory-list p {
+  margin: 4px 0 0;
+}
+
+.memory-muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mermaid-block {
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.mermaid-block svg {
+  max-width: 100%;
 }
 
 .observer-overlay {

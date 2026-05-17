@@ -37,7 +37,24 @@ export type Message = {
   outputText: string;
   streamStatus: string;
   metaJson: string;
+  generationJobId?: string | null;
   perceivedByPersona?: boolean;
+};
+
+export type GenerationJob = {
+  jobId: string;
+  characterId: string;
+  trigger: string;
+  continueDepth?: number;
+  selectionRationaleJson?: string;
+  status?: string;
+};
+
+export type QueueSnapshot = {
+  busy: boolean;
+  depth: number;
+  estimatedWaitMs?: number;
+  currentJob?: GenerationJob | null;
 };
 
 export type SpatialGraph = {
@@ -86,10 +103,22 @@ export const api = {
       elsewhere: Array<{ characterId: string; displayName: string; locationName: string | null }>;
     }>(`/worlds/${worldId}/roster`),
   spatialGraph: (worldId: string) => request<SpatialGraph>(`/worlds/${worldId}/spatial-graph`),
-  queue: (worldId: string) =>
-    request<{ busy: boolean; depth: number; currentJob?: { jobId: string } }>(
-      `/worlds/${worldId}/queue`
+  queue: (worldId: string) => request<QueueSnapshot>(`/worlds/${worldId}/queue`),
+  getGeneration: (worldId: string, jobId: string) =>
+    request<GenerationJob>(`/worlds/${worldId}/generations/${jobId}`),
+  characterMind: (worldId: string, characterId: string) =>
+    request<Array<{ locusKey: string; value: string; updatedAt?: string }>>(
+      `/worlds/${worldId}/characters/${characterId}/mind`
     ),
+  characterDiary: (worldId: string, characterId: string) =>
+    request<Array<{ text: string; createdAt: string; segmentId?: string }>>(
+      `/worlds/${worldId}/characters/${characterId}/diary`
+    ),
+  dismissSignal: (worldId: string, signalId: string) =>
+    request(`/worlds/${worldId}/signals/${signalId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "dismissed" }),
+    }),
   signals: (worldId: string) =>
     request<
       Array<{
@@ -97,6 +126,7 @@ export const api = {
         targetSceneId: string;
         sourceSceneId: string;
         kind: string;
+        status?: string;
       }>
     >(`/worlds/${worldId}/signals`),
   knock: (

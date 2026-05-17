@@ -210,6 +210,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> list[dict]:
         return svc.memory.store.list_diary(character_id, limit=30)
 
+    @app.get(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/mind",
+        dependencies=[Depends(verify_auth)],
+    )
+    def character_mind(
+        world_id: str, character_id: str, svc: AppServices = Depends(get_services)
+    ) -> list[dict]:
+        cur = svc.store.conn.execute(
+            """SELECT locusKey, value, updatedAt FROM Locus
+               WHERE pool = 'mind' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 40""",
+            (character_id,),
+        )
+        return [
+            {"locusKey": row[0], "value": row[1], "updatedAt": row[2]}
+            for row in cur.fetchall()
+        ]
+
     @app.post(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",
         dependencies=[Depends(verify_auth)],
@@ -389,6 +406,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         svc: AppServices = Depends(get_services),
     ) -> dict:
         svc.store.update_signal(signal_id, status=body.status)
+        svc.event_bus.emit(
+            svc.store,
+            world_id,
+            "signal.updated",
+            {"signalId": signal_id, "status": body.status},
+        )
         return {"signalId": signal_id, "status": body.status}
 
     @app.post("/api/v1/worlds/{world_id}/generate", dependencies=[Depends(verify_auth)])
