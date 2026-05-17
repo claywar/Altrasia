@@ -166,7 +166,7 @@ Allow background NPC rotation (`AO-4`) while the server process is up, without r
 
 ### 8.2 Configuration (global)
 
-Stored in **server/operator settings** (e.g. `~/.worldengine/config.yaml`), not per-world `configJson`:
+Stored in **server/operator settings** (e.g. `~/.altrasia/config.yaml`), not per-world `configJson`:
 
 ```yaml
 heartbeat:

@@ -1,12 +1,12 @@
 # Operator Personas
 
-Non-normative product context for who WorldEngine is for and what jobs it solves. Normative requirements remain in numbered specs and [20-product-principles.md](20-product-principles.md).
+Non-normative product context for who Altrasia is for and what jobs it solves. Normative requirements remain in numbered specs and [20-product-principles.md](20-product-principles.md).
 
 **Repository status:** design specifications only; no runnable product yet. See [ROADMAP.md](ROADMAP.md).
 
 ## Primary audience
 
-WorldEngine targets a **solo operator** on a **single local machine** with a capable GPU (reference: Qwen3.6-35B-A3B via llama.cpp). You play as the **persona**; NPCs are the cast; the **Observer** is a secondary studio channel for tuning—not the main play voice.
+Altrasia targets a **solo operator** on a **single local machine** with a capable GPU (reference: Qwen3.6-35B-A3B via llama.cpp). You play as the **persona**; NPCs are the cast; the **Observer** is a secondary studio channel for tuning—not the main play voice.
 
 This is not aimed at game-design teams building levels in an engine, multi-tenant SaaS operators, or casual chat-only users.
 

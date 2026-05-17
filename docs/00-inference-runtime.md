@@ -1,6 +1,6 @@
 # 00 — Inference Runtime
 
-This document specifies how WorldEngine invokes local LLMs on a **single-GPU** host: primary chat (llama.cpp router), embedding service, **GpuResourceQueue**, streaming, and model profiles.
+This document specifies how Altrasia invokes local LLMs on a **single-GPU** host: primary chat (llama.cpp router), embedding service, **GpuResourceQueue**, streaming, and model profiles.
 
 ## 1. Architecture
 
@@ -8,7 +8,7 @@ This document specifies how WorldEngine invokes local LLMs on a **single-GPU** h
 flowchart TB
   subgraph host [Single Machine Single GPU]
     UI[Web UI]
-    Core[WorldEngine Core]
+    Core[Altrasia Core]
     IQ[GpuResourceQueue]
     AO[Agent orchestrator]
     Primary["Primary LLM\nllama.cpp :port A"]

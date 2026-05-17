@@ -6,7 +6,7 @@ When implementation lands, replace or extend this document with [getting-started
 
 ## Purpose
 
-A solo operator opens WorldEngine for the first time and reaches meaningful spatial play **without manual world construction**, using the specified demo fixture `demo-spatial-v1` ([demo-world fixture](../../tests/fixtures/demo-world/README.md)).
+A solo operator opens Altrasia for the first time and reaches meaningful spatial play **without manual world construction**, using the specified demo fixture `demo-spatial-v1` ([demo-world fixture](../../tests/fixtures/demo-world/README.md)).
 
 The automated release gate is the spatial golden path ([17-acceptance-criteria.md](../17-acceptance-criteria.md) §2). This guide is the **human-readable** version for UX and product acceptance.
 

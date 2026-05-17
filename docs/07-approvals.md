@@ -4,7 +4,7 @@ Real-world side effects (filesystem writes, risky web fetches) MUST NOT apply un
 
 ## 1. Unified approval model
 
-WorldEngine RECOMMENDS a **single pending-operation store** per operator (or per world), consumed by one UI surface, with pluggable backends for filesystem vs web plugin.
+Altrasia RECOMMENDS a **single pending-operation store** per operator (or per world), consumed by one UI surface, with pluggable backends for filesystem vs web plugin.
 
 ### 1.1 Operation record
 

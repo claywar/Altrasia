@@ -2,19 +2,19 @@
 
 > **Non-normative.** This appendix is for migration context only. Implementations MUST follow docs `00`–`25`, not SillyTavern behavior, unless explicitly adopted in normative text.
 
-This appendix maps WorldEngine concepts to the SillyTavern fork from which they were extracted. **Implementers** may use it for migration; the main specification intentionally avoids ST-specific paths.
+This appendix maps Altrasia concepts to the SillyTavern fork from which they were extracted. **Implementers** may use it for migration; the main specification intentionally avoids ST-specific paths.
 
 ## MemPalace / mempalace (GitHub) — not in scope
 
-**[MemPalace/mempalace](https://github.com/mempalace/mempalace)** (the Python open-source project: Wings/Rooms/Closets/Drawers, ChromaDB, coding-session mining, MCP tools) is **not** a WorldEngine dependency, design source, or implementation target.
+**[MemPalace/mempalace](https://github.com/mempalace/mempalace)** (the Python open-source project: Wings/Rooms/Closets/Drawers, ChromaDB, coding-session mining, MCP tools) is **not** an Altrasia dependency, design source, or implementation target.
 
-WorldEngine **Memory** ([02-memory.md](02-memory.md)) is a separate subsystem: flat **locus keys**, **mind/world pools**, **witnessed diary**, and **mandatory recall** for narrative roleplay. Do not conflate it with MemPalace branding or hierarchy.
+Altrasia **Memory** ([02-memory.md](02-memory.md)) is a separate subsystem: flat **locus keys**, **mind/world pools**, **witnessed diary**, and **mandatory recall** for narrative roleplay. Do not conflate it with MemPalace branding or hierarchy.
 
 The SillyTavern extension also named `mempalace` (below) is **migration provenance only** — not the MemPalace GitHub product.
 
 ## Extension and module map
 
-| WorldEngine doc | ST source (relative to SillyTavern root) |
+| Altrasia doc | ST source (relative to SillyTavern root) |
 |-----------------|------------------------------------------|
 | 01-world-model | `public/scripts/extensions/chat-participant-roster/`, `group-chats.js`, `src/util/chat-roster-build.js` |
 | 02-memory | `public/scripts/extensions/mempalace/index.js`, `recall-bundle.js`, `settings.html`, `manifest.json` (ST extension; not MemPalace GitHub) |
@@ -29,9 +29,9 @@ The SillyTavern extension also named `mempalace` (below) is **migration provenan
 | 22-output-quality | OldPlans anti-loop policy; ST reasoning strip patterns (`reasoning.js`, model profiles) |
 | 24-character-authoring | Greenfield — no ST PNG card import; operator brief → LLM draft → approve |
 
-## Concept renaming (ST → WorldEngine)
+## Concept renaming (ST → Altrasia)
 
-| SillyTavern term | WorldEngine term |
+| SillyTavern term | Altrasia term |
 |------------------|------------------|
 | Group chat | World |
 | Location / `group.chats[]` entry | Scene |
@@ -47,7 +47,7 @@ The SillyTavern extension also named `mempalace` (below) is **migration provenan
 
 ## Key ST-only behaviors preserved in spec
 
-| Behavior | ST location | WorldEngine |
+| Behavior | ST location | Altrasia |
 |----------|-------------|-------------|
 | Mind loci in `extension_settings.mempalace.mindByAvatar` | `mempalace/index.js` | Mind pool per `characterId` |
 | World loci in `chat_metadata.mempalace_world` | `mempalace/index.js` | World pool per `sceneId` |
@@ -57,9 +57,9 @@ The SillyTavern extension also named `mempalace` (below) is **migration provenan
 | One approval apply on filesystem approve | `architect-filesystem/service.js` | [07-approvals.md](07-approvals.md) |
 | Web plugin external to repo | `plugins/web-tools` on server | [06-web-tools.md](06-web-tools.md) |
 
-## Intentional spec upgrades (ST → WorldEngine)
+## Intentional spec upgrades (ST → Altrasia)
 
-| Topic | SillyTavern behavior | WorldEngine norm |
+| Topic | SillyTavern behavior | Altrasia norm |
 |-------|----------------------|------------------|
 | **Phone speakerphone** | Channel-global `mode: speakerphone` — all present at **both** linked locations hear the full call | Per-endpoint `speakerphone` on `endpoints[]` — bystanders at each scene hear one leg by default (C-8, C-9); toggle is independent per scene |
 | **Narrator / meta** | Observer digest and omnibus patterns | `scope: narrator` + `channelKind=meta` excluded from cast perception |
@@ -83,4 +83,4 @@ From ST `config.yaml` at extraction time:
 
 ## Document version
 
-Extracted: 2026-05. Spec version: v1.0 (initial WorldEngine docs).
+Extracted: 2026-05. Spec version: v1.0 (initial Altrasia docs).

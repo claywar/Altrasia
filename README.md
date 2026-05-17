@@ -1,8 +1,8 @@
-# WorldEngine
+# Altrasia
 
 **A persistent stage for AI characters—memory-grounded, spatial, operator-run.**
 
-WorldEngine is a **single-machine narrative studio**: multi-scene worlds where characters hold private and shared memory, occupy locations, and communicate under explicit scopes. You play as the **persona**; NPCs are the cast; the **Observer** is your studio side-channel for tuning—not the main play voice.
+Altrasia is a **single-machine narrative studio**: multi-scene worlds where characters hold private and shared memory, occupy locations, and communicate under explicit scopes. You play as the **persona**; NPCs are the cast; the **Observer** is your studio side-channel for tuning—not the main play voice.
 
 Product principles, personas, and milestones: [docs/20-product-principles.md](docs/20-product-principles.md) · [docs/personas.md](docs/personas.md) · [docs/ROADMAP.md](docs/ROADMAP.md)
 
@@ -82,4 +82,4 @@ Phone play, global heartbeat, world package export/import ([docs/ROADMAP.md](doc
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). Copyright (c) 2026 WorldEngine Contributors.
+[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). Copyright (c) 2026 Altrasia Contributors.

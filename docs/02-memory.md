@@ -1,8 +1,8 @@
 # 02 — Memory
 
-WorldEngine **Memory** is the structured memory subsystem: **loci** (semantic facts), **pools** with strict privacy, an episodic **diary**, and prompt-time **recall** so characters answer consistently without leaking private knowledge.
+Altrasia **Memory** is the structured memory subsystem: **loci** (semantic facts), **pools** with strict privacy, an episodic **diary**, and prompt-time **recall** so characters answer consistently without leaking private knowledge.
 
-> **Not MemPalace (GitHub).** This subsystem is WorldEngine Memory. It does **not** embed, depend on, or implement the [MemPalace/mempalace](https://github.com/mempalace/mempalace) open-source project (Wings/Rooms/Closets/Drawers, ChromaDB, coding-session mining). Requirement IDs use the **`MP-*`** prefix (memory requirement).
+> **Not MemPalace (GitHub).** This subsystem is Altrasia Memory. It does **not** embed, depend on, or implement the [MemPalace/mempalace](https://github.com/mempalace/mempalace) open-source project (Wings/Rooms/Closets/Drawers, ChromaDB, coding-session mining). Requirement IDs use the **`MP-*`** prefix (memory requirement).
 
 ## 1. Concepts
 
@@ -305,7 +305,7 @@ Embeddings assist **tool search** only; they MUST NOT replace diary tails or man
 
 ## 8. External memory systems (out of scope)
 
-WorldEngine MUST NOT depend at runtime on:
+Altrasia MUST NOT depend at runtime on:
 
 - [MemPalace/mempalace](https://github.com/mempalace/mempalace) (GitHub)
 - Mem0, Zep, Letta, or similar agent-memory SaaS as the primary memory backend

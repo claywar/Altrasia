@@ -1,6 +1,6 @@
 # 01 — World Model
 
-This document defines the top-level entities of WorldEngine: worlds, scenes, characters, the operator persona, and how state persists.
+This document defines the top-level entities of Altrasia: worlds, scenes, characters, the operator persona, and how state persists.
 
 ## 1. Entities
 

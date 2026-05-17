@@ -43,7 +43,7 @@ At full maturity the operator can:
 | MAP-23 | Observer or location admin initiates regen; MAP-7 diff + operator ack before overwrite. |
 | MAP-24 | CI fixtures MUST include at least one LLM-produced layout JSON per surface: `mini`, `site`, `stack`. |
 
-**Note on “3D”:** WorldEngine maps are **stacked floor plans + vertical connectivity**, not a game-engine free-camera 3D world. Optional **axonometric preview** (MAP-13) is schematic—operator-console clarity, not walkable geometry.
+**Note on “3D”:** Altrasia maps are **stacked floor plans + vertical connectivity**, not a game-engine free-camera 3D world. Optional **axonometric preview** (MAP-13) is schematic—operator-console clarity, not walkable geometry.
 
 ## 3. Shared rules
 
@@ -282,9 +282,9 @@ The primary LLM (and Observer tools) MUST be able to **author and revise** map l
 
 | Surface | Tool (suggested) | Persists to | Visual reference |
 |---------|------------------|-------------|------------------|
-| **Mini-map / spatial graph** | `map_layout_generate` scope `world` \| `structure` | `exitsJson` hints, scene layout fields, `structures[].boundary` | [worldengine-building-envelope-minimap.png](guides/reference-images/worldengine-building-envelope-minimap.png), [worldengine-architecture-diagram-minimap.png](guides/reference-images/worldengine-architecture-diagram-minimap.png) |
-| **Site / world map** | `map_layout_generate` scope `site` | `worldMapJson` | [worldengine-world-map-overlay-example.png](guides/reference-images/worldengine-world-map-overlay-example.png) |
-| **Level stack** | `map_layout_generate` scope `stack` | scenes `mapLevel`, `planPosition`, vertical exits | [worldengine-level-stack-example.png](guides/reference-images/worldengine-level-stack-example.png) |
+| **Mini-map / spatial graph** | `map_layout_generate` scope `world` \| `structure` | `exitsJson` hints, scene layout fields, `structures[].boundary` | [altrasia-building-envelope-minimap.png](guides/reference-images/altrasia-building-envelope-minimap.png), [altrasia-architecture-diagram-minimap.png](guides/reference-images/altrasia-architecture-diagram-minimap.png) |
+| **Site / world map** | `map_layout_generate` scope `site` | `worldMapJson` | [altrasia-world-map-overlay-example.png](guides/reference-images/altrasia-world-map-overlay-example.png) |
+| **Level stack** | `map_layout_generate` scope `stack` | scenes `mapLevel`, `planPosition`, vertical exits | [altrasia-level-stack-example.png](guides/reference-images/altrasia-level-stack-example.png) |
 | **Floor plan detail** | `map_generate` (MAP-3) | `mapArtifactJson` per scene | MAP-1 vector/grid (higher resolution than mini-map) |
 
 ### 12.2 Tools (MAP-3 extension)
@@ -396,10 +396,10 @@ Generated layouts MUST satisfy these **diagram invariants** (compare to referenc
 
 | Invariant | Reference |
 |-----------|-----------|
-| Building = **outer envelope** wrapping room footprints | [worldengine-building-envelope-minimap.png](guides/reference-images/worldengine-building-envelope-minimap.png) |
-| Circular scenes use `mapShape: circle`, not rect icons | [worldengine-architecture-diagram-minimap.png](guides/reference-images/worldengine-architecture-diagram-minimap.png) |
-| Site view places **all structures** with outdoor scenes outside envelopes | [worldengine-world-map-overlay-example.png](guides/reference-images/worldengine-world-map-overlay-example.png) |
-| Stack view lists **levels** with vertical connectors between matching `planPosition` | [worldengine-level-stack-example.png](guides/reference-images/worldengine-level-stack-example.png) |
+| Building = **outer envelope** wrapping room footprints | [altrasia-building-envelope-minimap.png](guides/reference-images/altrasia-building-envelope-minimap.png) |
+| Circular scenes use `mapShape: circle`, not rect icons | [altrasia-architecture-diagram-minimap.png](guides/reference-images/altrasia-architecture-diagram-minimap.png) |
+| Site view places **all structures** with outdoor scenes outside envelopes | [altrasia-world-map-overlay-example.png](guides/reference-images/altrasia-world-map-overlay-example.png) |
+| Stack view lists **levels** with vertical connectors between matching `planPosition` | [altrasia-level-stack-example.png](guides/reference-images/altrasia-level-stack-example.png) |
 | Interior edges do not cross structure outer wall; `crossesStructure` edges do | §21.3 UI-MAP-S5 |
 
 ### 12.6 Apply pipeline
@@ -453,7 +453,7 @@ Authoring flow: [25-map-authoring.md](25-map-authoring.md).
 
 **Non-normative — example system preamble:**
 
-> You produce WorldEngine map layout JSON only. Respect MAP-GEN-3 diagram invariants: building envelopes wrap rooms; site view places all structures; stack view aligns vertical exits at matching planPosition. Coordinates 0–100. No reasoning fields.
+> You produce Altrasia map layout JSON only. Respect MAP-GEN-3 diagram invariants: building envelopes wrap rooms; site view places all structures; stack view aligns vertical exits at matching planPosition. Coordinates 0–100. No reasoning fields.
 
 **Non-normative — example user payload fields:**
 

@@ -1,6 +1,6 @@
 # 12 — API Sketch
 
-REST and realtime surfaces for WorldEngine v1 (single-operator). This is a sketch, not a full OpenAPI document.
+REST and realtime surfaces for Altrasia v1 (single-operator). This is a sketch, not a full OpenAPI document.
 
 **Single domain path:** Web UI actions, agent tools, narrative presence ([03-locations-and-presence.md](03-locations-and-presence.md) §7), and future scheduled jobs MUST call the same core services (presence, comms, memory, scene CRUD)—not parallel state machines with divergent rules.
 
@@ -12,7 +12,7 @@ REST and realtime surfaces for WorldEngine v1 (single-operator). This is a sketc
 | WebSocket or SSE | Events (`generation.*`, `scene.changed`, `queue.updated`) |
 | SSE | Optional dedicated generation stream per job |
 
-Auth v1: session cookie or `Authorization: Bearer` from env (`WORLDENGINE_API_TOKEN`).
+Auth v1: session cookie or `Authorization: Bearer` from env (`ALTRASIA_API_TOKEN`).
 
 All world-scoped routes assume one operator; no multi-tenant headers.
 
@@ -346,7 +346,7 @@ Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-me
 {
   "assigneeCharacterId": "char-researcher",
   "targetSceneId": "scene-archives",
-  "brief": "Summarize the WorldEngine GitHub README and API surface.",
+  "brief": "Summarize the Altrasia GitHub README and API surface.",
   "deliverablePolicy": "mind"
 }
 ```

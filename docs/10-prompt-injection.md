@@ -1,6 +1,6 @@
 # 10 — Prompt Injection
 
-WorldEngine assembles the model context from **layers** with defined priority, placement, and refresh triggers. This document specifies those layers—not provider-specific preset names.
+Altrasia assembles the model context from **layers** with defined priority, placement, and refresh triggers. This document specifies those layers—not provider-specific preset names.
 
 ## 1. Layer stack
 

@@ -1,4 +1,4 @@
-﻿# Web UI Wireframes (non-normative)
+# Web UI Wireframes (non-normative)
 
 ASCII wireframes for the operator console. Normative requirements: [14-web-ui.md](../14-web-ui.md).
 
@@ -14,7 +14,7 @@ Typical play session: transcript is widest column; world controls on the right.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ WorldEngine · Demo Spatial World          [||] Pause   ● Connected   ⚙ Settings  👁 Obs  │
+│ Altrasia · Demo Spatial World          [||] Pause   ● Connected   ⚙ Settings  👁 Obs  │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │ GPU ▓▓▓▓░░  Generating · Alice · trigger: persona_message · depth 1 · ~12s    [Cancel]   │
 ├────────────────────────────────────────────────────────────────────────────┬─────────────┤
@@ -82,7 +82,7 @@ Opened via `[≡ Spatial]` in scene header or top-bar toggle. Use when knocking,
 ├──────────────────┴─────────────────────────────────────────────────────┴─────────────┤
 ```
 
-Ref: [worldengine-structured-minimap.png](reference-images/worldengine-structured-minimap.png) (v1 mini-map).
+Ref: [altrasia-structured-minimap.png](reference-images/altrasia-structured-minimap.png) (v1 mini-map).
 
 #### WF-2b — Spatial panel with building envelopes (v1.1)
 
@@ -114,7 +114,7 @@ Ref: [worldengine-structured-minimap.png](reference-images/worldengine-structure
 ├──────────────────┴─────────────────────────────────────────────────────┴─────────────┤
 ```
 
-Refs: [worldengine-building-envelope-minimap.png](reference-images/worldengine-building-envelope-minimap.png), [worldengine-architecture-diagram-minimap.png](reference-images/worldengine-architecture-diagram-minimap.png) (v1.1).
+Refs: [altrasia-building-envelope-minimap.png](reference-images/altrasia-building-envelope-minimap.png), [altrasia-architecture-diagram-minimap.png](reference-images/altrasia-architecture-diagram-minimap.png) (v1.1).
 
 #### WF-3 — Right rail icon-collapsed (max transcript width)
 
@@ -240,7 +240,7 @@ Before a world is loaded ([first-run-experience.md](first-run-experience.md)).
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ WorldEngine                                    ⚙ Settings                │
+│ Altrasia                                    ⚙ Settings                │
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │                    ┌────────────────────────────────┐                    │
@@ -386,7 +386,7 @@ Large-scale site view over dimmed play shell. Normative: [18-location-maps.md](.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ WorldEngine · Demo World     [||] Pause   ● Connected   [⌖ Map ●]  ⚙   👁 Obs          │
+│ Altrasia · Demo World     [||] Pause   ● Connected   [⌖ Map ●]  ⚙   👁 Obs          │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │ GPU queue strip (dimmed)                                                                 │
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
@@ -486,7 +486,7 @@ No multi-world dashboard; one active world at a time.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ WorldEngine                                    ⚙ Settings                │
+│ Altrasia                                    ⚙ Settings                │
 ├──────────────────────────────────────────────────────────────────────────┤
 │  Active: Demo Spatial World ▼     (only when a world is loaded)         │
 │            ├─ Load demo world (demo-spatial-v1)                          │

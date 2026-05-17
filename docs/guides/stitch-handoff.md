@@ -24,7 +24,7 @@
 Paste at the start of each session:
 
 ```
-WorldEngine operator console — dark, low-glare, desktop-first (1280px+).
+Altrasia operator console — dark, low-glare, desktop-first (1280px+).
 NOT a generic chat app: no pill bubbles, gradient avatars, or light theme.
 Layout: center transcript hero; RIGHT rail = Places, People, Signals (260px);
 optional LEFT spatial panel (collapsed default). TopBar + GpuQueueStrip always visible.
@@ -48,11 +48,11 @@ Motion: 150–200ms overlays only; respect prefers-reduced-motion.
 
 | PNG | Pack | Use with |
 |-----|------|----------|
-| worldengine-structured-minimap.png | v1 | WF-2 |
-| worldengine-building-envelope-minimap.png | v1.1 | WF-2b |
-| worldengine-architecture-diagram-minimap.png | v1.1 | WF-2b |
-| worldengine-world-map-overlay-example.png | Phase 6 | WF-14 |
-| worldengine-level-stack-example.png | Phase 6 | WF-15 |
+| altrasia-structured-minimap.png | v1 | WF-2 |
+| altrasia-building-envelope-minimap.png | v1.1 | WF-2b |
+| altrasia-architecture-diagram-minimap.png | v1.1 | WF-2b |
+| altrasia-world-map-overlay-example.png | Phase 6 | WF-14 |
+| altrasia-level-stack-example.png | Phase 6 | WF-15 |
 
 See [reference-images/README.md](reference-images/README.md).
 

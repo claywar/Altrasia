@@ -1,8 +1,8 @@
-# WorldEngine Design Specification
+# Altrasia Design Specification
 
 ## Vision
 
-WorldEngine is a **persistent stage for AI characters—memory-grounded, spatial, operator-run.** The same world supports narrative play and **in-world work** (commissions, deliberation at locations, evidence grounded in scenes) without abandoning presence or diegesis.
+Altrasia is a **persistent stage for AI characters—memory-grounded, spatial, operator-run.** The same world supports narrative play and **in-world work** (commissions, deliberation at locations, evidence grounded in scenes) without abandoning presence or diegesis.
 
 In practice:
 
@@ -68,7 +68,7 @@ flowchart TB
     Studio[Observer Studio]
   end
 
-  subgraph core [WorldEngine Core]
+  subgraph core [Altrasia Core]
     AO[Agent orchestrator]
     IQ[GpuResourceQueue]
     Mem[Memory]

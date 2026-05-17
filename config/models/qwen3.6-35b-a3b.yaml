@@ -1,4 +1,4 @@
-# Reference model profile for WorldEngine v1 acceptance and defaults.
+# Reference model profile for Altrasia v1 acceptance and defaults.
 # routerModelId MUST match the alias registered on your llama.cpp router.
 
 profileId: qwen3.6-35b-a3b

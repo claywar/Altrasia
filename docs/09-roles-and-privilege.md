@@ -1,6 +1,6 @@
 # 09 — Roles and Privilege
 
-WorldEngine separates **in-fiction knowledge** from **operator affordances**. Roles configure who may administer scenes, read private diaries, observe all locations, and act on the real world.
+Altrasia separates **in-fiction knowledge** from **operator affordances**. Roles configure who may administer scenes, read private diaries, observe all locations, and act on the real world.
 
 ## 1. Role overview
 

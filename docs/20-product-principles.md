@@ -6,7 +6,7 @@ North-star journey, v1 wedge, presets, metrics, and operator onboarding.
 
 > **A persistent stage for AI characters—memory-grounded, spatial, operator-run.**
 
-WorldEngine is not a chat skin (SillyTavern) or a coding agent (Hermes). It is a **single-machine narrative studio** with durable geography and memory discipline. The same stage supports **in-world work**—research commissions, deliberation at locations, team focus areas—without a separate product mode or bypassing spatial rules ([23-in-world-work.md](23-in-world-work.md)) — **Act 3**, not v1.
+Altrasia is not a chat skin (SillyTavern) or a coding agent (Hermes). It is a **single-machine narrative studio** with durable geography and memory discipline. The same stage supports **in-world work**—research commissions, deliberation at locations, team focus areas—without a separate product mode or bypassing spatial rules ([23-in-world-work.md](23-in-world-work.md)) — **Act 3**, not v1.
 
 ### Product narrative (Acts)
 
@@ -133,7 +133,7 @@ After geography lock, Observer/Architect MAY **add locations in-map** and charac
 
 | Feature | Description |
 |---------|-------------|
-| World package | Zip: `worldengine.db` + `assets/` — export + import gate **v1.1** ([11-data-model.md](11-data-model.md) DM-4) |
+| World package | Zip: `altrasia.db` + `assets/` — export + import gate **v1.1** ([11-data-model.md](11-data-model.md) DM-4) |
 | Auto-backup | On world save (implementation) |
 
 ## 10. v1 scope

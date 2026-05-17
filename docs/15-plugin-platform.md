@@ -25,7 +25,7 @@ v1 ships **zero required plugins**. This document defines the target extension m
 
 | Source | Path |
 |--------|------|
-| Operator | `~/.worldengine/plugins/` |
+| Operator | `~/.altrasia/plugins/` |
 | Project | `./plugins/` |
 | Package | npm-style entry points (future) |
 

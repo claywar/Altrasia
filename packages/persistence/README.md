@@ -1,6 +1,6 @@
 # packages/persistence
 
-SQLite persistence for WorldEngine v1 per [docs/11-data-model.md](../../docs/11-data-model.md).
+SQLite persistence for Altrasia v1 per [docs/11-data-model.md](../../docs/11-data-model.md).
 
 ## Responsibilities
 
@@ -19,7 +19,7 @@ SQLite persistence for WorldEngine v1 per [docs/11-data-model.md](../../docs/11-
 ## Implementation notes
 
 - Driver: `better-sqlite3` or `libsql` (DM-9)
-- One DB file per operator (DM-1), e.g. `~/.worldengine/operator.db`
+- One DB file per operator (DM-1), e.g. `~/.altrasia/operator.db`
 - Vector search v1: in-process cosine over `vectorBlob`; LanceDB sidecar only if benchmarks fail (11-data-model §4.4)
 
 ## Related

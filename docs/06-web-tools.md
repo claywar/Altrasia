@@ -1,6 +1,6 @@
 # 06 — Web Tools
 
-Characters may need **live web data**. WorldEngine distinguishes three paths; conflating them causes security gaps and confused approval behavior.
+Characters may need **live web data**. Altrasia distinguishes three paths; conflating them causes security gaps and confused approval behavior.
 
 ## 1. Three paths overview
 

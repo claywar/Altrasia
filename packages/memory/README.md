@@ -1,6 +1,6 @@
 # packages/memory
 
-WorldEngine **Memory** subsystem per [docs/02-memory.md](../../docs/02-memory.md).
+Altrasia **Memory** subsystem per [docs/02-memory.md](../../docs/02-memory.md).
 
 ## Responsibilities
 

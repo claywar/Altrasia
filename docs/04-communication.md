@@ -1,6 +1,6 @@
 # 04 — Communication
 
-WorldEngine tags messages with **communication scope** so prompts, UI, and tools know who can perceive each line. Scopes interact with **presence** at the active scene and optional **cross-scene phone** links.
+Altrasia tags messages with **communication scope** so prompts, UI, and tools know who can perceive each line. Scopes interact with **presence** at the active scene and optional **cross-scene phone** links.
 
 ## 1. Scope matrix
 

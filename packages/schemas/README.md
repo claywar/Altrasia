@@ -1,4 +1,4 @@
-# WorldEngine JSON schemas
+# Altrasia JSON schemas
 
 | File | Use |
 |------|-----|

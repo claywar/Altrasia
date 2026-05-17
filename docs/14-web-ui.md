@@ -1,6 +1,6 @@
 # 14 — Web UI
 
-Professional **operator console** for WorldEngine. **Persona-first** play; **Observer Studio** for tuning and world control.
+Professional **operator console** for Altrasia. **Persona-first** play; **Observer Studio** for tuning and world control.
 
 **Product bar:** Net-new **spatial operator console** (memory + places)—not a chat skin. **Platform:** desktop-first ([§2](#2-application-shell-and-layout)).
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://worldengine.local/schemas/map-layout-v1.json",
-  "title": "WorldEngineMapLayout",
+  "$id": "https://altrasia.local/schemas/map-layout-v1.json",
+  "title": "AltrasiaMapLayout",
   "description": "LLM map_layout_generate output. Unknown keys stripped before validation (MAP-GEN-2).",
   "type": "object",
   "additionalProperties": false,

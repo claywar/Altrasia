@@ -49,7 +49,7 @@
 | **Speak-readiness probe** | Bounded FTS query per character for scheduling relevance (AO-17) |
 | **speechWeight** | Character trait 0–1 biasing how often they are selected to speak |
 | **World pool** | Shared memory loci for a scene's objective facts |
-| **WorldEngine** | This specification's target platform name |
+| **Altrasia** | This specification's target platform name |
 | **Model profile** | Config bundle per LLM (e.g. `qwen3.6-35b-a3b`) — router id, stripReasoning tags |
 | **Spatial graph** | Server-computed scene/exit layout for navigation and mini-map (`GET spatial-graph`, CC-1) |
 | **Structured mini-map** | v1 read-only UI panel rendering the spatial graph ([14-web-ui.md](14-web-ui.md) §21.1) |
