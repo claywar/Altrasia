@@ -121,11 +121,15 @@ class Orchestrator:
         continue_depth: int = 0,
         trigger_message_id: str | None = None,
         observer_mode: str | None = None,
+        idle_source: str | None = None,
     ) -> dict[str, Any] | None:
         if world_id in self.svc.paused_worlds:
             return None
         job_id = str(uuid.uuid4())
-        rationale = json.dumps({"pick": trigger, "characterId": character_id})
+        rationale_obj: dict[str, Any] = {"pick": trigger, "characterId": character_id}
+        if idle_source:
+            rationale_obj["idle_source"] = idle_source
+        rationale = json.dumps(rationale_obj)
         self.svc.store.insert_job(
             {
                 "jobId": job_id,

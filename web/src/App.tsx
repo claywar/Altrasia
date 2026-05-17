@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MarkdownBody } from "./components/MarkdownBody";
 import { GpuQueueStrip } from "./components/GpuQueueStrip";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { MemoryInspector } from "./components/MemoryInspector";
 import { MessageRationale } from "./components/MessageRationale";
 import {
@@ -52,6 +53,8 @@ export default function App() {
     characterId: string;
     displayName: string;
   } | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [worldPaused, setWorldPaused] = useState(false);
 
   const refresh = useCallback(async (w: World) => {
     const [scList, g, r, sig, q] = await Promise.all([
@@ -66,6 +69,7 @@ export default function App() {
     setRoster(r);
     setSignals(sig);
     setQueue(q);
+    setWorldPaused(!!w.paused);
     const active = scList.find((s) => s.sceneId === w.activeSceneId) ?? scList[0];
     setScene(active);
     const msgs = await api.listMessages(w.worldId, active.sceneId);
@@ -231,6 +235,10 @@ export default function App() {
         <button type="button" onClick={() => setObserverOpen(true)}>
           Observer Studio
         </button>
+        <button type="button" onClick={() => setSettingsOpen(true)}>
+          Settings
+        </button>
+        {worldPaused && <span className="paused-badge">Paused</span>}
       </header>
 
       {pendingForScene.length > 0 && (
@@ -434,6 +442,20 @@ export default function App() {
           </div>
         </aside>
       </div>
+
+      {settingsOpen && world && (
+        <SettingsPanel
+          worldId={world.worldId}
+          worldPaused={worldPaused}
+          onClose={() => setSettingsOpen(false)}
+          onWorldPauseChange={async () => {
+            const w2 = await api.getWorld(world.worldId);
+            setWorld(w2);
+            setWorldPaused(!!w2.paused);
+            await refresh(w2);
+          }}
+        />
+      )}
 
       {memoryFor && world && (
         <MemoryInspector

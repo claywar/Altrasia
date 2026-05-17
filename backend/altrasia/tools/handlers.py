@@ -32,6 +32,18 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             limit=int(params.get("limit", 10)),
         )
 
+    async def diary_read(params: dict, ctx: ToolContext) -> Any:
+        limit = int(params.get("limit", 20))
+        offset = int(params.get("offset", 0))
+        rows = mem.store.list_diary(ctx.character_id, limit=limit + offset)
+        page = rows[offset : offset + limit] if offset else rows[-limit:]
+        return {
+            "segments": [
+                {"text": s["text"], "createdAt": s["createdAt"], "sourceSceneId": s["sourceSceneId"]}
+                for s in page
+            ]
+        }
+
     async def memory_read(params: dict, ctx: ToolContext) -> Any:
         rows = services.store.conn.execute(
             """SELECT locusKey, value FROM Locus
@@ -87,6 +99,20 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["locusKey"],
             },
             handler=memory_read,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="diary_read",
+            description="Read recent witnessed diary segments (paginated).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer"},
+                    "offset": {"type": "integer"},
+                },
+            },
+            handler=diary_read,
         )
     )
     registry.register(

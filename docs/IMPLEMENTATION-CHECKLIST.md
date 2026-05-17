@@ -22,7 +22,8 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | W-1 | Cannot delete last scene | Done (`DELETE .../scenes/{id}`) |
 | memory_read | Doc 02 tool | Done |
 | MEM-PERF | Scale fixtures + perf gates | Done (ci profile; `pytest -m slow` for reference) |
-| HB-1 | Global heartbeat idle | v1.1 |
+| HB-1 | Global heartbeat idle | Done (`idle_scheduler`, operator settings) |
+| diary_read | Doc 02 tool | Done |
 | UI-1 / UI-2 | Queue strip + selection rationale | Done (`GpuQueueStrip`, message ⓘ) |
 | UI-M4 | Memory inspector from People | Done |
 | CC-11b | Dismiss knock signal | Done (PATCH signal) |
@@ -39,7 +40,8 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | MP-9 blocking memory tools on first turn | Done |
 | MEM-PERF / scale fixtures | Done (`tests/test_memory_perf.py`, `memory-scale/`) |
 | Idle `roundRobin` (AO-4) | Done (tab-visible) |
-| v1.1 phone, heartbeat, world package | Spec only |
+| v1.1 heartbeat | Done (settings UI + HB-1) |
+| v1.1 phone, world package | Spec only |
 | Phase 3+ character wizard, maps, commissions | Spec only |
 
 ## Sprint 1 — inference + memory spike

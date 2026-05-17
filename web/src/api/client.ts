@@ -19,6 +19,7 @@ export type World = {
   worldId: string;
   name: string;
   activeSceneId: string;
+  paused?: boolean;
 };
 
 export type Scene = {
@@ -55,6 +56,11 @@ export type QueueSnapshot = {
   depth: number;
   estimatedWaitMs?: number;
   currentJob?: GenerationJob | null;
+};
+
+export type OperatorSettings = {
+  heartbeat: { enabled: boolean; intervalSeconds: number };
+  lastHeartbeatAt: string | null;
 };
 
 export type SpatialGraph = {
@@ -148,6 +154,16 @@ export const api = {
     }),
   cancelJob: (jobId: string) =>
     request(`/inference/queue/${jobId}`, { method: "DELETE" }),
+  operatorSettings: () => request<OperatorSettings>("/operator/settings"),
+  patchOperatorSettings: (body: { heartbeat?: { enabled?: boolean; intervalSeconds?: number } }) =>
+    request<OperatorSettings>("/operator/settings", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  pauseWorld: (worldId: string) =>
+    request(`/worlds/${worldId}/pause`, { method: "POST" }),
+  resumeWorld: (worldId: string) =>
+    request(`/worlds/${worldId}/resume`, { method: "POST" }),
 };
 
 export function connectWorldEvents(

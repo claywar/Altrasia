@@ -17,7 +17,7 @@ Product principles, personas, and milestones: [docs/20-product-principles.md](do
 | | |
 |--|--|
 | **Design specifications** | Complete (normative docs `00`–`25`) |
-| **Implementation** | **~95% v1** — Sprint 1/2 core done; see [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
+| **Implementation** | **v1 + partial v1.1** — see [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
 | **Shipped** | **Alpha** — golden path 1–8, MEM-PERF ci gates, WebSocket events, mock or real LLM |
 
 Run locally: [docs/guides/getting-started.md](docs/guides/getting-started.md). First-session UX checklist: [docs/guides/first-run-experience.md](docs/guides/first-run-experience.md).

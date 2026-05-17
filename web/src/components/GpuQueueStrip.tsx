@@ -18,7 +18,14 @@ type Props = {
 function parseRationale(raw: string | undefined): string | null {
   if (!raw) return null;
   try {
-    const o = JSON.parse(raw) as { pick?: string; characterId?: string; factors?: string };
+    const o = JSON.parse(raw) as {
+      pick?: string;
+      characterId?: string;
+      factors?: string;
+      idle_source?: string;
+    };
+    if (o.idle_source === "server_heartbeat") return "idle · server heartbeat";
+    if (o.idle_source === "tab_visible") return "idle · tab visible";
     if (o.factors) return o.factors;
     if (o.pick && o.characterId) return `${o.pick} → ${o.characterId.replace("char-", "")}`;
     return raw;

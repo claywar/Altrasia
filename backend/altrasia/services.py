@@ -9,6 +9,7 @@ from altrasia.inference.client import LlmClient
 from altrasia.inference.queue import GpuResourceQueue
 from altrasia.memory.service import MemoryService
 from altrasia.orchestrator.engine import Orchestrator
+from altrasia.operator_settings import OperatorSettingsStore
 from altrasia.orchestrator.idle_scheduler import IdleScheduler
 from altrasia.persistence.sqlite_store import SqlitePersistence
 from altrasia.tools.handlers import register_core_tools
@@ -25,6 +26,7 @@ class AppServices:
     llm: LlmClient
     tools: ToolRegistry
     orchestrator: Orchestrator
+    operator_settings: OperatorSettingsStore
     idle_scheduler: IdleScheduler | None = None
     event_bus: EventBus = field(default_factory=EventBus)
     streams: dict = field(default_factory=dict)
@@ -44,6 +46,8 @@ class AppServices:
             mock=settings.mock_llm,
         )
         tools = ToolRegistry()
+        op_path = settings.data_dir / "config.yaml"
+        operator_settings = OperatorSettingsStore(op_path)
         svc = cls(
             settings=settings,
             store=store,
@@ -53,6 +57,7 @@ class AppServices:
             llm=llm,
             tools=tools,
             orchestrator=None,  # type: ignore
+            operator_settings=operator_settings,
         )
         register_core_tools(tools, svc)
         svc.orchestrator = Orchestrator(svc)

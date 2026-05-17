@@ -66,6 +66,15 @@ class SummonBody(BaseModel):
     targetSceneId: str
 
 
+class HeartbeatPatch(BaseModel):
+    enabled: bool | None = None
+    intervalSeconds: int | None = None
+
+
+class OperatorSettingsPatch(BaseModel):
+    heartbeat: HeartbeatPatch | None = None
+
+
 def _emit(svc: AppServices, world_id: str, event: str, data: dict[str, Any]) -> None:
     svc.event_bus.emit(svc.store, world_id, event, data)
 
@@ -153,7 +162,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         w = svc.store.get_world(world_id)
         if not w:
             raise HTTPException(404, "world not found")
-        return w
+        out = dict(w)
+        out["paused"] = world_id in svc.paused_worlds
+        return out
 
     @app.patch("/api/v1/worlds/{world_id}", dependencies=[Depends(verify_auth)])
     def patch_world(
@@ -488,6 +499,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not ok:
             raise HTTPException(404, "job not found")
         return {"jobId": job_id, "status": "cancelled"}
+
+    @app.get("/api/v1/operator/settings", dependencies=[Depends(verify_auth)])
+    def get_operator_settings(svc: AppServices = Depends(get_services)) -> dict:
+        return svc.operator_settings.load().to_api()
+
+    @app.patch("/api/v1/operator/settings", dependencies=[Depends(verify_auth)])
+    def patch_operator_settings(
+        body: OperatorSettingsPatch, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        updates: dict[str, Any] = {}
+        if body.heartbeat is not None:
+            hb: dict[str, Any] = {}
+            if body.heartbeat.enabled is not None:
+                hb["enabled"] = body.heartbeat.enabled
+            if body.heartbeat.intervalSeconds is not None:
+                hb["intervalSeconds"] = body.heartbeat.intervalSeconds
+            updates["heartbeat"] = hb
+        return svc.operator_settings.patch(updates).to_api()
 
     @app.post("/api/v1/worlds/{world_id}/pause", dependencies=[Depends(verify_auth)])
     def pause_world(world_id: str, svc: AppServices = Depends(get_services)) -> dict:

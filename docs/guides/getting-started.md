@@ -28,6 +28,8 @@ npm run dev
 
 Open http://localhost:5173 → **Load demo world** → play as persona in the Hall.
 
+Optional: **Settings** → enable **Global heartbeat** for NPC idle when the browser tab is closed (saved in `~/.altrasia/config.yaml`).
+
 ## 3. Real inference (optional)
 
 Start llama.cpp with an OpenAI-compatible API, then:
