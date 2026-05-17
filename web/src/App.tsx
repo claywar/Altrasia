@@ -16,6 +16,8 @@ import {
 } from "./api/client";
 import { MiniMap } from "./components/MiniMap";
 import { PhonePanel } from "./components/PhonePanel";
+import { ObserverDigest } from "./components/ObserverDigest";
+import type { ObserverDigest as ObserverDigestData } from "./api/client";
 
 function parseScope(metaJson: string): string {
   try {
@@ -47,6 +49,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [observerOpen, setObserverOpen] = useState(false);
   const [metaMessages, setMetaMessages] = useState<Message[]>([]);
+  const [observerDigest, setObserverDigest] = useState<ObserverDigestData | null>(null);
   const [metaText, setMetaText] = useState("");
   const [whisperTarget, setWhisperTarget] = useState("");
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -200,6 +203,7 @@ export default function App() {
   useEffect(() => {
     if (observerOpen && world) {
       api.metaMessages(world.worldId).then(setMetaMessages);
+      api.observerDigest(world.worldId).then(setObserverDigest).catch(() => setObserverDigest(null));
     }
   }, [observerOpen, world]);
 
@@ -540,6 +544,7 @@ export default function App() {
               Esc — Close
             </button>
           </header>
+          <ObserverDigest digest={observerDigest} />
           <div className="transcript">
             {metaMessages.map((m) => (
               <article key={m.messageId} className="bubble">

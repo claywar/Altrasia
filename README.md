@@ -17,8 +17,8 @@ Product principles, personas, and milestones: [docs/20-product-principles.md](do
 | | |
 |--|--|
 | **Design specifications** | Complete (normative docs `00`–`25`) |
-| **Implementation** | **v1 + partial v1.1** — see [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
-| **Shipped** | **Alpha** — golden path 1–8, MEM-PERF ci gates, WebSocket events, mock or real LLM |
+| **Implementation** | **v1 + v1.1 feature-complete** — see [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
+| **Shipped** | **Alpha** — golden path 1–8, heartbeat, world package, phone play, observer digest, 34+ pytest |
 
 Run locally: [docs/guides/getting-started.md](docs/guides/getting-started.md). First-session UX checklist: [docs/guides/first-run-experience.md](docs/guides/first-run-experience.md).
 
@@ -86,9 +86,9 @@ Two scenes, presence, whisper perception, elsewhere roster, **Web UI** with stre
 
 Release gate: [docs/17-acceptance-criteria.md](docs/17-acceptance-criteria.md) spatial golden path + output quality (OQ-1, OQ-3).
 
-### v1.1 (after v1 tag)
+### v1.1 (shipped in tree)
 
-Phone play, global heartbeat, world package export/import ([docs/ROADMAP.md](docs/ROADMAP.md)).
+Phone play, global heartbeat, world package export/import ([docs/ROADMAP.md](docs/ROADMAP.md)). CLI: `altrasia load-demo`, `altrasia worlds`.
 
 ## License
 

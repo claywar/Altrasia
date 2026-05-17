@@ -343,6 +343,48 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def meta_messages(world_id: str, svc: AppServices = Depends(get_services)) -> list[dict]:
         return svc.store.list_messages(world_id, channel_kind="meta")
 
+    @app.get(
+        "/api/v1/worlds/{world_id}/observer/digest",
+        dependencies=[Depends(verify_auth)],
+    )
+    def observer_digest(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        """CC-6 / OBS-6: pending signals and channel summary for Observer Studio."""
+        world = svc.store.get_world(world_id)
+        if not world:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {"code": "not_found", "message": "World not found"}},
+            )
+        scenes_out: list[dict] = []
+        for s in svc.store.list_scenes(world_id):
+            try:
+                present = json.loads(s.get("presentJson") or "[]")
+            except json.JSONDecodeError:
+                present = []
+            scenes_out.append(
+                {
+                    "sceneId": s["sceneId"],
+                    "locationName": s.get("locationName", ""),
+                    "presentCharacterIds": present,
+                    "presentCount": len(present),
+                }
+            )
+        pending = svc.store.list_signals(world_id, status="pending")
+        channels = svc.phone.list_active(world_id)
+        return {
+            "worldId": world_id,
+            "worldName": world.get("name"),
+            "activeSceneId": world["activeSceneId"],
+            "paused": world_id in svc.paused_worlds,
+            "scenes": scenes_out,
+            "pendingSignals": pending,
+            "activeChannels": channels,
+            "summary": (
+                f"{len(pending)} pending signal(s); "
+                f"{len(channels)} active phone channel(s)"
+            ),
+        }
+
     @app.post(
         "/api/v1/worlds/{world_id}/observer/meta-messages",
         dependencies=[Depends(verify_auth)],

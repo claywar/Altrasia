@@ -63,6 +63,28 @@ export type OperatorSettings = {
   lastHeartbeatAt: string | null;
 };
 
+export type ObserverDigest = {
+  worldId: string;
+  worldName?: string;
+  activeSceneId: string;
+  paused: boolean;
+  summary: string;
+  scenes: Array<{
+    sceneId: string;
+    locationName: string;
+    presentCharacterIds: string[];
+    presentCount: number;
+  }>;
+  pendingSignals: Array<{
+    signalId: string;
+    kind: string;
+    sourceSceneId: string;
+    targetSceneId: string;
+    status: string;
+  }>;
+  activeChannels: PhoneChannel[];
+};
+
 export type SpatialGraph = {
   activeSceneId: string;
   nodes: Array<{
@@ -163,6 +185,8 @@ export const api = {
     }),
   metaMessages: (worldId: string) =>
     request<Message[]>(`/worlds/${worldId}/observer/meta-messages`),
+  observerDigest: (worldId: string) =>
+    request<ObserverDigest>(`/worlds/${worldId}/observer/digest`),
   postMeta: (worldId: string, text: string) =>
     request(`/worlds/${worldId}/observer/meta-messages`, {
       method: "POST",

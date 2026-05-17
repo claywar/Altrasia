@@ -600,16 +600,64 @@ select {
   position: fixed;
   top: 0;
   left: 0;
-  width: min(420px, 90vw);
+  width: min(720px, 95vw);
   height: 100%;
   background: var(--surface-2);
   border-right: 1px solid var(--border);
   z-index: 100;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(160px, 200px) 1fr;
   box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
 }
 
+.observer-overlay > header {
+  grid-column: 1 / -1;
+}
+
+.observer-overlay > footer {
+  grid-column: 1 / -1;
+}
+
+.observer-digest {
+  grid-row: 2;
+  grid-column: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border-right: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.observer-digest h3 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.observer-digest ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.observer-digest li.active {
+  color: var(--accent);
+}
+
+.observer-digest-summary {
+  margin: 0 0 0.5rem;
+  font-weight: 500;
+}
+
+.observer-digest-paused {
+  color: var(--warn, #c9a227);
+  margin: 0;
+}
+
 .observer-overlay .transcript {
+  grid-row: 2;
+  grid-column: 2;
   flex: 1;
+  overflow-y: auto;
 }

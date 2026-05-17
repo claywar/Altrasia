@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** v1 + v1.1 **feature-complete** in code; manual first-run UX pass remains. **32 pytest** + golden path 1–8.
+**Status:** v1 + v1.1 **feature-complete** in code; manual first-run UX pass remains. **34 pytest** + golden path 1–8.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -27,7 +27,8 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | UI-1 / UI-2 | Queue strip + selection rationale | Done (`GpuQueueStrip`, message ⓘ) |
 | UI-M4 | Memory inspector from People | Done |
 | CC-11b | Dismiss knock signal | Done (PATCH signal) |
-| First-run UX pass | guides/first-run-experience.md | Manual walkthrough |
+| CC-6 / OBS-6 | Observer digest (signals + channels) | Done (`GET .../observer/digest`, Observer Studio UI) |
+| First-run UX pass | guides/first-run-experience.md | API automated (`test_first_run_experience_api`); manual UI walkthrough |
 
 ### Remaining for v1 tag
 
