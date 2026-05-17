@@ -1,8 +1,6 @@
 # Target First-Run Experience
 
-**Non-normative.** Describes the experience the **first implementation** should deliver—not an install guide. Nothing in this repository is runnable today. See [ROADMAP.md](../ROADMAP.md).
-
-When implementation lands, replace or extend this document with [getting-started.md](getting-started.md) (install, prerequisites, screenshots).
+**Non-normative.** Human-readable acceptance walkthrough for the spatial wedge. Install and run: [getting-started.md](getting-started.md).
 
 ## Purpose
 

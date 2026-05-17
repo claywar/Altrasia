@@ -53,6 +53,8 @@ curl -X POST http://127.0.0.1:8787/api/v1/worlds \
 
 ```bash
 cd backend && pytest ../tests -v
+# optional reference-scale memory perf (slower):
+cd backend && pytest ../tests/test_memory_perf.py -v -m slow
 ```
 
 ## Next

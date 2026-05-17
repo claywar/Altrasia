@@ -232,8 +232,12 @@ class Orchestrator:
 
     async def _generate_text(self, job: dict, msg_id: str) -> str:
         ch = self.svc.store.get_character(job["characterId"])
+        cfg = self._world_config(job["worldId"])
+        max_recall = int(cfg.get("mandatoryRecallMaxChars", 12000))
         recall = self.svc.memory.build_mandatory_recall(
-            character_id=job["characterId"], scene_id=job["sceneId"]
+            character_id=job["characterId"],
+            scene_id=job["sceneId"],
+            max_chars=max_recall,
         )
         scene = self.svc.store.get_scene(job["sceneId"])
         from altrasia.inference.profiles import quality_addendum

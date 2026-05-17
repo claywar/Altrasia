@@ -1,0 +1,26 @@
+{
+  "description": "Reference scale dataset for MEM-PERF-* and MEM-ACC-* (docs/17-acceptance-criteria.md §7)",
+  "profiles": {
+    "ci": {
+      "characters": 24,
+      "diarySegmentsTotal": 1200,
+      "mindLociPerCharacter": 40,
+      "worldLociPerScene": 20,
+      "scenes": 3
+    },
+    "reference": {
+      "characters": 24,
+      "diarySegmentsTotal": 12000,
+      "mindLociPerCharacter": 200,
+      "worldLociPerScene": 100,
+      "scenes": 6
+    }
+  },
+  "thresholds": {
+    "memory_search_p95_ms": 50,
+    "diary_search_p95_ms": 50,
+    "mandatory_recall_p95_ms": 100,
+    "leakage_queries_ci": 1000,
+    "leakage_queries_reference": 10000
+  }
+}

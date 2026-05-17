@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** Sprint 1/2 **~92%** — golden path + MP-9 + AO-4 + mermaid; see gaps below. **18 pytest** + golden path 1–8.
+**Status:** Sprint 1/2 **~95%** — golden path + MP-9 + AO-4 + mermaid + MEM-PERF ci; see gaps below. **25+ pytest** + golden path 1–8.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -21,7 +21,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | UI-R2/R5 | Mermaid in transcript | Done (`MarkdownBody.tsx`) |
 | W-1 | Cannot delete last scene | Done (`DELETE .../scenes/{id}`) |
 | memory_read | Doc 02 tool | Done |
-| MEM-PERF | Scale fixtures + perf gates | Not done |
+| MEM-PERF | Scale fixtures + perf gates | Done (ci profile; `pytest -m slow` for reference) |
 | HB-1 | Global heartbeat idle | v1.1 |
 | First-run UX pass | guides/first-run-experience.md | Manual |
 
@@ -34,7 +34,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | Whisper/DM target picker | Done |
 | Mermaid in transcript (UI-R2/R5) | Done |
 | MP-9 blocking memory tools on first turn | Done |
-| MEM-PERF / scale fixtures | Not done |
+| MEM-PERF / scale fixtures | Done (`tests/test_memory_perf.py`, `memory-scale/`) |
 | Idle `roundRobin` (AO-4) | Done (tab-visible) |
 | v1.1 phone, heartbeat, world package | Spec only |
 | Phase 3+ character wizard, maps, commissions | Spec only |
