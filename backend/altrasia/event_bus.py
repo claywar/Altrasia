@@ -21,6 +21,9 @@ class EventBus:
         if q in subs:
             subs.remove(q)
 
+    def subscriber_count(self, world_id: str) -> int:
+        return len(self._subs.get(world_id, []))
+
     def emit(self, store: Any, world_id: str, event: str, data: dict[str, Any]) -> int:
         seq = store.bump_event_seq(world_id)
         payload = {"event": event, "eventSeq": seq, "worldId": world_id, "data": data}

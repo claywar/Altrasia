@@ -6,6 +6,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -72,7 +74,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     services = AppServices.create(settings)
 
-    app = FastAPI(title="Altrasia", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        if services.idle_scheduler:
+            services.idle_scheduler.start()
+        yield
+        if services.idle_scheduler and services.idle_scheduler._task:
+            services.idle_scheduler._task.cancel()
+
+    app = FastAPI(title="Altrasia", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.services = services
 
@@ -474,6 +484,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def world_events(websocket: WebSocket, world_id: str) -> None:
         await websocket.accept()
         svc: AppServices = websocket.app.state.services  # type: ignore[attr-defined]
+        if svc.idle_scheduler:
+            svc.idle_scheduler.mark_world_active(world_id)
         q = svc.event_bus.subscribe(world_id)
         try:
             while True:
@@ -481,5 +493,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await websocket.send_json(payload)
         except WebSocketDisconnect:
             svc.event_bus.unsubscribe(world_id, q)
+            if svc.idle_scheduler and not svc.event_bus.subscriber_count(world_id):
+                svc.idle_scheduler.mark_world_inactive(world_id)
+
+    @app.delete(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def delete_scene(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        scenes = svc.store.list_scenes(world_id)
+        if len(scenes) <= 1:
+            raise HTTPException(400, "cannot delete last scene (W-1)")
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        world = svc.store.get_world(world_id)
+        svc.store.conn.execute("DELETE FROM Scene WHERE sceneId = ?", (scene_id,))
+        svc.store.conn.commit()
+        if world and world.get("activeSceneId") == scene_id:
+            remaining = [s for s in scenes if s["sceneId"] != scene_id]
+            svc.store.update_world(world_id, activeSceneId=remaining[0]["sceneId"])
+        return {"deleted": scene_id}
 
     return app

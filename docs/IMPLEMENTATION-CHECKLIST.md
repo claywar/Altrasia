@@ -2,7 +2,28 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** Sprint 1/2 **~85%** — core path implemented; see gaps below. **13+ pytest** + golden path 1–8.
+**Status:** Sprint 1/2 **~92%** — golden path + MP-9 + AO-4 + mermaid; see gaps below. **18 pytest** + golden path 1–8.
+
+### Doc vs implementation (v1 wedge)
+
+| Spec ID | Requirement | Status |
+|---------|-------------|--------|
+| GP 1–8 | Spatial golden path | Done (`tests/test_golden_path.py`) |
+| MP-1 | Mind pool isolation | Done |
+| MP-9 | First call memory tools only when blocking | Done (`orchestrator/engine.py`, `test_mp9_ao4.py`) |
+| MP-20 | Group diary fan-out | Done |
+| AO-4 | Idle round-robin per scene | Done (`idle_scheduler.py`, tab-visible via WS) |
+| AO-19/19a | agent_continue + idle suppress | Done |
+| CC-11a | Knock no auto-gen | Done |
+| INF-5 | Single GPU job | Done |
+| OQ-1/OQ-3 | Prompt snapshot / strip | Done |
+| UI-REG-1 | Cancel generation | Done |
+| UI-R2/R5 | Mermaid in transcript | Done (`MarkdownBody.tsx`) |
+| W-1 | Cannot delete last scene | Done (`DELETE .../scenes/{id}`) |
+| memory_read | Doc 02 tool | Done |
+| MEM-PERF | Scale fixtures + perf gates | Not done |
+| HB-1 | Global heartbeat idle | v1.1 |
+| First-run UX pass | guides/first-run-experience.md | Manual |
 
 ### Remaining for v1 tag
 
@@ -11,10 +32,10 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | WebSocket events + `eventSeq` | Done |
 | UI cancel generation (UI-REG-1) | Done |
 | Whisper/DM target picker | Done |
-| Mermaid in transcript (UI-R2/R5) | Partial — markdown only |
-| MP-9 blocking memory tools on first turn | Not done |
+| Mermaid in transcript (UI-R2/R5) | Done |
+| MP-9 blocking memory tools on first turn | Done |
 | MEM-PERF / scale fixtures | Not done |
-| Idle `roundRobin` (AO-4) | Not done |
+| Idle `roundRobin` (AO-4) | Done (tab-visible) |
 | v1.1 phone, heartbeat, world package | Spec only |
 | Phase 3+ character wizard, maps, commissions | Spec only |
 

@@ -3,11 +3,23 @@ from __future__ import annotations
 import json
 from typing import Any
 
+_tool_snapshots: list[list[str]] = []
+
+
+def clear_tool_snapshots() -> None:
+    _tool_snapshots.clear()
+
+
+def tool_snapshots() -> list[list[str]]:
+    return list(_tool_snapshots)
+
 
 async def mock_chat_completion(
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
+    if tools is not None:
+        _tool_snapshots.append([t["function"]["name"] for t in tools])
     last_user = ""
     for m in reversed(messages):
         if m.get("role") == "user":

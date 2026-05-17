@@ -32,6 +32,16 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             limit=int(params.get("limit", 10)),
         )
 
+    async def memory_read(params: dict, ctx: ToolContext) -> Any:
+        rows = services.store.conn.execute(
+            """SELECT locusKey, value FROM Locus
+               WHERE pool = 'mind' AND ownerId = ? AND locusKey = ?""",
+            (ctx.character_id, params["locusKey"]),
+        ).fetchall()
+        if not rows:
+            return {"found": False}
+        return {"locusKey": rows[0][0], "value": rows[0][1]}
+
     async def scene_update_fixture(params: dict, ctx: ToolContext) -> Any:
         scene = services.store.get_scene(ctx.scene_id)
         fixtures = json.loads(scene["fixturesJson"])
@@ -65,6 +75,18 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["locusKey", "value"],
             },
             handler=memory_store,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="memory_read",
+            description="Read one mind locus by key.",
+            parameters={
+                "type": "object",
+                "properties": {"locusKey": {"type": "string"}},
+                "required": ["locusKey"],
+            },
+            handler=memory_read,
         )
     )
     registry.register(

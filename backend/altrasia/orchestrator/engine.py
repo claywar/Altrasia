@@ -57,6 +57,21 @@ class Orchestrator:
     def _max_continue_depth(self, world_id: str) -> int:
         return int(self._world_config(world_id).get("maxContinueDepth", 2))
 
+    def _mandatory_recall_blocking(self, world_id: str) -> bool:
+        cfg = self._world_config(world_id)
+        return cfg.get("mandatoryRecallBlocking", cfg.get("mandatoryRecallEnabled", True))
+
+    def _memory_tool_names(self) -> set[str]:
+        names: set[str] = set()
+        for t in self.svc.tools.list_openai_tools():
+            n = t["function"]["name"]
+            if n.startswith("memory_") or n.startswith("diary_"):
+                names.add(n)
+        return names
+
+    def _filter_tools(self, all_tools: list[dict], allowed: set[str]) -> list[dict]:
+        return [t for t in all_tools if t["function"]["name"] in allowed]
+
     def pick_reactive_character(
         self, world_id: str, scene_id: str, trigger_text: str
     ) -> tuple[str | None, dict]:
@@ -234,7 +249,10 @@ class Orchestrator:
         for m in self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-12:]:
             role = "assistant" if m["role"] == "assistant" else "user"
             messages.append({"role": role, "content": m["outputText"]})
-        tools = self.svc.tools.list_openai_tools()
+        all_tools = self.svc.tools.list_openai_tools()
+        memory_only = self._memory_tool_names()
+        blocking = self._mandatory_recall_blocking(job["worldId"])
+        memory_gate_open = False
         ctx = ToolContext(
             world_id=job["worldId"],
             scene_id=job["sceneId"],
@@ -243,15 +261,22 @@ class Orchestrator:
         )
         depth = 0
         while depth < 5:
-            resp = await self.svc.llm.chat(messages, tools if depth == 0 else None)
+            if depth == 0 and blocking and not memory_gate_open:
+                tools_payload = self._filter_tools(all_tools, memory_only)
+            else:
+                tools_payload = all_tools if depth == 0 else None
+            resp = await self.svc.llm.chat(messages, tools_payload)
             msg = resp["choices"][0]["message"]
             tool_calls = msg.get("tool_calls")
             if tool_calls:
                 messages.append(msg)
                 for tc in tool_calls:
                     fn = tc["function"]
+                    name = fn["name"]
+                    if name in memory_only:
+                        memory_gate_open = True
                     args = json.loads(fn.get("arguments") or "{}")
-                    result = await self.svc.tools.invoke(fn["name"], args, ctx)
+                    result = await self.svc.tools.invoke(name, args, ctx)
                     messages.append(
                         {
                             "role": "tool",

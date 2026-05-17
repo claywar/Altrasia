@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import { MarkdownBody } from "./components/MarkdownBody";
 import {
   api,
   connectWorldEvents,
@@ -288,7 +288,7 @@ export default function App() {
                   <div className="bubble-header">
                     {label} · {sc}
                   </div>
-                  <ReactMarkdown>{m.outputText}</ReactMarkdown>
+                  <MarkdownBody>{m.outputText}</MarkdownBody>
                 </article>
               );
             })}
