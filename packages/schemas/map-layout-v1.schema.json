@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldengine.local/schemas/map-layout-v1.json",
+  "title": "WorldEngineMapLayout",
+  "description": "LLM map_layout_generate output. Unknown keys stripped before validation (MAP-GEN-2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scope"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "scope": { "enum": ["mini", "site", "stack", "floor"] },
+    "architectureStyle": { "enum": ["diagram", "blueprint", "minimal"] },
+    "structures": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/structure" }
+    },
+    "scenes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/scene" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "verticalEdges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/verticalEdge" }
+    },
+    "worldMap": { "$ref": "#/$defs/worldMap" }
+  },
+  "$defs": {
+    "coord": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 100 },
+        "y": { "type": "number", "minimum": 0, "maximum": 100 }
+      },
+      "additionalProperties": false
+    },
+    "structure": {
+      "type": "object",
+      "required": ["structureId", "displayName", "kind"],
+      "properties": {
+        "structureId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "kind": { "enum": ["building", "wing", "outdoor", "campus"] },
+        "boundary": {
+          "type": "object",
+          "properties": {
+            "shape": { "enum": ["rect", "polygon", "hull"] },
+            "vertices": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/coord" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "scene": {
+      "type": "object",
+      "required": ["sceneId"],
+      "properties": {
+        "sceneId": { "type": "string" },
+        "structureId": { "type": "string" },
+        "mapLevel": { "type": "integer" },
+        "levelLabel": { "type": "string" },
+        "mapShape": { "enum": ["rect", "circle", "corridor", "court", "wing", "compound", "path"] },
+        "mapSize": {
+          "type": "object",
+          "properties": {
+            "w": { "type": "number" },
+            "h": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "layout": { "$ref": "#/$defs/coord" },
+        "planPosition": {
+          "type": "object",
+          "properties": {
+            "planX": { "type": "number" },
+            "planY": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["exitId", "sourceSceneId", "targetSceneId", "kind"],
+      "properties": {
+        "exitId": { "type": "string" },
+        "sourceSceneId": { "type": "string" },
+        "targetSceneId": { "type": "string" },
+        "kind": { "enum": ["door", "path", "portal"] },
+        "travelSteps": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "direction": { "enum": ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] },
+        "exitAnchor": {
+          "type": "object",
+          "properties": {
+            "side": { "enum": ["N", "E", "S", "W"] },
+            "offset": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false
+        },
+        "crossesStructure": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "verticalEdge": {
+      "type": "object",
+      "required": ["exitId", "sourceSceneId", "targetSceneId", "kind", "levelDelta"],
+      "properties": {
+        "exitId": { "type": "string" },
+        "sourceSceneId": { "type": "string" },
+        "targetSceneId": { "type": "string" },
+        "kind": { "enum": ["stairs", "ladder", "elevator", "shaft"] },
+        "levelDelta": { "type": "integer" },
+        "planPosition": {
+          "type": "object",
+          "properties": {
+            "planX": { "type": "number" },
+            "planY": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "worldMap": {
+      "type": "object",
+      "properties": {
+        "bounds": {
+          "type": "object",
+          "properties": {
+            "minX": { "type": "number" },
+            "minY": { "type": "number" },
+            "maxX": { "type": "number" },
+            "maxY": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "terrain": { "type": "array" },
+        "structurePlacements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["structureId", "origin"],
+            "properties": {
+              "structureId": { "type": "string" },
+              "origin": { "$ref": "#/$defs/coord" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -35,6 +35,14 @@ A **scene** is one place-and-time context within a world. Each scene has:
 
 Scenes are the unit of spatial separation. Characters in Scene A do not automatically hear or see Scene B's public traffic unless communication rules bridge them (see [04-communication.md](04-communication.md)).
 
+**Durable, evolving geography:** Once a `sceneId` exists, it MUST remain addressable for diary, presence history, and world package export (MP-11). Worlds **grow** over time: Observer/operator MAY add scenes and exits **within** the existing map after geography lock ([25-map-authoring.md](25-map-authoring.md) MAP-GROW-*). Scene **removal** post-lock is forbidden except rare explicit operator action during initial design. Cast MUST NOT create or delete scenes ([05-tool-calling.md](05-tool-calling.md) §7.2).
+
+| Field | Description |
+|-------|-------------|
+| `layoutDesignMode` | When `true`, casual scene removal allowed with operator confirm; when `false`, growth via Observer/Architect still allowed with layout ack |
+
+Geography lock: `layoutDesignMode` becomes `false` after operator **Lock geography** or **first play** (persona message), whichever is first (MAP-AUTH-LOCK-1).
+
 Optional **`structureId`** links a scene to a **structure** (building or campus envelope) for mini-map boundaries and navigation context ([14-web-ui.md](14-web-ui.md) §21.3).
 
 ### 1.2.1 Structure (building envelope)
@@ -162,5 +170,6 @@ Separating **world**, **scene**, and **character** allows persistent geography (
 
 - [02-memory.md](02-memory.md) — memory pools and diary
 - [03-locations-and-presence.md](03-locations-and-presence.md) — presence operations and fixtures
+- [25-map-authoring.md](25-map-authoring.md) — map authoring, evolving geography, movement
 - [09-roles-and-privilege.md](09-roles-and-privilege.md) — operator and admin roles
 - [23-in-world-work.md](23-in-world-work.md) — commissions, debate activity

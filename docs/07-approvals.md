@@ -145,9 +145,12 @@ Web plugin exposes parallel routes under `/api/plugins/web-tools/`.
 | APR-4 | Denylist paths cannot be queued. |
 | APR-5 | Destructive FS ops backup when configured. |
 | APR-6 | Unattended/preApproved only when explicitly enabled. |
+| APR-MAP-1 | Map layout overwrite ack uses the **dedicated map preview panel** ([14-web-ui.md](14-web-ui.md) UI-MAP-P1–P14, [25-map-authoring.md](25-map-authoring.md)) — **not** the FS/web unified approval queue. |
+| APR-MAP-2 | When `requireApprovalForMapOverwrite` is enabled, same panel uses **Approve → Confirm overwrite** (UI-MAP-P12). |
 
 ## Related documents
 
 - [08-real-world-capabilities.md](08-real-world-capabilities.md)
 - [06-web-tools.md](06-web-tools.md)
 - [05-tool-calling.md](05-tool-calling.md)
+- [25-map-authoring.md](25-map-authoring.md)

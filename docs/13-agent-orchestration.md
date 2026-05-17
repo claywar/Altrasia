@@ -70,7 +70,7 @@ A character MAY be scheduled when:
 
 - World member, not `disabled`
 - Not `muted` (unless operator forces)
-- Present at `sceneId` for scene-scoped generation
+- Present at `sceneId` for scene-scoped generation (MAP-MOVE-1 — no generation at a scene the character has not joined via presence/exits; [25-map-authoring.md](25-map-authoring.md))
 - Passes communication eligibility ([04-communication.md](04-communication.md))
 
 **Observer:** excluded from **ambient idle** pools; included when operator requests Watch/Narrate/Intervene/Direct (AO-3a, elevated priority).

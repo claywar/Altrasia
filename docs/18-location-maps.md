@@ -38,7 +38,7 @@ At full maturity the operator can:
 | MAP-18 | Level `-1` (basement) through `+N` (towers) MUST remain stable in world package export (DM-4). |
 | MAP-19 | LLM **`map_layout_generate`** (and related tools) MUST emit **validated JSON** matching §12 schemas—never prose-only or reasoning blocks (MP-14, OQ-3). |
 | MAP-20 | Generated layout MUST be sufficient for Web UI to render mini-map, site map, and level stack without inventing geometry (UI-MAP-D*). |
-| MAP-21 | Reference images in [guides/reference-images/](guides/reference-images/) are the **visual acceptance targets** for generated layouts (non-normative pixels; normative structure). |
+| MAP-21 | Reference images in [guides/reference-images/](guides/reference-images/) are **design mockups**; normative acceptance is **structural** (JSON → SVG topology). PNGs are not sent to the LLM. |
 | MAP-22 | Layout generation runs on GpuResourceQueue `kind: chat`; illustration remains ComfyUI `kind: image` ([19-comfyui-media.md](19-comfyui-media.md)). |
 | MAP-23 | Observer or location admin initiates regen; MAP-7 diff + operator ack before overwrite. |
 | MAP-24 | CI fixtures MUST include at least one LLM-produced layout JSON per surface: `mini`, `site`, `stack`. |
@@ -276,7 +276,7 @@ See [12-api-sketch.md](12-api-sketch.md):
 
 ## 12. LLM layout generation (MAP-GEN-*)
 
-The primary LLM (and Observer tools) MUST be able to **author and revise** map layouts as structured data that the Web UI renders into diagrams comparable to [reference images](guides/reference-images/README.md).
+The primary LLM (and Observer tools) MUST be able to **author and revise** map layouts as structured data that the Web UI renders to **SVG** with structural topology comparable to [reference images](guides/reference-images/README.md) (design mockups only).
 
 ### 12.1 Surfaces the LLM produces
 
@@ -435,7 +435,33 @@ sequenceDiagram
 | MAP-GEN-ACC-3 | scope `stack` produces ≥2 `mapLevel` values + `verticalEdges`; matches WF-15 topology |
 | MAP-GEN-ACC-4 | Output contains no reasoning leakage (MP-14 fixture) |
 
-Fixture JSON MAY live under `tests/fixtures/map-layouts/` when implementation starts (MAP-24).
+Fixture JSON under `tests/fixtures/map-layouts/` (MAP-24). Schema: [`packages/schemas/map-layout-v1.schema.json`](../packages/schemas/map-layout-v1.schema.json).
+
+### 12.8 Prompt contract (MAP-GEN-PROMPT-*)
+
+Authoring flow: [25-map-authoring.md](25-map-authoring.md).
+
+**Normative:**
+
+| ID | Requirement |
+|----|-------------|
+| MAP-GEN-PROMPT-1 | Output MUST be a single JSON object matching `map-layout-v1` schema; no markdown fences in stored artifact |
+| MAP-GEN-PROMPT-2 | MUST include inputs from §12.3; MUST NOT include diary or mind pool (MP-1) |
+| MAP-GEN-PROMPT-3 | `referenceDiagramId` MUST be one of: `mini_envelope`, `mini_shapes`, `site_overlay`, `level_stack` — **text enum only**; reference PNGs are not sent to the model |
+| MAP-GEN-PROMPT-4 | `stripReasoning` before parse (MP-14, OQ-3) |
+| MAP-GEN-PROMPT-5 | Unknown JSON keys MUST be stripped before validate/store; warnings MAY appear in operator change list |
+
+**Non-normative — example system preamble:**
+
+> You produce WorldEngine map layout JSON only. Respect MAP-GEN-3 diagram invariants: building envelopes wrap rooms; site view places all structures; stack view aligns vertical exits at matching planPosition. Coordinates 0–100. No reasoning fields.
+
+**Non-normative — example user payload fields:**
+
+`worldName`, `scenes[]` with `locationName` / `locationDescription`, `exitsJson`, `scope`, `referenceDiagramId`, optional `operatorBrief`.
+
+**Non-normative — CI:** Mock LLM MAY return fixtures from `tests/fixtures/map-layouts/demo-*.json` for MAP-GEN-ACC-* without a live model.
+
+**Non-normative — preview:** Runtime renders JSON to SVG for operator preview; structural acceptance compares topology to [reference images](guides/reference-images/README.md), not PNG pixels.
 
 ## Documentation history
 
@@ -443,6 +469,7 @@ Fixture JSON MAY live under `tests/fixtures/map-layouts/` when implementation st
 |------|--------|
 | 2026-05 | Phase 6 world map + level stack plan (§6–§11) |
 | 2026-05 | LLM layout generation (§12, MAP-19–MAP-24); reference images in [guides/reference-images/](guides/reference-images/README.md) |
+| 2026-05 | §12.8 prompt contract; [25-map-authoring.md](25-map-authoring.md) |
 
 ## Related documents
 
@@ -451,3 +478,4 @@ Fixture JSON MAY live under `tests/fixtures/map-layouts/` when implementation st
 - [14-web-ui.md](14-web-ui.md)
 - [05-tool-calling.md](05-tool-calling.md) §7.6
 - [guides/reference-images/README.md](guides/reference-images/README.md)
+- [25-map-authoring.md](25-map-authoring.md)

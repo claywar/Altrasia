@@ -326,6 +326,28 @@ Exploded vertical view for one structure. Normative: [18-location-maps.md](../18
 | WF-13 | ComfyUI media | Portraits + scene shot (UI-IMG, future) |
 | WF-14 | World map overlay | Site-scale WorldMapCanvas (Phase 6a) |
 | WF-15 | Level stack | Multi-floor LevelStackView (Phase 6b) |
+| WF-16 | Map layout preview | MapDraft / Observer layout ack ([14-web-ui.md](../14-web-ui.md) §21.5) |
+
+#### WF-16 — Map layout preview (Phase 6, UI-MAP-P*)
+
+Map preview panel — not the FS/web approval drawer ([07-approvals.md](../07-approvals.md) APR-MAP-1).
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Map layout preview                                    revision 2 ▼  [×]  │
+├──────────────────────────────┬───────────────────────────────────────────┤
+│  BEFORE (SVG)                │  AFTER (SVG)                              │
+│  ┌────┐     ┌────┐           │  ┌────┐     ┌────┐      ┌────────┐       │
+│  │Hall│─────│Kit.│           │  │Hall│─────│Kit.│──────│Garden│       │
+│  └────┘     └────┘           │  └────┘     └────┘      └────────┘       │
+├──────────────────────────────┴───────────────────────────────────────────┤
+│ Changes:  + scene-garden  + exit hall-garden  ~ hall position moved      │
+│ Conflicts: (none)  or  [fixture_drift hearth] Accept Revert Skip         │
+├──────────────────────────────────────────────────────────────────────────┤
+│ [Visual ●] [JSON]     Sync required banner if tabs diverge                │
+│ [Fix validation] [Describe change]  [Discard]  [Approve] → [Confirm?]  │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
 #### WF-12 — Simple world entry (v1, UI-WLD-1)
 

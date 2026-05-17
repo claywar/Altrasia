@@ -12,7 +12,7 @@ In practice:
 - A single **GPU** runs primary chat (Qwen3.6-35B-A3B via llama.cpp) and embeddings under a unified **GpuResourceQueue**.
 - Optional tools (web, filesystem, schedules) and future maps/ComfyUI follow the same memory and queue rules.
 
-This specification describes *what* the system MUST do. Implementation uses SQLite, a TypeScript monorepo, and a professional Web UI ([14-web-ui.md](14-web-ui.md)).
+This specification describes *what* the system MUST do. Normative specs are `00`–`25`. Implementation uses SQLite, a TypeScript monorepo, and a professional Web UI ([14-web-ui.md](14-web-ui.md)).
 
 **Repository status:** design specifications complete; **implementation not started**. Milestones: [ROADMAP.md](ROADMAP.md). Personas: [personas.md](personas.md). Target first session: [guides/first-run-experience.md](guides/first-run-experience.md).
 
@@ -45,6 +45,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | 22 | [22-output-quality.md](22-output-quality.md) | Convergence, anti-repetition, reasoning hygiene |
 | 23 | [23-in-world-work.md](23-in-world-work.md) | Commissions, debate activity, briefing fixtures, commons (post-v1) |
 | 24 | [24-character-authoring.md](24-character-authoring.md) | AI draft → approve character creation |
+| 25 | [25-map-authoring.md](25-map-authoring.md) | MapDraft, evolving geography, LLM layout + operator ack |
 | — | [appendix-glossary.md](appendix-glossary.md) | Term definitions |
 | — | [appendix-provenance.md](appendix-provenance.md) | SillyTavern source map (non-normative) |
 | — | [ROADMAP.md](ROADMAP.md) | Milestones, feature matrix, design vs shipped status |

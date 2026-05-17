@@ -383,6 +383,14 @@ packages/persistence/
   src/sqlite/          # migration 001, FTS sync, indexes
 ```
 
+### 5.1 Layout drafts (Phase 6, non-normative columns)
+
+In-progress map layouts ([25-map-authoring.md](25-map-authoring.md)): table `layout_drafts` with `layoutDraftId`, `worldId`, `scope`, `parentDraftId`, `intent`, `operatorBrief`, `proposedJson`, `revision`, `status`, `createdAt`.
+
+### 5.2 World `layoutDesignMode`
+
+World `configJson` or dedicated column: `layoutDesignMode` boolean; `geographyLockedAt` timestamp when lock triggers (MAP-AUTH-LOCK-1).
+
 ## 6. Events
 
 Implementations SHOULD emit events with monotonic per-world `eventSeq`:

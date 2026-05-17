@@ -6,7 +6,7 @@ Single-page view of milestones, repository status, and what ships when. Normativ
 
 | Layer | Status |
 |-------|--------|
-| **Design specifications** | Complete (docs `00`–`24`, appendices, acceptance criteria) |
+| **Design specifications** | Complete (docs `00`–`25`, appendices, acceptance criteria) |
 | **Implementation** | **Not started** — no application source, API server, Web UI, or bundled demo database in this repo |
 | **Shipped product** | **Nothing** — release gates in [17-acceptance-criteria.md](17-acceptance-criteria.md) apply when code exists |
 
@@ -75,7 +75,12 @@ Act 3 is fully specified for later phases; it is **not** part of the v1 release 
 | Character authoring UI wizard | | | Phase 3 | [24](24-character-authoring.md) |
 | Commissions / in-world work runtime | | | Phase 4+ | [23](23-in-world-work.md) |
 | Filesystem / web-tools / scheduler | | | Phase 4+ | [06](06-web-tools.md), [08](08-real-world-capabilities.md) |
-| Mini-map (structured, envelopes) | | yes | | [14](14-web-ui.md) §21.1–§21.3 |
+| Mini-map (structured layout) | yes | | | [14](14-web-ui.md) §21.1 |
+| Mini-map (shapes, building envelopes) | | yes | | [14](14-web-ui.md) §21.2–§21.3 |
+| Architect World onboarding | | | Phase 3 | [20](20-product-principles.md) §8, [25](25-map-authoring.md) |
+| MapDraft + World builder wizard | | | Phase 6 | [25](25-map-authoring.md), [14](14-web-ui.md) §21.5 |
+| Enhance layout (existing worlds) | | | Phase 6 | [25](25-map-authoring.md) |
+| Evolving geography (in-map add) | | | Phase 6 | [25](25-map-authoring.md), [01](01-world-model.md) |
 | World map + floor plans (Phase 6a) | | | Phase 6 | [18](18-location-maps.md) §7, [14](14-web-ui.md) §21.4 |
 | Multi-level stack + vertical exits (Phase 6b) | | | Phase 6 | [18](18-location-maps.md) §8 |
 | ComfyUI, plugins | | | Phase 6+ | [19](19-comfyui-media.md), [15](15-plugin-platform.md) |
@@ -88,11 +93,11 @@ Specs use both **version tags** and **implementation phase** numbers:
 |-------------|------------|--------|
 | **v1** | Phase 1–2 | Inference spike + spatial wedge + Web UI |
 | **v1.1** | Phase 2.5 | Phone, heartbeat, world package |
-| — | Phase 3 | Observer polish, approvals, world wizard |
+| — | Phase 3 | Observer polish, approvals, **Architect World** wizard |
 | — | Phase 3.5 | In-world work schema (no v1 runtime) |
 | — | Phase 4+ | Tools, commission runtime, embeddings |
 | — | Phase 4.5 | Debate activity |
-| — | Phase 6 | Maps, ComfyUI |
+| — | Phase 6 | Maps, MapDraft, **World builder**, ComfyUI |
 
 ## Planned build order (not started)
 

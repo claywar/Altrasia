@@ -204,6 +204,47 @@ v1.1+: `nodes[].mapShape`, `structureId`; `structures[].boundary`; `edges[].exit
 
 `spatial-graph` nodes (v1.1+): add `mapLevel`, `levelLabel`, `planPosition`; response MAY include `verticalEdges[]` where `exit.vertical === true`.
 
+### 6.2 Layout drafts (Phase 6)
+
+See [25-map-authoring.md](25-map-authoring.md). Schema: [`packages/schemas/map-layout-v1.schema.json`](../packages/schemas/map-layout-v1.schema.json).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/worlds/{worldId}/layout-drafts` | Body `{ "brief", "scope", "parentDraftId?", "intent?" }` → starts generation |
+| GET | `/worlds/{worldId}/layout-drafts/{draftId}` | `status`, `proposedJson`, `revision`, `changeList[]`, `conflicts[]`, `previewSvgUrl` |
+| GET | `/worlds/{worldId}/layout-drafts/{draftId}/preview.svg` | SVG render of proposed layout |
+| PATCH | `/worlds/{worldId}/layout-drafts/{draftId}` | Operator JSON/visual edits → re-validate |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/repair` | `{ "mode": "fix-validation" \| "describe-change", "feedback?", "validationErrors?" }` |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/sync` | `{ "source": "json" \| "visual" }` |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/resolve-conflict` | `{ "conflictId", "action": "accept" \| "revert" \| "skip" }` |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/commit` | Partial apply → `{ "applied", "conflicts" }` |
+| DELETE | `/worlds/{worldId}/layout-drafts/{draftId}` | Discard |
+
+**POST layout-drafts body (illustrative):**
+
+```json
+{
+  "brief": "Manor ground floor: hall central, kitchen north with door",
+  "scope": "mini",
+  "intent": "create"
+}
+```
+
+**GET layout-drafts response (illustrative):**
+
+```json
+{
+  "layoutDraftId": "draft-001",
+  "status": "ready",
+  "scope": "mini",
+  "revision": 2,
+  "proposedJson": { "schemaVersion": 1, "scope": "mini" },
+  "changeList": [{ "kind": "scene_add", "sceneId": "scene-garden" }],
+  "conflicts": [],
+  "previewSvgUrl": "/worlds/w1/layout-drafts/draft-001/preview.svg"
+}
+```
+
 ## 7. Generation
 
 | Method | Path | Description |

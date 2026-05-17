@@ -102,15 +102,32 @@ Operators SHOULD reach first play without manual world construction:
 
 No wizard UI is required for v1 beyond **load demo**.
 
-### Phase 3 — world wizard
+### Architect World (Phase 3)
 
-Web UI **world wizard** (Phase 3):
+**Architect World** — fast path to playable spatial wedge:
+
+1. Define initial scene graph (fixture, template, or manual seed)
+2. Grow scenes and exits while `layoutDesignMode` is true
+3. CharacterDraft cast ([24-character-authoring.md](24-character-authoring.md))
+4. Test generation and settings
+
+No LLM MapDraft. Geography locks on **Lock geography** or **first play** ([25-map-authoring.md](25-map-authoring.md) MAP-AUTH-LOCK-*).
+
+### World builder (Phase 6)
+
+**World builder** — full spatial authoring wizard:
 
 1. World name
-2. Two scenes + one exit
-3. Two characters + Observer (embeds [24-character-authoring.md](24-character-authoring.md) draft flow)
-4. Test generation
-5. Set diary window and max context defaults
+2. **Required** MapDraft `mini` layout + operator approve ([25-map-authoring.md](25-map-authoring.md))
+3. Optional cascade: site → stack layouts
+4. CharacterDraft cast
+5. Test generation and defaults
+
+### Evolving worlds (post-lock)
+
+> A persistent stage that grows with your story—new places enter the world when you and the Observer author them, never when NPCs hallucinate them.
+
+After geography lock, Observer/Architect MAY **add locations in-map** and characters move via presence/exits ([25-map-authoring.md](25-map-authoring.md) MAP-GROW-*, MAP-MOVE-*). **Enhance layout** (Phase 6) runs optional MapDraft on any existing world; never required for worlds already in play.
 
 ## 9. Data safety
 

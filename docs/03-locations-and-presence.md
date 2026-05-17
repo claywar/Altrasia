@@ -154,6 +154,10 @@ Idle/reactive generations SHOULD use a compact prompt from scene name, descripti
 
 Auto mode MUST respect the same one-scene-per-character invariant.
 
+**MAP-MOVE-2:** Narrative presence MUST NOT create scenes or exits. Join/leave applies only when the target scene **already exists** on the map.
+
+**MAP-MOVE-3:** When text implies a missing destination, implementations SHOULD surface add-location flow to the operator ([14-web-ui.md](14-web-ui.md) UI-MAP-P14) — no silent scene create. See [25-map-authoring.md](25-map-authoring.md) §5.
+
 ## 8. Scene lifecycle
 
 | Action | Rules |

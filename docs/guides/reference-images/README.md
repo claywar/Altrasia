@@ -1,8 +1,10 @@
 # Map reference images (non-normative)
 
-Visual targets for **LLM-generated map layouts** and implementer QA. Normative layout rules: [14-web-ui.md](../../14-web-ui.md) §21, [18-location-maps.md](../../18-location-maps.md) §12.
+**Design mockups only** — not runtime assets and **not** sent to the LLM. Normative layout rules and operator flows: [25-map-authoring.md](../../25-map-authoring.md), [14-web-ui.md](../../14-web-ui.md) §21, [18-location-maps.md](../../18-location-maps.md) §12.
 
-These images are checked into the repo as **reference artifacts**—not runtime assets. Phase 6 MAY also store operator-specific renders under `assets/{worldId}/maps/` ([11-data-model.md](../../11-data-model.md) DM-2).
+Runtime preview and CI compare **SVG rendered from layout JSON** ([25-map-authoring.md](../../25-map-authoring.md) MAP-AUTH-PREVIEW-1). Structural topology MUST match these diagrams; pixel identity is non-normative.
+
+Phase 6 MAY store operator-specific renders under `assets/{worldId}/maps/` ([11-data-model.md](../../11-data-model.md) DM-2).
 
 ## Index
 
@@ -18,8 +20,8 @@ These images are checked into the repo as **reference artifacts**—not runtime 
 
 | Consumer | How to use |
 |----------|------------|
-| **LLM map tools** | Include thumbnails or paths in eval prompts; model output JSON MUST validate then render to comparable diagrams ([18-location-maps.md](../../18-location-maps.md) MAP-GEN-*) |
-| **CI / acceptance** | Optional visual regression against simplified SVG render of parsed JSON (MAP-GEN-ACC-3) |
+| **LLM map tools** | Use `referenceDiagramId` text enum only ([18-location-maps.md](../../18-location-maps.md) §12.8); output JSON → SVG |
+| **CI / acceptance** | Validate JSON against `packages/schemas/map-layout-v1.schema.json`; optional SVG topology compare (MAP-GEN-ACC-*) |
 | **Implementers** | Side-by-side while building `SpatialGraphMiniMap`, `WorldMapCanvas`, `LevelStackView` |
 
 ## Regenerating

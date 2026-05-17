@@ -47,6 +47,7 @@ Mode is set on `GenerationJob.observerMode` or Web UI ([14-web-ui.md](14-web-ui.
 | OBS-5 | Durable state changes MUST use tools (`scene_*`, `memory_store` world pool, approvals)—not free-text assertion. |
 | OBS-6 | Digest is operator affordance; includes pending signals (CC-6). |
 | OBS-7 | Observer in scheduler when operator requests modes; excluded from ambient idle NPC by default. |
+| OBS-8 | Observer MAY author **in-map** locations (new scenes, exits, layout) when operator directs; layout changes require MapDraft preview + ack ([25-map-authoring.md](25-map-authoring.md) MAP-GROW-1). Cast MUST NOT author geography. |
 
 ### 2.4 Observer digest
 

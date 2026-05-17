@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "scope": "mini",
+  "scenes": [
+    {
+      "sceneId": "scene-hall",
+      "structureId": "manor",
+      "layout": { "x": 30, "y": 30 }
+    }
+  ],
+  "edges": []
+}

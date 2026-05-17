@@ -187,5 +187,6 @@ Some providers support forwarding **reasoning** tokens with tool calls. Implemen
 ## Related documents
 
 - [06-web-tools.md](06-web-tools.md)
+- [25-map-authoring.md](25-map-authoring.md)
 - [07-approvals.md](07-approvals.md)
 - [02-memory.md](02-memory.md)

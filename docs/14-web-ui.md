@@ -623,6 +623,29 @@ See [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-14 (world map 
 
 [17-acceptance-criteria.md](17-acceptance-criteria.md) MAP-ACC-*; [18-location-maps.md](18-location-maps.md) §11.
 
+### 21.5 Map layout preview and MapDraft (Phase 6)
+
+Operator review for LLM-authored layouts ([25-map-authoring.md](25-map-authoring.md), MAP-7). Dedicated **map preview panel** — not the FS/web approval queue ([07-approvals.md](07-approvals.md) APR-MAP-1).
+
+| ID | Rule |
+|----|------|
+| UI-MAP-P1 | **Preview panel:** SVG render from `proposedJson` + optional reference thumbnail (structural target per MAP-21; PNGs design-only) |
+| UI-MAP-P2 | **Diff:** visual before/after + **structural change list** (additions, moves, exit changes) |
+| UI-MAP-P3 | Actions: **Approve** (partial commit), Reject, Repair (unlimited), Discard |
+| UI-MAP-P4 | **Visual tab** (default) + **JSON tab**; server re-validates edits |
+| UI-MAP-P5 | Entry: world settings **Enhance layout**, **World builder** step 2 (required mini MapDraft) |
+| UI-MAP-P6 | Observer Studio: regen / patch / **add location** → same preview panel |
+| UI-MAP-P7 | After mini commit: offer **site** then **stack** cascade; skip = per-chain only |
+| UI-MAP-P8 | Repair: **Fix validation** \| **Describe change** |
+| UI-MAP-P9 | **Revision** selector when `revision` > 1 |
+| UI-MAP-P10 | Conflict rows: accept / revert / skip ([25-map-authoring.md](25-map-authoring.md) §6) |
+| UI-MAP-P11 | When JSON/visual out of sync: banner + **Commit disabled** until explicit sync |
+| UI-MAP-P12 | `requireApprovalForMapOverwrite`: **Approve** → **Confirm overwrite** (double step) |
+| UI-MAP-P13 | Observer: **Add location** (in-map) + **Summon/move** after geography exists |
+| UI-MAP-P14 | **Suggested location** banner when MAP-MOVE-3 (missing destination): add on map vs go to existing scene |
+
+Wireframe: [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-16.
+
 ## 22. UX acceptance (implementation gate)
 
 When a Web UI exists, verify:
