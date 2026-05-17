@@ -10,7 +10,7 @@ This document specifies **how characters learn** (diary, loci, reflection) and *
 
 | Layer | Mechanism | Canon |
 |-------|-----------|-------|
-| Episodic | Diary auto-capture from assistant `outputText` | Yes (MP-6, MP-17) |
+| Episodic | Witnessed diary: rolling perceivable scene snippet after each cast reply; group fan-out (MP-6, MP-17, MP-20) | Yes |
 | Semantic facts | `memory_store` → loci (stripped) | Yes |
 | Retrieval | Mandatory recall + optional semantic search | Yes (MP-18) |
 | Reflection | Post-turn output summary → mind loci | Optional Phase 4 |
@@ -29,7 +29,8 @@ This document specifies **how characters learn** (diary, loci, reflection) and *
 | MP-14 | Durable memory is output-only—no reasoning or chain-of-thought. |
 | MP-15 | `stripReasoning(content)` before every durable write. |
 | MP-16 | `memory_store` strips and rejects empty/reasoning-only values. |
-| MP-17 | Diary uses `outputText`, not raw model payload. |
+| MP-17 | Diary snippet lines use per-message `outputText` (all speakers in the window), not raw model payload or assistant-only text. |
+| MP-20 | Group fan-out: same diary segment appended to every present cast member at capture scene ([02-memory-palace.md](02-memory-palace.md) §1.4). |
 | MP-18 | Mandatory recall and embed index read output-stored text only. |
 | MP-19 | Tool results in transcript may retain structure; values to `memory_store` are stripped. |
 
@@ -92,3 +93,4 @@ Reflection uses GpuResourceQueue like any chat call.
 - [00-inference-runtime.md](00-inference-runtime.md)
 - [10-prompt-injection.md](10-prompt-injection.md)
 - [17-acceptance-criteria.md](17-acceptance-criteria.md)
+- [22-output-quality.md](22-output-quality.md)

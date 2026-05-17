@@ -77,7 +77,7 @@ Generation MUST follow [05-tool-calling.md](05-tool-calling.md):
 2. Enqueue chat GpuRequest (holds lease)
 3. On tool_calls → execute → recurse until limit or done
 4. `stripReasoning` → persist `outputText` to `channelKind=scene` (AO-9)
-5. Diary capture from assistant output only (MP-17)
+5. Diary capture: witnessed scene snippet + fan-out to present cast (MP-6, MP-17, MP-20)
 
 Meta channel (`channelKind=meta`) excluded from AO-9 scene transcript rules.
 

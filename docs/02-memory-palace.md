@@ -27,31 +27,67 @@ Facts live in one of two **pools**:
 
 Pool aliases for tools (SHOULD accept): `mind` ← `character`, `self`; `world` ← `global`, `scene`.
 
-### 1.3 Diary
+### 1.3 Diary (witnessed episodic memory)
 
-The **diary** is episodic memory: rolling segments of the character's own past assistant turns, captured automatically from the transcript.
+The **diary** is **witnessed episodic memory**: what a character could have heard or seen in play, captured automatically after each completed cast reply. It is **not** a log of that character's own monologue alone.
 
 Each **diary segment** SHOULD include:
 
 | Field | Purpose |
 |-------|---------|
-| `text` | Formatted excerpt |
+| `text` | Formatted excerpt (witnessed dialogue window) |
 | `createdAt` | ISO timestamp |
 | `sourceSceneId` | Where it was captured |
 | `messageIds` | Provenance |
 | `dedupeKey` | Prevent duplicate capture |
 | `kind` | Optional category |
 
-Diary is **per character** (global), not per scene. Segments MAY reference which scene they came from.
+Diary is **per character** (global), not per scene. Segments MAY reference which scene they came from. In group scenes, multiple characters MAY hold segments with the **same** `text` and `dedupeKey` (fan-out; see §1.4).
 
-**Capture rules (SHOULD):**
+#### Capture trigger
 
-- Only **assistant** (character) messages, not operator or system lines.
+After each completed **cast** reply (`channelKind=scene`, assistant/character role):
+
+1. Build a **rolling window** snippet from recent **perceivable** scene lines ending with the new reply.
+2. Append one segment per target character (§1.4).
+
+Persona lines (`__persona__` or operator-as-persona) SHOULD appear in the snippet when they were perceivable at the scene. System lines, `channelKind=meta`, and lines the cast could not perceive MUST be excluded.
+
+#### Snippet content (output-only)
+
+Each line in the snippet MUST use `Name:\n{outputText}` (or equivalent attribution). Content MUST be **output-only** after `stripReasoning` ([16-learning.md](16-learning.md) MP-14–MP-17)—no reasoning, thinking, or hidden chain-of-thought.
+
+**`diaryWindowSize`** (configurable, bounded e.g. 1–20, default ~4) controls how many recent perceivable non-system lines form the snippet. It bounds **snippet width**, not total diary history.
+
+#### Retention vs injection
+
+| Concern | Rule |
+|---------|------|
+| **Store** | Append-only segment list per `characterId`; no mandatory max segment count in v1. Operator compaction/export MAY be added later. |
+| **Inject** | Mandatory recall and recall protocol use a **char budget** on the newest segments (~45% of `mandatoryRecallMaxChars`, capped by `diaryPreGenerationMaxChars`). |
+
+Long retention with bounded inject preserves continuity after restart without unbounded prompt growth.
+
+#### Capture hygiene (SHOULD)
+
 - Skip in-flight streaming duplicates.
-- Dedupe by hash of content + message id + swipe/generation id.
-- Rolling window: keep last N non-system messages (configurable, bounded e.g. 1–20).
+- Dedupe by hash of content + message id + swipe/generation id (`dedupeKey`).
+- Suppress cold-load / greeting noise per operator policy (e.g. first message on world open only).
 
 **Diary admin read:** Characters on `diaryAdminIds` MAY use a tool to read another character's diary. This MUST be allowlist-gated.
+
+### 1.4 Group fan-out (MP-20)
+
+When a diary segment is captured at scene `S`, the implementation MUST append the **same** segment (same `text`, `dedupeKey`, `sourceSceneId`, `messageIds`) to every **cast** `characterId` in `present` at `S`.
+
+| Rule | Level |
+|------|-------|
+| Fan-out targets are present cast only (not muted elsewhere, not persona unless explicitly configured) | MUST |
+| Whisper / DM lines excluded from snippet unless viewer would have perceived them | MUST |
+| Persona token excluded from fan-out targets by default (diary is cast episodic memory) | SHOULD |
+| Duplicate `dedupeKey` for a given `characterId` MUST NOT be written twice | MUST |
+
+Rationale: everyone in the room heard the exchange; each character keeps their own diary store for privacy and recall assembly (MP-1 still applies to **mind** pool).
 
 ## 2. Recall protocol
 
@@ -189,8 +225,9 @@ If the platform also injects **vector-retrieved** chat chunks as episodic memory
 | MP-3 | Locus store appends unless operator overwrite API exists. |
 | MP-4 | Recall protocol includes pool semantics and tool budget. |
 | MP-5 | Mandatory recall is authoritative; blocking mode restricts tools until memory tool used. |
-| MP-6 | Diary capture dedupes and scopes to assistant lines. |
+| MP-6 | Diary capture dedupes; snippets are witnessed perceivable scene dialogue (output-only), not assistant monologue-only. |
 | MP-7 | `diary_read_other` requires diary admin allowlist. |
+| MP-20 | On capture at scene S, fan-out the same segment to every present cast `characterId` (§1.4). |
 
 Extended requirements **MP-8–MP-19** (universal memory discipline, output-only storage, `stripReasoning`) are defined in [16-learning.md](16-learning.md).
 

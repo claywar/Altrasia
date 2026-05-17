@@ -2,6 +2,8 @@
 
 REST and realtime surfaces for WorldEngine v1 (single-operator). This is a sketch, not a full OpenAPI document.
 
+**Single domain path:** Web UI actions, agent tools, narrative presence ([03-locations-and-presence.md](03-locations-and-presence.md) §7), and future scheduled jobs MUST call the same core services (presence, comms, memory, scene CRUD)—not parallel state machines with divergent rules.
+
 ## 1. Transport
 
 | Mechanism | Use |

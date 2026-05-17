@@ -1,6 +1,6 @@
 # Appendix — Provenance (SillyTavern)
 
-> **Non-normative.** This appendix is for migration context only. Implementations MUST follow docs `00`–`21`, not SillyTavern behavior, unless explicitly adopted in normative text.
+> **Non-normative.** This appendix is for migration context only. Implementations MUST follow docs `00`–`22`, not SillyTavern behavior, unless explicitly adopted in normative text.
 
 This appendix maps WorldEngine concepts to the SillyTavern fork from which they were extracted. **Implementers** may use it for migration; the main specification intentionally avoids ST-specific paths.
 
@@ -18,6 +18,7 @@ This appendix maps WorldEngine concepts to the SillyTavern fork from which they 
 | 08-real-world-capabilities | `docs/ARCHITECT_FILESYSTEM.md`, `docs/SCHEDULED_TASKS.md`, `character_agent_tools/`, `src/scheduler/` |
 | 09-roles-and-privilege | `observer-omnibus.js`, `persona-guard.js`, `OPERATOR_ROSTER_API.md`, mempalace `diary_admin_avatars` |
 | 10-prompt-injection | mempalace extension prompts, `recall-bundle.js`, `scene-framing.js`, `openai.js` perception hooks |
+| 22-output-quality | OldPlans anti-loop policy; ST reasoning strip patterns (`reasoning.js`, model profiles) |
 
 ## Concept renaming (ST → WorldEngine)
 
@@ -37,14 +38,24 @@ This appendix maps WorldEngine concepts to the SillyTavern fork from which they 
 
 ## Key ST-only behaviors preserved in spec
 
-| Behavior | ST location |
-|----------|-------------|
-| Mind loci in `extension_settings.mempalace.mindByAvatar` | `mempalace/index.js` |
-| World loci in `chat_metadata.mempalace_world` | `mempalace/index.js` |
-| Fixture mirror keys `location:{id}:*` | `location-presence.js` `syncMempalaceLocationFixtures` |
-| Mandatory recall blocking filter | `mempalace/recall-bundle.js` |
-| One approval apply on filesystem approve | `architect-filesystem/service.js` |
-| Web plugin external to repo | `plugins/web-tools` on server |
+| Behavior | ST location | WorldEngine |
+|----------|-------------|-------------|
+| Mind loci in `extension_settings.mempalace.mindByAvatar` | `mempalace/index.js` | Mind pool per `characterId` |
+| World loci in `chat_metadata.mempalace_world` | `mempalace/index.js` | World pool per `sceneId` |
+| Fixture mirror keys `location:{id}:*` | `location-presence.js` `syncMempalaceLocationFixtures` | MP-2 |
+| Mandatory recall blocking filter | `mempalace/recall-bundle.js` | MP-5, MP-9 (default **on** in v1; ST default off) |
+| Witnessed diary + group fan-out | `mempalace/index.js` `tryAppendDiarySegment`, `getDiaryTargetAvatars` | MP-6, MP-17, MP-20 ([02-memory-palace.md](02-memory-palace.md) §1.3–1.4) |
+| One approval apply on filesystem approve | `architect-filesystem/service.js` | [07-approvals.md](07-approvals.md) |
+| Web plugin external to repo | `plugins/web-tools` on server | [06-web-tools.md](06-web-tools.md) |
+
+## Intentional spec upgrades (ST → WorldEngine)
+
+| Topic | SillyTavern behavior | WorldEngine norm |
+|-------|----------------------|------------------|
+| **Phone speakerphone** | Channel-global `mode: speakerphone` — all present at **both** linked locations hear the full call | Per-endpoint `speakerphone` on `endpoints[]` — bystanders at each scene hear one leg by default (C-8, C-9); toggle is independent per scene |
+| **Narrator / meta** | Observer digest and omnibus patterns | `scope: narrator` + `channelKind=meta` excluded from cast perception |
+| **Diary retention** | Append-only `diaryByAvatar`; window size = snippet width only | Same spirit: unbounded store, bounded mandatory-recall inject |
+| **Persistence** | `extension_settings` + per-location jsonl | SQLite canonical store ([11-data-model.md](11-data-model.md)) |
 
 ## Configuration snapshot (reference deployment)
 

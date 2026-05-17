@@ -22,6 +22,7 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | 4 | Knock signal on exit; target scene banner; persists after restart (CC-2) |
 | 5 | Observer meta-chat renames scene / fixture; framing updates (OBS-2, UI-OBS-CHAT) |
 | 6 | Restart server; presence, exits, signals hydrate (MP-11, CC-2) |
+| 7 | Group scene: Alice and Bob present; Alice public line → Bob replies; restart → Bob mandatory recall diary contains Alice's line (MP-6, MP-17, MP-20) |
 
 ## 3. Requirement matrix
 
@@ -43,6 +44,10 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | MP-8 | Observer generation includes mandatory recall block |
 | MP-9 | First model call with blocking on has only memory_* tools |
 | MP-11 | After restart, recall contains loci not lost transcript-only facts |
+| MP-6 | Diary segment text includes witnessed persona/cast lines in rolling window, not speaker-only |
+| MP-17 | Diary snippet uses stripped outputText per line; think blocks absent |
+| MP-20 | After Alice speaks and Bob replies in group scene, both diaries contain same dedupeKey segment |
+| MP-20b | After restart, Bob mandatory recall includes Alice's public line from diary without full transcript |
 | MP-14–MP-18 | stripReasoning fixtures: think tags not in diary/loci |
 | MP-16 | memory_store with reasoning-only rejected |
 
@@ -97,14 +102,21 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | C-5 / CC-10 | Mirror stub on remote transcript; perception rules apply |
 | CC-11 | Knock answer triggers generation or join |
 
-## 5. Future (non-blocking v1)
+## 5. Output quality (non-blocking v1)
+
+| ID | Test |
+|----|------|
+| OQ-1 | Roleplay model profile includes quality addendum when enabled |
+| OQ-3 | Reasoning blocks absent from next-turn visible transcript after strip |
+
+## 6. Future (non-blocking v1)
 
 | ID | Test |
 |----|------|
 | MAP-7 | Map regen fixture diff surfaces conflict |
 | IMG-1, IMG-8 | ComfyUI via queue; yields to Observer Direct |
 
-## 6. stripReasoning fixtures
+## 7. stripReasoning fixtures
 
 Maintain `tests/fixtures/strip-reasoning/` with:
 

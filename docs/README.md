@@ -40,6 +40,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | 19 | [19-comfyui-media.md](19-comfyui-media.md) | Future ComfyUI |
 | 20 | [20-product-principles.md](20-product-principles.md) | Wedge, presets, metrics |
 | 21 | [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1 track / v1.1 phone |
+| 22 | [22-output-quality.md](22-output-quality.md) | Convergence, anti-repetition, reasoning hygiene |
 | — | [appendix-glossary.md](appendix-glossary.md) | Term definitions |
 | — | [appendix-provenance.md](appendix-provenance.md) | SillyTavern source map (non-normative) |
 

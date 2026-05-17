@@ -40,6 +40,7 @@ Release-critical: Phase 2 spatial features before polish layers. Maps ([18-locat
 4. Knock signal tracked (CC-2); v1.1 adds phone play
 5. Observer meta-chat or tools update world; framing reflects
 6. Restart → state hydrates (MP-11)
+7. Group scene: both NPCs retain witnessed dialogue in diary after restart (MP-20)
 
 ### v1.1 addendum
 
@@ -97,6 +98,18 @@ Web UI **world wizard** (Phase 3):
 - Semantic embeddings, reflection
 - Plugins, maps, ComfyUI
 - Phone play (v1.1)
+
+### Deferred but intentional (not dropped)
+
+These capabilities are specified for later phases; they preserve prior design intent from the custom SillyTavern deployment and OldPlans:
+
+| Capability | Spec | Why deferred for v1 |
+|------------|------|---------------------|
+| **Server heartbeat** — scheduled tasks, webhooks, headless jobs when no browser is open | [08-real-world-capabilities.md](08-real-world-capabilities.md) | v1 focuses on spatial wedge + operator console; browser-tab idle activity is insufficient for a living world long-term |
+| Filesystem / web-tools | [07-approvals.md](07-approvals.md), [08-real-world-capabilities.md](08-real-world-capabilities.md) | Risk surface; Phase 4+ |
+| Phone play | [04-communication.md](04-communication.md), [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1.1; schema and knock signals ship in v1 |
+
+A world that only runs while the Web UI tab is open is an **anti-pattern** for the product vision; v1 MAY use tab-visible idle ticks, but the normative target remains server-side scheduling.
 
 ## 11. Implementation phases
 

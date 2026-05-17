@@ -5,7 +5,9 @@
 | **Architect** | Builder-role character with filesystem, scheduler, and character admin tools |
 | **Approval** | Operator gate before side-effecting tools apply |
 | **Cast** | All characters who are members of a world |
-| **Diary** | Episodic memory segments auto-captured from a character's assistant messages |
+| **Diary** | Witnessed episodic memory: rolling perceivable scene snippets, stored per character |
+| **Diary fan-out** | On capture, the same segment appended to every present cast member's diary (MP-20) |
+| **Witnessed diary** | Episodic memory of dialogue a character could perceive in play—not speaker-only monologue |
 | **Diary admin** | Character allowed to read other characters' diaries via tool |
 | **Discrete fixture** | Scene object that can be picked up or moved as a unit |
 | **Aggregate fixture** | Harvestable scene object with limited picks / depletion |
