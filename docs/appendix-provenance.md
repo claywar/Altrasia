@@ -1,5 +1,7 @@
 # Appendix — Provenance (SillyTavern)
 
+> **Non-normative.** This appendix is for migration context only. Implementations MUST follow docs `00`–`21`, not SillyTavern behavior, unless explicitly adopted in normative text.
+
 This appendix maps WorldEngine concepts to the SillyTavern fork from which they were extracted. **Implementers** may use it for migration; the main specification intentionally avoids ST-specific paths.
 
 ## Extension and module map

@@ -192,8 +192,11 @@ If the platform also injects **vector-retrieved** chat chunks as episodic memory
 | MP-6 | Diary capture dedupes and scopes to assistant lines. |
 | MP-7 | `diary_read_other` requires diary admin allowlist. |
 
+Extended requirements **MP-8–MP-19** (universal memory discipline, output-only storage, `stripReasoning`) are defined in [16-learning.md](16-learning.md).
+
 ## Related documents
 
 - [03-locations-and-presence.md](03-locations-and-presence.md) — fixtures and scene metadata
 - [05-tool-calling.md](05-tool-calling.md) — tool invoke loop
 - [10-prompt-injection.md](10-prompt-injection.md) — placement of recall blocks
+- [16-learning.md](16-learning.md) — MP-8–MP-19, stripReasoning

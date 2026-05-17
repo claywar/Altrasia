@@ -30,6 +30,7 @@ A **scene** is one place-and-time context within a world. Each scene has:
 - Its own **presence roster** (who is physically present).
 - Its own **fixtures** (persistent scene objects).
 - Metadata: human-readable name, description, timestamps.
+- **Exits** to other scenes (`exits[]` — doors, paths, portals) for cross-scene tracking ([21-cross-scene-awareness.md](21-cross-scene-awareness.md)).
 
 Scenes are the unit of spatial separation. Characters in Scene A do not automatically hear or see Scene B's public traffic unless communication rules bridge them (see [04-communication.md](04-communication.md)).
 
