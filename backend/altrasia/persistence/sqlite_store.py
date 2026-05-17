@@ -355,6 +355,48 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    def insert_commission(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO Commission (commissionId, worldId, assigneeCharacterId, targetSceneId,
+               brief, status, deliverablePolicy, deliverableLocusPrefix, deliverableLocusKeysJson,
+               allowedToolsJson, forceCompleteReason, createdAt, updatedAt)
+               VALUES (:commissionId, :worldId, :assigneeCharacterId, :targetSceneId, :brief,
+               :status, :deliverablePolicy, :deliverableLocusPrefix, :deliverableLocusKeysJson,
+               :allowedToolsJson, :forceCompleteReason, :createdAt, :updatedAt)""",
+            row,
+        )
+        self.conn.commit()
+
+    def get_commission(self, commission_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            "SELECT * FROM Commission WHERE commissionId = ?", (commission_id,)
+        )
+        return self._row(cur.fetchone())
+
+    def list_commissions(
+        self, world_id: str, *, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        if status:
+            cur = self.conn.execute(
+                """SELECT * FROM Commission WHERE worldId = ? AND status = ?
+                   ORDER BY createdAt DESC""",
+                (world_id, status),
+            )
+        else:
+            cur = self.conn.execute(
+                "SELECT * FROM Commission WHERE worldId = ? ORDER BY createdAt DESC",
+                (world_id,),
+            )
+        return self._rows(cur.fetchall())
+
+    def update_commission(self, commission_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [commission_id]
+        self.conn.execute(f"UPDATE Commission SET {cols} WHERE commissionId = ?", vals)
+        self.conn.commit()
+
     @staticmethod
     def json_loads(raw: str | None, default: Any = None) -> Any:
         if raw is None or raw == "":

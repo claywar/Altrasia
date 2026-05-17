@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { api, type OperatorSettings } from "../api/client";
 import { CharacterDraftPanel } from "./CharacterDraftPanel";
 import { SceneGeographyPanel } from "./SceneGeographyPanel";
+import { CastListPanel } from "./CastListPanel";
+import { CommissionsPanel } from "./CommissionsPanel";
 import type { Scene } from "../api/client";
 
 type Props = {
@@ -120,7 +122,9 @@ export function SettingsPanel({
             onChanged={() => onScenesChanged()}
           />
         )}
+        <CastListPanel worldId={worldId} />
         <CharacterDraftPanel worldId={worldId} onCharacterAdded={() => onCastChanged?.()} />
+        {scenes.length > 0 && <CommissionsPanel worldId={worldId} scenes={scenes} />}
         <section className="settings-section">
           <h3>Global heartbeat (v1.1)</h3>
           <p className="settings-muted">

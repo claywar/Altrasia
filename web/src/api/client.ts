@@ -75,6 +75,21 @@ export type CharacterDefinition = {
   modelProfile?: string;
 };
 
+export type Commission = {
+  commissionId: string;
+  worldId: string;
+  assigneeCharacterId: string;
+  targetSceneId: string;
+  brief: string;
+  status: string;
+  deliverablePolicy: string;
+  deliverableLocusPrefix?: string | null;
+  deliverableLocusKeys: string[];
+  forceCompleteReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CharacterDraft = {
   draftId: string;
   status: string;
@@ -165,6 +180,34 @@ export const api = {
     body: { locationName?: string; locationDescription?: string }
   ) =>
     request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  listCommissions: (worldId: string) =>
+    request<Commission[]>(`/worlds/${worldId}/commissions`),
+  createCommission: (
+    worldId: string,
+    body: {
+      assigneeCharacterId: string;
+      targetSceneId: string;
+      brief: string;
+      deliverablePolicy?: string;
+    }
+  ) =>
+    request<Commission>(`/worlds/${worldId}/commissions`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patchCommission: (
+    worldId: string,
+    commissionId: string,
+    body: {
+      status?: string;
+      deliverableLocusKeys?: string[];
+      forceCompleteReason?: string;
+    }
+  ) =>
+    request<Commission>(`/worlds/${worldId}/commissions/${commissionId}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),

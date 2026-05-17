@@ -207,7 +207,7 @@ export default function App() {
         payload.event === "scene.changed" ||
         payload.event === "presence.changed" ||
         payload.event === "scene.created" ||
-        payload.event === "scene.changed" ||
+        payload.event === "commission.updated" ||
         payload.event === "signal.created" ||
         payload.event === "signal.updated" ||
         payload.event.startsWith("channel.")

@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** v1 + v1.1 **feature-complete**; Phase 3 character draft + Architect geography + MAP-GROW. **42 pytest** + golden path 1–8.
+**Status:** v1 + v1.1 **feature-complete**; Phase 3 + v1.5 commission schema. **43 pytest** + golden path 1–8.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -50,7 +50,9 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | Architect World (Phase 3) | Scene CRUD + lock geography + launcher | Done (`world_geography.py`, `SceneGeographyPanel`) |
 | MAP-GROW-1/2 | In-map scene growth after lock (connected exits) | Done |
 | GET /characters | World cast list | Done |
-| Phase 3+ MapDraft, commissions | Spec only |
+| Commissions (v1.5 schema) | CRUD API + Settings UI (no runtime) | Done (`commissions.py`, `CommissionsPanel`) |
+| Phase 4+ commission runtime | Orchestrator triggers | Spec only |
+| Phase 3+ MapDraft | LLM layout draft | Spec only |
 
 ## Sprint 1 — inference + memory spike
 

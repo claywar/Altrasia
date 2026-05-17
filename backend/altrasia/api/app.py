@@ -21,6 +21,7 @@ from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.perception.scope import can_perceive
 from altrasia.fixtures.loader import load_fixture_by_id
 from altrasia.services import AppServices
+from altrasia.commissions import create_commission, list_commissions, patch_commission
 from altrasia.character_authoring import (
     approve_character_draft,
     create_character_draft,
@@ -133,6 +134,19 @@ class CreateSceneBody(BaseModel):
 class PatchSceneBody(BaseModel):
     locationName: str | None = None
     locationDescription: str | None = None
+
+
+class CreateCommissionBody(BaseModel):
+    assigneeCharacterId: str
+    targetSceneId: str
+    brief: str
+    deliverablePolicy: str = "mind"
+
+
+class PatchCommissionBody(BaseModel):
+    status: str | None = None
+    deliverableLocusKeys: list[str] | None = None
+    forceCompleteReason: str | None = None
 
 
 def _emit(svc: AppServices, world_id: str, event: str, data: dict[str, Any]) -> None:
@@ -920,6 +934,62 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/commissions",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_commissions(world_id: str, svc: AppServices = Depends(get_services)) -> list[dict]:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        return list_commissions(svc.store, world_id)
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/commissions",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_commission(
+        world_id: str, body: CreateCommissionBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        try:
+            com = create_commission(
+                svc.store,
+                world_id,
+                assignee_character_id=body.assigneeCharacterId,
+                target_scene_id=body.targetSceneId,
+                brief=body.brief.strip(),
+                deliverable_policy=body.deliverablePolicy,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "commission.updated", {"commissionId": com["commissionId"]})
+        return com
+
+    @app.patch(
+        "/api/v1/worlds/{world_id}/commissions/{commission_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def patch_commission_route(
+        world_id: str,
+        commission_id: str,
+        body: PatchCommissionBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        row = svc.store.get_commission(commission_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "commission not found")
+        try:
+            com = patch_commission(
+                svc.store,
+                commission_id,
+                status=body.status,
+                deliverable_locus_keys=body.deliverableLocusKeys,
+                force_complete_reason=body.forceCompleteReason,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "commission.updated", {"commissionId": commission_id})
+        return com
 
     @app.post(
         "/api/v1/worlds/{world_id}/members",
