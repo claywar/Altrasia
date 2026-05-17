@@ -29,7 +29,7 @@ All world-scoped routes assume one operator; no multi-tenant headers.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/worlds` | List worlds |
-| POST | `/worlds` | Create world (wizard payload) |
+| POST | `/worlds` | Create world (wizard payload or `{ "fixtureId": "demo-spatial-v1" }`) |
 | GET | `/worlds/{worldId}` | World detail + active scene |
 | PATCH | `/worlds/{worldId}` | Update name, activeSceneId, config |
 | GET | `/worlds/{worldId}/scenes` | List scenes |
@@ -76,7 +76,8 @@ Scopes v1: `public`, `whisper`, `dm`. v1.1 adds `phone` ([21-cross-scene-awarene
 | GET | `/worlds/{worldId}/spatial-graph` | Scenes, exits, elsewhere roster |
 | GET | `/worlds/{worldId}/signals` | Pending CrossSceneSignals |
 | POST | `/worlds/{worldId}/signals` | Create knock/ring/buzz |
-| PATCH | `/worlds/{worldId}/signals/{signalId}` | acknowledge / expire |
+| PATCH | `/worlds/{worldId}/signals/{signalId}` | Body `{ "status": "acknowledged" \| "expired" }` — does not enqueue generation (CC-11b) |
+| POST | `/worlds/{worldId}/signals/{signalId}/answer` | **v1.1** — explicit answer; MAY enqueue generation or join (CC-11) |
 
 v1.1: `/worlds/{worldId}/channels`, phone send; `PATCH .../channels/{id}/endpoints/{sceneId}` body `{ "speakerphone": true }` ([04-communication.md](04-communication.md) §3.4).
 
@@ -180,7 +181,30 @@ Subscribe: `WS /api/v1/worlds/{worldId}/events`
 
 Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then apply events where `eventSeq > lastSeen`.
 
-## 14. Requirements summary
+## 15. Character authoring (v1 API sketch, Phase 3 UI)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/characters/draft` | `{ "brief": "..." }` — LLM draft ([24-character-authoring.md](24-character-authoring.md)) |
+| GET | `/characters/draft/{draftId}` | Draft status + proposed `definitionJson` |
+| POST | `/characters` | `{ "draftId", "definitionJson?" }` — approve and create |
+| DELETE | `/characters/draft/{draftId}` | Discard draft |
+
+## 16. Operator settings (v1.1 heartbeat)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/operator/settings` | Includes `heartbeat.enabled`, `heartbeat.intervalSeconds`, `lastHeartbeatAt` |
+| PATCH | `/operator/settings` | Update global heartbeat ([08-real-world-capabilities.md](08-real-world-capabilities.md) HB-3) |
+
+## 17. World package (v1.1)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/worlds/{worldId}/package/export` | Zip: DB slice + `assets/` (DM-4) |
+| POST | `/worlds/import` | Multipart package upload |
+
+## 18. Requirements summary
 
 | ID | Requirement |
 |----|-------------|
@@ -195,3 +219,4 @@ Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then ap
 - [14-web-ui.md](14-web-ui.md)
 - [00-inference-runtime.md](00-inference-runtime.md)
 - [23-in-world-work.md](23-in-world-work.md)
+- [24-character-authoring.md](24-character-authoring.md)

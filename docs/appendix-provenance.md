@@ -1,6 +1,6 @@
 # Appendix — Provenance (SillyTavern)
 
-> **Non-normative.** This appendix is for migration context only. Implementations MUST follow docs `00`–`22`, not SillyTavern behavior, unless explicitly adopted in normative text.
+> **Non-normative.** This appendix is for migration context only. Implementations MUST follow docs `00`–`24`, not SillyTavern behavior, unless explicitly adopted in normative text.
 
 This appendix maps WorldEngine concepts to the SillyTavern fork from which they were extracted. **Implementers** may use it for migration; the main specification intentionally avoids ST-specific paths.
 
@@ -27,6 +27,7 @@ The SillyTavern extension also named `mempalace` (below) is **migration provenan
 | 09-roles-and-privilege | `observer-omnibus.js`, `persona-guard.js`, `OPERATOR_ROSTER_API.md`, mempalace `diary_admin_avatars` |
 | 10-prompt-injection | mempalace extension prompts, `recall-bundle.js`, `scene-framing.js`, `openai.js` perception hooks |
 | 22-output-quality | OldPlans anti-loop policy; ST reasoning strip patterns (`reasoning.js`, model profiles) |
+| 24-character-authoring | Greenfield — no ST PNG card import; operator brief → LLM draft → approve |
 
 ## Concept renaming (ST → WorldEngine)
 

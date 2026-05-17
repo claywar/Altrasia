@@ -12,6 +12,10 @@ Test matrix mapping requirement IDs to verifiable scenarios. v1 release gate: **
 
 Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 
+### GP-SETUP (optional helper)
+
+Golden path steps MAY start from fixture `demo-spatial-v1` ([tests/fixtures/demo-world/README.md](../tests/fixtures/demo-world/README.md)) instead of manual world construction. Not a separate release blocker if manual setup is documented.
+
 ## 2. Spatial golden path (v1 release)
 
 | Step | Verifies |
@@ -19,11 +23,20 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | 1 | Create world with ≥2 scenes, exits, 2 NPCs, persona in scene A |
 | 2 | Public line → NPC reply; whisper does not leak in other cast prompts |
 | 3 | Move persona to scene B; elsewhere roster shows NPC + scene label |
-| 4 | Knock signal on exit; target scene banner; persists after restart (CC-2) |
+| 4 | Knock on exit → `CrossSceneSignal` `pending`; target scene banner; persists after restart (CC-2, CC-11d). No auto-generation on knock create (CC-11a) |
 | 5 | Observer meta-chat renames scene / fixture; framing updates (OBS-2, UI-OBS-CHAT) |
 | 6 | Restart server; presence, exits, signals hydrate (MP-11, CC-2) |
 | 7 | Group scene: Alice and Bob present; Alice public line → Bob replies; restart → Bob mandatory recall diary contains Alice's line (MP-6, MP-17, MP-20) |
 | 8 | Same scene + Carol present: Alice public → Bob reactive; Bob line → Alice `agent_continue` before Carol idle (AO-19) |
+
+## 2b. Output quality (v1 blocking)
+
+| ID | Test |
+|----|------|
+| OQ-1 | Roleplay model profile includes quality addendum when enabled |
+| OQ-3 | Reasoning blocks absent from next-turn visible transcript after strip |
+
+Fixtures: `tests/fixtures/output-quality/` (see §9). Integration CI MUST run OQ-1 prompt assertion with mock LLM; OQ-3 MAY share strip-reasoning fixtures.
 
 ## 3. Requirement matrix
 
@@ -36,6 +49,10 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | LP-1 | Join removes from other scene present list |
 | CC-1 | exitsJson round-trip |
 | CC-3 | Elsewhere roster includes presentSceneId |
+| CC-11a | POST knock does not enqueue GenerationJob |
+| CC-11b | PATCH signal acknowledge/expire does not append NPC scene line |
+| CC-11c | Door `broken` + join requires explicit tool path; no silent fixture retcon |
+| CC-11d | Knock banner visible at target scene after persona switch |
 
 ### Memory
 
@@ -114,20 +131,34 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 
 ## 4. v1.1 gate (addendum)
 
+Single milestone: phone, global heartbeat, world package, full knock/phone answer ([20-product-principles.md](20-product-principles.md) Phase 2.5).
+
 | ID | Test |
 |----|------|
 | C-9 / CC-8 | Kitchen bystander hears Alice phone lines only, not Bob leg (handset) |
 | C-10 / CC-9 | Speakerphone on kitchen only: kitchen bystanders hear both sides; hall bystanders still one side |
 | C-11 | Speakerphone on both ends independently toggled |
 | C-5 / CC-10 | Mirror stub on remote transcript; perception rules apply |
-| CC-11 | Knock answer triggers generation or join |
+| CC-11 | Knock/phone answer may enqueue generation or join (operator-initiated) |
+| CC-12 | AO-2 `phone_target` / `knock_answered` triggers enabled |
+| HB-1 | With global heartbeat on and no WebSocket clients, `idle_timer` fires |
+| HB-2 | Heartbeat idle respects GpuResourceQueue (AO-12 when full) |
+| HB-3 | Heartbeat configured in server settings only |
+| HB-4 | UI shows global heartbeat state and last tick |
+| HB-5 | Default heartbeat off until operator enables |
+| DM-4 | World package export + import round-trip |
 
-## 5. Output quality (non-blocking v1)
+## 5. Character authoring (Phase 3 gate)
 
 | ID | Test |
 |----|------|
-| OQ-1 | Roleplay model profile includes quality addendum when enabled |
-| OQ-3 | Reasoning blocks absent from next-turn visible transcript after strip |
+| CHAR-1 | Draft generation not in scene transcript |
+| CHAR-2 | Draft not in world membership until approve |
+| CHAR-3 | Approve uses character API not fs_write |
+| CHAR-4 | Draft holds GpuResourceQueue lease |
+| CHAR-5 | No auto-persist on stream complete without approve |
+
+v1 spatial gate uses demo pre-seeded cast only ([24-character-authoring.md](24-character-authoring.md)).
 
 ## 6. Future (non-blocking v1)
 
@@ -172,6 +203,13 @@ Maintain `tests/fixtures/strip-reasoning/` with:
 - Expected `outputText`
 - Profile `qwen3.6-35b-a3b`
 
+## 10. Output quality fixtures
+
+Maintain `tests/fixtures/output-quality/` with:
+
+- Short multi-turn script for loop spot-check (nightly e2e)
+- Mock-LLM prompt snapshot asserting quality addendum when OQ-1 enabled
+
 ## Related documents
 
 - [02-memory.md](02-memory.md)
@@ -180,3 +218,4 @@ Maintain `tests/fixtures/strip-reasoning/` with:
 - [00-inference-runtime.md](00-inference-runtime.md)
 - [16-learning.md](16-learning.md)
 - [23-in-world-work.md](23-in-world-work.md)
+- [24-character-authoring.md](24-character-authoring.md)

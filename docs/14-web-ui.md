@@ -51,7 +51,8 @@ flowchart LR
 |----|-------------|
 | UI-S1 | World scene list with present / elsewhere badges (CC-3). |
 | UI-S2 | One-click switch active scene; persona auto-join policy visible. |
-| UI-S3 | "Knock on [exit]" creates CrossSceneSignal; target scene banner (CC-2). |
+| UI-S3 | "Knock on [exit]" creates `CrossSceneSignal`; target scene banner (CC-2). Operator MAY dismiss/expire signal (CC-11b). **No** v1 control that auto-triggers NPC generation on knock (CC-11a). |
+| UI-S4 | Signal list on digest/sidebar: pending knocks with dismiss/expire actions. |
 
 ## 5. Observer Studio (UI-OBS-CHAT)
 
@@ -98,7 +99,26 @@ Narrate/Intervene in play appear in **scene** transcript with `narrator` scope�
 | UI-C3 | "Restart-safe" when durable memory hydrated (MP-11). |
 | UI-C4 | Cancel in-flight generation (INF-5g). |
 
-## 10. In-world work (post-v1 UI)
+## 10. Operator / server settings (v1.1 heartbeat)
+
+| ID | Requirement |
+|----|-------------|
+| UI-H1 | Global **heartbeat** toggle, interval, `lastHeartbeatAt` ([08-real-world-capabilities.md](08-real-world-capabilities.md) HB-4, HB-5) — not per-world wizard field |
+| UI-H2 | Queue strip labels `idle_source=server_heartbeat` when applicable (UI-2) |
+
+Per-world **pause** remains UI-C1; distinct from global heartbeat.
+
+## 11. Character authoring (Phase 3 UI)
+
+| ID | Requirement |
+|----|-------------|
+| UI-CHAR-1 | Shared **CharacterDraft** flow: natural-language brief → LLM draft → preview → approve ([24-character-authoring.md](24-character-authoring.md)) |
+| UI-CHAR-2 | Entry points: **Observer Studio** and **world settings**; Phase 3 wizard step 3 embeds same component |
+| UI-CHAR-3 | Draft holds GpuResourceQueue slot in queue strip (CHAR-4) |
+
+v1 play MAY use demo pre-seeded cast without this UI.
+
+## 12. In-world work (post-v1 UI)
 
 | ID | Requirement |
 |----|-------------|
@@ -111,13 +131,13 @@ Narrate/Intervene in play appear in **scene** transcript with `narrator` scope�
 
 In-world work UI is an **affordance** on the operator console—not a separate application shell. Persona transcript remains hero (UI hierarchy unchanged).
 
-## 11. Non-goals (v1 UI)
+## 13. Non-goals (v1 UI)
 
 - SillyTavern preset matrix or PNG character cards
 - Expression sprites
 - Full map editor ([18-location-maps.md](18-location-maps.md) future)
 
-## 12. API binding
+## 14. API binding
 
 See [12-api-sketch.md](12-api-sketch.md). Desktop-first; responsive layout SHOULD be usable on large tablets.
 
@@ -127,3 +147,4 @@ See [12-api-sketch.md](12-api-sketch.md). Desktop-first; responsive layout SHOUL
 - [09-roles-and-privilege.md](09-roles-and-privilege.md)
 - [20-product-principles.md](20-product-principles.md)
 - [23-in-world-work.md](23-in-world-work.md)
+- [24-character-authoring.md](24-character-authoring.md)

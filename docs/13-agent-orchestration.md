@@ -57,7 +57,7 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 | `agent_tool` | Yes | Scene/comm tool initiated follow-up |
 | `agent_continue` | Yes | After cast scene line completes; optional NPC chain (AO-19) when enabled |
 | `phone_target` | v1.1 | CC-12 |
-| `knock_answered` | v1.1 | CC-11 |
+| `knock_answered` | v1.1 | Explicit operator answer action only (CC-11); not on knock create |
 | `commission_started` | Post-v1 | Operator/API started commission ([23-in-world-work.md](23-in-world-work.md)) |
 | `commission_tick` | Post-v1 | Scheduler tick while commission `running` |
 | `debate_turn` | Post-v1 | Debate phase advance at scene with `activity.kind=debate` |
@@ -164,7 +164,9 @@ Optional: hybrid embed rerank top-1 per character when `EmbeddingRecord` exists 
 |----|-------------|
 | AO-1 | Per-world FIFO queue of GenerationJobs with priority bands. |
 | AO-3a | Operator-initiated Observer jobs above idle NPC. |
-| AO-5 | Respect `maxGenerationsPerHour`, tab-hidden pause ([03-locations-and-presence.md](03-locations-and-presence.md)). |
+| AO-5 | Respect `maxGenerationsPerHour`; when global heartbeat off, MAY skip idle if browser tab hidden ([03-locations-and-presence.md](03-locations-and-presence.md)). |
+| AO-5a | `idle_timer` source MUST be recorded: `tab_visible` \| `server_heartbeat` (HB-1). |
+| AO-5b | When global heartbeat on, idle runs for all non-paused worlds with present cast regardless of WebSocket clients. |
 | AO-6 | Quiet vs full context presets for ambient generations. |
 | AO-10 | `pause_world` / `pause_scene` drains queue without dropping jobs; release GPU lease if in flight. |
 | AO-11 | No overlapping GPU leases across jobs. |
@@ -218,4 +220,5 @@ Post-generation **reflection** job MAY propose `memory_store` mind loci from out
 - [11-data-model.md](11-data-model.md)
 - [14-web-ui.md](14-web-ui.md)
 - [20-product-principles.md](20-product-principles.md)
+- [08-real-world-capabilities.md](08-real-world-capabilities.md)
 - [23-in-world-work.md](23-in-world-work.md)

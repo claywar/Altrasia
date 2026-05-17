@@ -23,7 +23,10 @@
 | **Observer Studio** | Web UI slide-over for meta channel tuning ([14-web-ui.md](14-web-ui.md)) |
 | **GpuResourceQueue** | Single-GPU scheduler for chat, embed, and future image jobs |
 | **channelKind** | `scene` (in-fiction transcript) or `meta` (Observer Studio only) |
-| **CrossSceneSignal** | Durable knock/ring/buzz between scenes (v1 track) |
+| **CrossSceneSignal** | Durable knock/ring/buzz between scenes; v1 tracks state; response emergent (CC-11a) |
+| **Character draft** | In-progress LLM-proposed `definitionJson` before operator approve ([24-character-authoring.md](24-character-authoring.md)) |
+| **doorState** | Exit field: `closed`, `unlocked`, `open`, `broken` ([03-locations-and-presence.md](03-locations-and-presence.md) §3.3) |
+| **World heartbeat** | Global server setting for `idle_timer` when UI disconnected ([08-real-world-capabilities.md](08-real-world-capabilities.md) §8) |
 | **Debate activity** | `scene.activity` overlay with phased turns and mind-pool synthesis (DEB-1) |
 | **EvidenceRecord** | Provenance metadata linked to a locus (MP-21) |
 | **focusTags** | Optional character definition tags for commission filtering |

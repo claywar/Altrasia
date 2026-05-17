@@ -70,6 +70,19 @@ Implementations SHOULD expose tools or operator APIs:
 
 LLM **scene tools** prefix example: `scene_fixture_*`, `scene_location_*`.
 
+### 3.3 Exit and door state
+
+Exit records in `exitsJson` ([11-data-model.md](11-data-model.md)) MAY include optional `doorState`:
+
+| Value | Meaning |
+|-------|---------|
+| `closed` | Default; passable only when opened/unlocked per story |
+| `unlocked` | May open without breaking |
+| `open` | Passage open |
+| `broken` | Forced entry; pair with presence move and framing update |
+
+Tools SHOULD include `scene_exit_set_state` (or equivalent) gated like other location mutations. Setting `broken` and moving a character into the target scene MUST be explicit — no silent cross-scene retcon ([21-cross-scene-awareness.md](21-cross-scene-awareness.md) CC-11c).
+
 ## 4. Inventory
 
 **Inventory** is **per character, world-scoped** (not duplicated per scene file):

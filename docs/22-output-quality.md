@@ -43,7 +43,7 @@ When the API returns separate reasoning fields:
 |-------|--------|
 | No duplicate spans in final reply | Fixture conversations; manual golden-path spot checks |
 | Reasoning absent from diary/loci | MP-14–MP-18 acceptance fixtures |
-| Policy present in assembled prompt | Integration test: generation request includes profile quality addendum when enabled |
+| Policy present in assembled prompt | Integration test: generation request includes profile quality addendum when enabled (v1 **blocking** — [17-acceptance-criteria.md](17-acceptance-criteria.md) §2b) |
 
 ## 6. Requirements summary
 
@@ -53,6 +53,8 @@ When the API returns separate reasoning fields:
 | OQ-2 | Sampling knobs documented in model profile YAML; safe defaults for roleplay preset. |
 | OQ-3 | stripReasoning runs before durable writes and before diary fan-out snippet assembly. |
 | OQ-4 | Quality inject uses distinct marker; stripped on regenerate like mandatory recall (PI-1 pattern). |
+
+**v1 release:** OQ-1 and OQ-3 are blocking CI gates ([17-acceptance-criteria.md](17-acceptance-criteria.md) §2b). Fixtures: `tests/fixtures/output-quality/`.
 
 ## Related documents
 

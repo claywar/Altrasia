@@ -40,7 +40,7 @@ Scenes are the unit of spatial separation. Characters in Scene A do not automati
 A **character** is an agent (typically LLM-driven) with:
 
 - A stable `characterId` and display name.
-- A **definition** (persona, instructions, model binding, optional `focusTags[]`)—implementation-specific.
+- A **definition** (`definitionJson`: persona, instructions, optional `focusTags[]`, `speechWeight`, `modelProfile`) — created via AI draft → operator approve ([24-character-authoring.md](24-character-authoring.md)) or operator/API seed.
 - **Global** per-character state: mind loci, diary segments (see [02-memory.md](02-memory.md)).
 - **World-scoped** inventory (worn, held, containers) while a member of a world.
 

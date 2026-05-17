@@ -120,7 +120,9 @@ See [02-memory.md](02-memory.md). No approval queue.
 
 Location CRUD, join/leave, summon, fixture/inventory ops. Gated by `locationAdminIds` + primary observer for destructive ops.
 
-Examples: `scene_location_list`, `scene_fixture_harvest`, `scene_inventory_give`.
+Examples: `scene_location_list`, `scene_fixture_harvest`, `scene_inventory_give`, `scene_exit_set_state` (door state on exits — [03-locations-and-presence.md](03-locations-and-presence.md) §3.3).
+
+Cast generation in a scene transcript MUST NOT create `Character` records; use [24-character-authoring.md](24-character-authoring.md) draft flow instead.
 
 ### 7.3 Web tools
 

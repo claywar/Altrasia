@@ -37,7 +37,7 @@ Release-critical: Phase 2 spatial features before polish layers. Maps ([18-locat
 1. World with ≥2 scenes, linked exits, 2+ NPCs, persona in scene A
 2. Public line → NPC reply; whisper isolated in prompts
 3. Persona moves to scene B; elsewhere roster correct
-4. Knock signal tracked (CC-2); v1.1 adds phone play
+4. Knock signal tracked (CC-2, CC-11a); emergent response optional; v1.1 adds phone play
 5. Observer meta-chat or tools update world; framing reflects
 6. Restart → state hydrates (MP-11)
 7. Group scene: both NPCs retain witnessed dialogue in diary after restart (MP-20)
@@ -66,14 +66,27 @@ Orchestration detail: [13-agent-orchestration.md](13-agent-orchestration.md) §6
 | p95 persona → grounded NPC reply | Document per hardware; show queue wait |
 | Restart continuity | MP-11 scenarios pass |
 | MP-1 leakage | Zero failures in CI |
+| OQ-1 / OQ-3 | Pass in v1 CI integration layer ([17-acceptance-criteria.md](17-acceptance-criteria.md) §2b) |
 
 ## 8. Onboarding
+
+### v1 — demo world (before wizard)
+
+Operators SHOULD reach first play without manual world construction:
+
+1. Open or import bundled **demo world** fixture `demo-spatial-v1` ([tests/fixtures/demo-world/README.md](../tests/fixtures/demo-world/README.md))
+2. Run spatial golden path or exploratory play
+3. Optional: `POST /api/v1/worlds` with `{ "fixtureId": "demo-spatial-v1" }`
+
+No wizard UI is required for v1 beyond **load demo**.
+
+### Phase 3 — world wizard
 
 Web UI **world wizard** (Phase 3):
 
 1. World name
 2. Two scenes + one exit
-3. Two characters + Observer
+3. Two characters + Observer (embeds [24-character-authoring.md](24-character-authoring.md) draft flow)
 4. Test generation
 5. Set diary window and max context defaults
 
@@ -81,7 +94,7 @@ Web UI **world wizard** (Phase 3):
 
 | Feature | Description |
 |---------|-------------|
-| World package | Zip: `worldengine.db` + `assets/` |
+| World package | Zip: `worldengine.db` + `assets/` — export + import gate **v1.1** ([11-data-model.md](11-data-model.md) DM-4) |
 | Auto-backup | On world save (implementation) |
 
 ## 10. v1 scope
@@ -92,7 +105,9 @@ Web UI **world wizard** (Phase 3):
 - Memory subsystem + mandatory recall + blocking
 - GpuResourceQueue + streaming UI
 - Observer Studio meta-chat + Narrate
-- Cross-scene tracking (CC-1–CC-7)
+- Cross-scene tracking (CC-1–CC-7, CC-11a–CC-11d)
+- Demo world fixture `demo-spatial-v1`
+- Output quality CI (OQ-1, OQ-3)
 
 ### SHOULD NOT ship (v1)
 
@@ -107,11 +122,13 @@ These capabilities are specified for later phases; they preserve prior design in
 
 | Capability | Spec | Why deferred for v1 |
 |------------|------|---------------------|
-| **Server heartbeat** — scheduled tasks, webhooks, headless jobs when no browser is open | [08-real-world-capabilities.md](08-real-world-capabilities.md) | v1 focuses on spatial wedge + operator console; browser-tab idle activity is insufficient for a living world long-term |
+| **World heartbeat** — global `idle_timer` when UI disconnected | [08-real-world-capabilities.md](08-real-world-capabilities.md) §8 | **v1.1** prerequisite (HB-1–HB-5); v1 uses tab-visible idle when heartbeat off |
+| **Scheduled tasks** — webhooks, cron, architect_fs jobs | [08-real-world-capabilities.md](08-real-world-capabilities.md) §2 | Phase 4+; distinct from world heartbeat |
 | Filesystem / web-tools | [07-approvals.md](07-approvals.md), [08-real-world-capabilities.md](08-real-world-capabilities.md) | Risk surface; Phase 4+ |
-| Phone play | [04-communication.md](04-communication.md), [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1.1; schema and knock signals ship in v1 |
+| Phone play | [04-communication.md](04-communication.md), [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1.1 bundle with heartbeat and world package |
+| World package import/export | [11-data-model.md](11-data-model.md) DM-4 | v1.1 |
 
-A world that only runs while the Web UI tab is open is an **anti-pattern** for the product vision; v1 MAY use tab-visible idle ticks, but the normative target remains server-side scheduling.
+A world that only runs while the Web UI tab is open is an **anti-pattern** for the product vision; v1 MAY use tab-visible idle ticks when global heartbeat is off. Operators enable heartbeat in **server settings** (default off at v1.1).
 
 ## 11. Implementation phases
 
@@ -119,7 +136,7 @@ A world that only runs while the Web UI tab is open is an **anti-pattern** for t
 |-------|--------|
 | 1 | Inference + memory spike (CLI) |
 | 2 | Spatial wedge + Web UI streaming |
-| 2.5 | Cross-scene comms (v1.1) |
+| 2.5 | **v1.1** — phone, global heartbeat, world package, CC-11 phone/knock answer |
 | 3 | Observer polish, approvals, inspector |
 | 3.5 | In-world work spec (commissions, debate activity, commons) — schema only; no v1 ship |
 | 4+ | Embeddings, Architect tools, web-tools, commission runtime |
@@ -141,4 +158,5 @@ v1 golden path and MUST-ship list are **unchanged**. In-world work MUST NOT dilu
 - [14-web-ui.md](14-web-ui.md)
 - [17-acceptance-criteria.md](17-acceptance-criteria.md)
 - [23-in-world-work.md](23-in-world-work.md)
+- [24-character-authoring.md](24-character-authoring.md)
 - [README.md](README.md)

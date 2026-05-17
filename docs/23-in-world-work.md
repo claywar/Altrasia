@@ -46,7 +46,7 @@ Unless the operator sets `deliverablePolicy` to `world_pool_at_target` or `both`
 | **COM-3** | On `done`, record `deliverableLocusKeys[]` on the commission. |
 | **COM-4** | World-pool or commons writes occur only when `deliverablePolicy` is `world_pool_at_target` or `both`. For `both`, COM-2 mind-store requirement still applies. |
 | **COM-5** | Post-completion Q&A: assignee with mandatory recall on SHOULD hit commission loci before re-fetching web ([06-web-tools.md](06-web-tools.md) §5). |
-| **COM-6** | Assignee MUST be **present** at `targetSceneId` for commission work to run. Status stays `queued` or `blocked` until presence matches. No headless research while elsewhere. |
+| **COM-6** | Assignee MUST be **present** at `targetSceneId` for commission work to run. Status stays `queued` or `blocked` until presence matches. No headless research while elsewhere. **No operator override** of presence requirement — strict diegetic rule. |
 
 **Overrides:**
 

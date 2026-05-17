@@ -1,6 +1,6 @@
 # 21 — Cross-Scene Awareness
 
-Cross-scene interaction (door knock, phone, speakerphone) is a **core product promise**. v1 **tracks** state; v1.1 **implements** play.
+Cross-scene interaction (door knock, phone, speakerphone) is a **core product promise**. v1 **tracks** signals and supports **emergent** responses (no required knock reply); v1.1 adds **phone play** and explicit answer/generation affordances.
 
 ## 1. Phasing
 
@@ -34,11 +34,27 @@ flowchart LR
 
 ### v1 operator affordances
 
-- "Knock on [exit]" → `CrossSceneSignal`
-- Target scene banner: "Someone knocks"
-- No auto phone conversation until v1.1
+- "Knock on [exit]" → `CrossSceneSignal` (`pending`)
+- Target scene banner: e.g. "Someone knocks"
+- Operator MAY **dismiss** or **expire** signal without story progression
+- Hearers MAY **ignore** (signal stays `pending`)
+- Progression is **emergent** — not a mandatory pipeline:
+  - Cast MAY speak via normal orchestration when operator drives the scene
+  - Location tools MAY set exit `doorState` (`closed`, `unlocked`, `open`, `broken`) or fixture door state ([03-locations-and-presence.md](03-locations-and-presence.md))
+  - Forced entry: break door → explicit tool/Observer action + `scene_join` / presence — no silent retcon
+- No auto-generation on knock create (CC-11a)
+- No primary UI button that forces NPC reply on knock (v1.1 phone adds explicit answer flows)
 
 API: [12-api-sketch.md](12-api-sketch.md) spatial-graph and signals routes.
+
+### v1 emergent knock requirements (CC-11a–CC-11d)
+
+| ID | Requirement |
+|----|-------------|
+| CC-11a | Creating a knock MUST NOT enqueue `GenerationJob` by itself |
+| CC-11b | Acknowledging, dismissing, or expiring a signal MUST NOT imply an NPC spoke |
+| CC-11c | Door/exit state changes MUST use location tools or Observer world edits (OBS-2); breaking in MUST be explicit |
+| CC-11d | Golden path verifies signal + banner persistence, not mandatory NPC reply |
 
 ## 3. v1.1 — implement play (CC-8–CC-13)
 
@@ -47,8 +63,8 @@ API: [12-api-sketch.md](12-api-sketch.md) spatial-graph and signals routes.
 | CC-8 | **Handset (default):** call participants hear both sides; present bystanders hear **one side** only (local `speakerSceneId`) per C-8, C-9. |
 | CC-9 | **Speakerphone:** optional **per endpoint**; when on at a scene, present bystanders there hear both sides; other end unaffected per C-10, C-11. |
 | CC-10 | Mirror stubs on remote transcript with `mirrorOf` ref; mirrors obey same perception rules ([04-communication.md](04-communication.md) §4). |
-| CC-11 | Knock answer may enqueue generation or join/channel. |
-| CC-12 | AO-2 phone/knock triggers enabled. |
+| CC-11 | Operator-initiated knock/phone **answer** MAY enqueue generation or join/channel (not automatic on signal create). |
+| CC-12 | AO-2 `phone_target` and `knock_answered` triggers enabled for explicit answer actions. |
 | CC-13 | Persona compose: phone + **per-scene** speakerphone toggle. |
 
 ## 4. Perception (v1)
@@ -74,13 +90,14 @@ Added in [04-communication.md](04-communication.md): omniscient description at s
 - Live phone conversation
 - Mirror append to remote scenes
 - Speakerphone
-- Cross-scene generation eligibility
+- Auto-generation when knock is created
+- Required knock response pipeline
 
 ## 7. Requirements summary
 
 | ID | Phase |
 |----|-------|
-| CC-1–CC-7 | v1 |
+| CC-1–CC-7, CC-11a–CC-11d | v1 |
 | CC-8–CC-13 | v1.1 |
 
 ## Related documents

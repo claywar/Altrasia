@@ -156,9 +156,56 @@ Operator MUST paste **Architect system prompt** fragment covering: mandatory rec
 
 Filesystem and web tools invoked during a **commission** ([23-in-world-work.md](23-in-world-work.md)) follow the same approval and allowlist rules. Commission completion MUST persist findings to assignee mind pool by default (COM-2), not transcript-only.
 
+## 8. World heartbeat (v1.1)
+
+Distinct from §2 **scheduled tasks** (webhooks, cron). World heartbeat runs **`idle_timer`** orchestration when no browser is connected.
+
+### 8.1 Purpose
+
+Allow background NPC rotation (`AO-4`) while the server process is up, without requiring an open Web UI tab. Tab-visible idle remains when heartbeat is off ([20-product-principles.md](20-product-principles.md)).
+
+### 8.2 Configuration (global)
+
+Stored in **server/operator settings** (e.g. `~/.worldengine/config.yaml`), not per-world `configJson`:
+
+```yaml
+heartbeat:
+  enabled: false              # HB-5: default off at v1.1
+  intervalSeconds: 60         # minimum 5
+```
+
+| Key | Description |
+|-----|-------------|
+| `heartbeat.enabled` | Master switch (HB-1) |
+| `heartbeat.intervalSeconds` | Tick interval for eligible worlds |
+
+Individual worlds MAY still be **paused** via operator UI (UI-C1); paused worlds MUST NOT receive heartbeat idle ticks.
+
+### 8.3 Behavior
+
+| ID | Requirement |
+|----|-------------|
+| HB-1 | When `heartbeat.enabled` is true and server is up, orchestrator MUST enqueue `idle_timer` jobs without any WebSocket client connected |
+| HB-2 | Heartbeat MUST NOT bypass GpuResourceQueue or AO-11 (INF-5, AO-12) |
+| HB-3 | Configuration is global only — not per-world flags |
+| HB-4 | Web UI operator/server settings show enabled state, interval, `lastHeartbeatAt` |
+| HB-5 | Default `enabled: false`; operator opts in |
+
+Eligible worlds: all non-paused worlds in the operator database with at least one present NPC. Fairness across multiple worlds is implementation-defined; SHOULD round-robin worlds per tick cap.
+
+Jobs MUST set idle metadata `source: server_heartbeat` (AO-5a). Queue strip shows heartbeat origin (UI-2).
+
+### 8.4 Explicitly out of scope
+
+- Webhooks and external scheduled tasks (§2)
+- Commission ticks (post-v1)
+- Running when server process is stopped
+
 ## Related documents
 
 - [07-approvals.md](07-approvals.md)
 - [23-in-world-work.md](23-in-world-work.md)
 - [09-roles-and-privilege.md](09-roles-and-privilege.md)
 - [05-tool-calling.md](05-tool-calling.md)
+- [13-agent-orchestration.md](13-agent-orchestration.md)
+- [20-product-principles.md](20-product-principles.md)

@@ -8,11 +8,11 @@ This repository is the **normative specification** for a greenfield implementati
 
 All specifications live under [`docs/`](docs/README.md). Start with the docs index for reading order, architecture, and v1 scope.
 
-**Magnum opus extensions** (inference runtime, data model, API, orchestration, Web UI, cross-scene roadmap, acceptance criteria, output quality, in-world work) are documented in docs `00` and `11`–`23`.
+**Magnum opus extensions** (inference runtime, data model, API, orchestration, Web UI, cross-scene roadmap, acceptance criteria, output quality, in-world work, character authoring) are documented in docs `00` and `11`–`24`.
 
 ## Status
 
-- **Specs:** v1 design package complete (docs 00–23; in-world work post-v1)
+- **Specs:** v1 design package complete (docs 00–24; product-risk refinements applied; in-world work post-v1)
 - **Implementation:** not started — see [Development](#development) below
 
 Concepts were extracted from a prior SillyTavern deployment and reframed greenfield. See [`docs/appendix-provenance.md`](docs/appendix-provenance.md) for source mapping (implementers only).
@@ -45,9 +45,15 @@ packages/domain, memory, perception, orchestrator, inference, tools, persistence
 
 Two scenes, presence, whisper perception, elsewhere roster, Web UI with streaming ([docs/14-web-ui.md](docs/14-web-ui.md)).
 
+**First run:** open bundled demo world `demo-spatial-v1` ([tests/fixtures/demo-world/README.md](tests/fixtures/demo-world/README.md)) — no wizard required for v1.
+
 ### Acceptance
 
-Release gate: [docs/17-acceptance-criteria.md](docs/17-acceptance-criteria.md) spatial golden path.
+Release gate: [docs/17-acceptance-criteria.md](docs/17-acceptance-criteria.md) spatial golden path + output quality (OQ-1, OQ-3).
+
+### v1.1 (after v1 tag)
+
+Phone play, global server heartbeat, world package export/import, full knock/phone answer flows ([docs/20-product-principles.md](docs/20-product-principles.md) Phase 2.5).
 
 ## License
 

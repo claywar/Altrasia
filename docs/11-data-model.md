@@ -9,7 +9,7 @@ This document formalizes persistent entities, SQLite storage, and event payloads
 | DM-1 | v1 persistence is **SQLite only** — one database per operator (e.g. `~/.worldengine/operator.db` or config path). |
 | DM-2 | Binary assets (future images) live under `assets/{worldId}/...` with paths referenced from DB rows. |
 | DM-3 | Scene transcripts are **not** authoritative JSON files on disk; the database is source of truth. |
-| DM-4 | **World package** export/import: zip containing `worldengine.db` slice or full DB + `assets/` ([20-product-principles.md](20-product-principles.md)). |
+| DM-4 | **World package** export/import: zip containing `worldengine.db` slice or full DB + `assets/` ([20-product-principles.md](20-product-principles.md)). Implementation gate **v1.1**; schema normative in v1. |
 
 ## 2. Entity overview
 
@@ -71,11 +71,14 @@ erDiagram
   "exitId": "kitchen-door",
   "label": "Oak door to hall",
   "targetSceneId": "scene-hall",
-  "kind": "door"
+  "kind": "door",
+  "doorState": "closed"
 }
 ```
 
 `kind` MUST be one of: `door`, `path`, `portal`.
+
+`doorState` (optional on door exits): `closed` \| `unlocked` \| `open` \| `broken` ([03-locations-and-presence.md](03-locations-and-presence.md) §3.3).
 
 ### 3.3 Character
 

@@ -42,6 +42,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | 21 | [21-cross-scene-awareness.md](21-cross-scene-awareness.md) | v1 track / v1.1 phone |
 | 22 | [22-output-quality.md](22-output-quality.md) | Convergence, anti-repetition, reasoning hygiene |
 | 23 | [23-in-world-work.md](23-in-world-work.md) | Commissions, debate activity, briefing fixtures, commons (post-v1) |
+| 24 | [24-character-authoring.md](24-character-authoring.md) | AI draft → approve character creation |
 | — | [appendix-glossary.md](appendix-glossary.md) | Term definitions |
 | — | [appendix-provenance.md](appendix-provenance.md) | SillyTavern source map (non-normative) |
 
@@ -91,12 +92,23 @@ flowchart TB
 - GpuResourceQueue and reference model Qwen3.6-35B-A3B
 - Memory subsystem, mandatory recall, output-only durable storage
 - Observer Studio (meta channel) and narrator mode
-- Public, whisper, DM; cross-scene exits and signals
+- Public, whisper, DM; cross-scene exits and emergent knock signals (CC-11a–CC-11d)
+- Demo world fixture `demo-spatial-v1` for first session ([tests/fixtures/demo-world/README.md](../tests/fixtures/demo-world/README.md))
+- Output quality CI gate OQ-1, OQ-3 ([17-acceptance-criteria.md](17-acceptance-criteria.md) §2b)
+- Character authoring **spec + API** ([24-character-authoring.md](24-character-authoring.md)); UI tests Phase 3
+
+### v1.1 (Phase 2.5)
+
+- Phone, speakerphone, mirror stubs ([21-cross-scene-awareness.md](21-cross-scene-awareness.md) CC-8–CC-13)
+- Global server heartbeat ([08-real-world-capabilities.md](08-real-world-capabilities.md) §8)
+- World package export + import ([11-data-model.md](11-data-model.md) DM-4)
+- Explicit knock/phone answer flows (CC-11, CC-12)
 
 ### Out of scope (v1)
 
 - SillyTavern-compatible UI, preset matrix, or character card PNG format
-- Phone, speakerphone, mirror stubs (**v1.1** — [21-cross-scene-awareness.md](21-cross-scene-awareness.md))
+- Phone play and global heartbeat (**v1.1** — above)
+- World package import/export (**v1.1**)
 - Image generation, location maps (**future** — [18](18-location-maps.md), [19](19-comfyui-media.md))
 - Vector RAG as primary episodic memory (diary is canonical)
 - Multi-tenant accounts
