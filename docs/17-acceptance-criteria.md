@@ -138,6 +138,9 @@ Normative UI requirements: [14-web-ui.md](14-web-ui.md). Wireframes: [guides/web
 | UI-SET-* | Change world preset and persona auto-join without editing raw JSON |
 | UI-WLD-1 | One active world; load demo without multi-world home |
 | UI-S4 / CC-11a | Knock shows banner + Signals; no auto NPC line on knock create |
+| UI-MAP-ACC1–4 | Mini-map structured layout: two-scene demo, travelSteps edge length, direction placement, exit↔edge highlight ([14-web-ui.md](14-web-ui.md) §21.1) |
+| UI-MAP-ACC5 | v1.1: `mapShape: circle` renders circular footprint; `exitAnchor` on correct rim ([14-web-ui.md](14-web-ui.md) §21.2) |
+| UI-MAP-ACC6–8 | v1.1: building envelope around grouped scenes; exterior exit crosses wall; SceneHeader `Structure › Scene` breadcrumb ([14-web-ui.md](14-web-ui.md) §21.3) |
 
 ### Meta channel
 

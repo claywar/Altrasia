@@ -75,13 +75,124 @@ Scopes v1: `public`, `whisper`, `dm`. v1.1 adds `phone` ([21-cross-scene-awarene
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/worlds/{worldId}/spatial-graph` | Scenes, exits, elsewhere roster |
+| GET | `/worlds/{worldId}/spatial-graph` | Scenes, exits, computed layout for mini-map ([14-web-ui.md](14-web-ui.md) UI-MAP-D*) |
 | GET | `/worlds/{worldId}/signals` | Pending CrossSceneSignals |
 | POST | `/worlds/{worldId}/signals` | Create knock/ring/buzz |
 | PATCH | `/worlds/{worldId}/signals/{signalId}` | Body `{ "status": "acknowledged" \| "expired" }` — does not enqueue generation (CC-11b) |
 | POST | `/worlds/{worldId}/signals/{signalId}/answer` | **v1.1** — explicit answer; MAY enqueue generation or join (CC-11) |
 
 v1.1: `/worlds/{worldId}/channels`, phone send; `PATCH .../channels/{id}/endpoints/{sceneId}` body `{ "speakerphone": true }` ([04-communication.md](04-communication.md) §3.4).
+
+**GET spatial-graph response (v1):**
+
+```json
+{
+  "activeSceneId": "scene-hall",
+  "nodes": [
+    {
+      "sceneId": "scene-hall",
+      "locationName": "Hall",
+      "isActive": true,
+      "presentCount": 2,
+      "structureId": "manor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": { "w": 18, "h": 12 },
+      "layout": { "x": 50, "y": 50 },
+      "mapPositionAuthor": { "x": 50, "y": 50 }
+    },
+    {
+      "sceneId": "scene-kitchen",
+      "locationName": "Kitchen",
+      "isActive": false,
+      "presentCount": 1,
+      "structureId": "manor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": { "w": 14, "h": 10 },
+      "layout": { "x": 50, "y": 28 }
+    },
+    {
+      "sceneId": "scene-keep",
+      "locationName": "Round Keep",
+      "isActive": false,
+      "presentCount": 0,
+      "structureId": "keep",
+      "mapZone": "Upper ward",
+      "mapShape": "circle",
+      "mapSize": { "w": 16, "h": 16 },
+      "layout": { "x": 72, "y": 50 }
+    },
+    {
+      "sceneId": "scene-bailey",
+      "locationName": "Bailey",
+      "isActive": false,
+      "presentCount": 0,
+      "layout": { "x": 72, "y": 78 }
+    }
+  ],
+  "structures": [
+    {
+      "structureId": "manor",
+      "displayName": "Manor House",
+      "kind": "building",
+      "containsActiveScene": true,
+      "boundary": {
+        "shape": "hull",
+        "vertices": [
+          { "x": 38, "y": 22 },
+          { "x": 62, "y": 22 },
+          { "x": 62, "y": 58 },
+          { "x": 38, "y": 58 }
+        ]
+      }
+    },
+    {
+      "structureId": "keep",
+      "displayName": "Round Keep",
+      "kind": "building",
+      "containsActiveScene": false,
+      "boundary": { "shape": "hull", "vertices": [] }
+    }
+  ],
+  "edges": [
+    {
+      "exitId": "hall-kitchen-door",
+      "sourceSceneId": "scene-hall",
+      "targetSceneId": "scene-kitchen",
+      "label": "Door to kitchen",
+      "kind": "door",
+      "travelSteps": 1,
+      "direction": "N",
+      "doorState": "closed",
+      "exitAnchor": { "side": "N", "offset": 0.5 },
+      "crossesStructure": false,
+      "interiorOnly": true
+    },
+    {
+      "exitId": "hall-bailey-gate",
+      "sourceSceneId": "scene-hall",
+      "targetSceneId": "scene-bailey",
+      "label": "Postern gate",
+      "kind": "door",
+      "travelSteps": 1,
+      "direction": "S",
+      "crossesStructure": true
+    }
+  ],
+  "layout": {
+    "coordinateSpace": "normalized-0-100",
+    "algorithm": "layered-bfs-v1",
+    "architectureStyle": "diagram"
+  }
+}
+```
+
+v1.1+: `nodes[].mapShape`, `structureId`; `structures[].boundary`; `edges[].exitAnchor`, `crossesStructure`; world `architectureStyle`. See [14-web-ui.md](14-web-ui.md) §21.2–§21.3.
+
+- `nodes[].layout` — `{ x, y }` in `0–100` space; clients render at these coordinates. Computed by server when scene has no `mapPosition` hint ([11-data-model.md](11-data-model.md)).
+- `nodes[].mapPositionAuthor` — present only when world data supplied `mapPosition`; informational.
+- `edges[]` — one row per exit from source scene; bidirectional worlds MAY emit reverse edges or client synthesizes reverse with same `travelSteps`.
 
 ## 7. Generation
 

@@ -24,7 +24,7 @@ flowchart LR
 
 | ID | Requirement |
 |----|-------------|
-| CC-1 | `exits[]` on each scene: exitId, label, targetSceneId, kind (`door` \| `path` \| `portal`). |
+| CC-1 | `exits[]` on each scene: exitId, label, targetSceneId, kind (`door` \| `path` \| `portal`). Optional: `travelSteps` (1–3), `direction` (8-way compass) for mini-map distance/layout ([14-web-ui.md](14-web-ui.md) UI-MAP-D3–D4). |
 | CC-2 | `CrossSceneSignal`: knock \| ring \| buzz; status pending \| acknowledged \| expired; durable. |
 | CC-3 | Elsewhere roster includes `presentSceneId`. |
 | CC-4 | `activeChannels[]` shape reserved; empty in v1. |

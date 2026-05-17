@@ -73,7 +73,7 @@ flowchart LR
 | UI-LAY-3 | Center column `min-width` ≥ 640px (768px target); collapse **left** before **right**; then icon-collapse right rail. |
 | UI-LAY-4 | Below 1280px width: right rail becomes **drawer**; left panel hidden or sheet; sections accordion inside drawer. |
 | UI-LAY-5 | Multi-scene digest (UI-D1) lives in **Observer Studio**, not pinned on right rail. |
-| UI-LAY-6 | Active scene highlighted in **right Places** and **center SceneHeader** (dual cue). |
+| UI-LAY-6 | Active scene highlighted in **right Places** and **center SceneHeader** (dual cue). When scene has `structureId`, header shows **`{structure} › {scene}`** (UI-MAP-N1). |
 
 **Right rail section order:**
 
@@ -285,9 +285,9 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 |-----------|-----------|-------|
 | `SceneNavList` / `SceneNavItem` | UI-S1–S2 | Right rail Places |
 | `SpatialPanel` | UI-LAY-2 | Left: mini-map, exits, fixtures |
-| `SceneHeader` | UI-LAY-6 | Center top |
+| `SceneHeader` | UI-LAY-6, UI-MAP-N1 | Center top; structure › scene breadcrumb when in a building ([§21.3](#213-building-envelopes-and-navigation)) |
 | `ExitList` | UI-S3 | Knock actions |
-| `SpatialGraphMiniMap` | CC-1 | Left panel |
+| `SpatialGraphMiniMap` | CC-1, UI-MAP-* | Left panel; structured layout ([§21.1](#211-spatialgraphminimap-v1-structured-layout)) |
 | `CrossSceneSignalBanner` | UI-S3 | Center header |
 | `SignalSidebarList` | UI-S4 | Right rail Signals |
 | `PresenceRoster` / `ElsewhereRoster` | UI-D2 | Right rail People |
@@ -321,9 +321,10 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 
 | Question | UI answer |
 |----------|-----------|
-| Where am I? | `SceneHeader` + active scene in right **Places** |
+| Where am I? | `SceneHeader` structure › scene breadcrumb + active scene in **Places**; you-are-here inside building envelope on mini-map ([§21.3](#213-building-envelopes-and-navigation)) |
 | Who is here? | `PresenceRoster` |
 | Who is elsewhere? | `ElsewhereRoster` |
+| How far is another room? | `SpatialGraphMiniMap` edge length + hop/`travelSteps`; optional compass ([§21.1](#211-spatialgraphminimap-v1-structured-layout)) |
 | How do I go elsewhere? | Click scene in **Places**; exits in left **SpatialPanel** |
 | How do I signal another room? | Knock on exit → banner + **Signals** |
 | What is in this room? | Fixture chips + description |
@@ -332,9 +333,237 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 
 | Phase | UI |
 |-------|-----|
-| v1 | `SpatialGraphMiniMap` in left panel; scene nav in Places |
-| v1.1 | Optional scene thumbnail placeholder |
-| Post-v1 | `MapCanvas` per [18-location-maps.md](18-location-maps.md) |
+| v1 | `SpatialGraphMiniMap` — structured layout ([§21.1](#211-spatialgraphminimap-v1-structured-layout)); rectangular nodes default |
+| v1.1 | **Architectural shapes** ([§21.2](#212-architectural-shapes-and-diagrams)); **building envelopes** ([§21.3](#213-building-envelopes-and-navigation)); optional scene thumbnail |
+| Post-v1 | `MapCanvas` + `mapArtifact` footprints feed mini-map simplification ([18-location-maps.md](18-location-maps.md)) |
+
+### 21.1 SpatialGraphMiniMap (v1 structured layout)
+
+The mini-map is a **read-only spatial diagram**, not a decorative icon cluster. It MUST help the operator judge **where scenes sit relative to each other** and **how far** a move or knock travels. Scene switching remains in right-rail **Places** (UI-S1); the mini-map orients; it does not replace the scene list.
+
+#### Goals (UI-MAP-G*)
+
+| ID | Goal |
+|----|------|
+| UI-MAP-G1 | **Structured layout** — nodes and edges on a consistent grid or orthogonal routing; no force-directed “hairball” default |
+| UI-MAP-G2 | **Distance readable** — edge length and/or hop labels reflect travel cost between scenes |
+| UI-MAP-G3 | **Direction readable** — when authored, exits show compass or relative bearing (e.g. Kitchen **north** of Hall) |
+| UI-MAP-G4 | **Active scene obvious** — larger node, accent border, pinned near center of map viewport (UI-5) |
+| UI-MAP-G5 | **Exit linkage** — clicking/hovering an exit in `ExitList` highlights the corresponding edge; hovering an edge highlights exit row |
+| UI-MAP-G6 | **Architecture-readable** — scene footprint shape reflects building geometry (e.g. circular keep renders as a circle, not a generic box) |
+| UI-MAP-G7 | **Diagram clarity** — orthogonal edge routing around shapes; exits attach on the correct face of a footprint |
+| UI-MAP-G8 | **Building envelope** — outer boundary shows the building as a whole; operator sees which structure they are in and where the active room sits inside it |
+| UI-MAP-G9 | **Interior vs exterior** — exits that leave a structure cross the outer wall; interior room-to-room exits stay inside the envelope |
+
+#### Data (UI-MAP-D*)
+
+Layout is computed server-side in `GET .../spatial-graph` ([12-api-sketch.md](12-api-sketch.md)) from `exits[]` (CC-1) plus optional hints below. Clients MUST NOT invent geometry that contradicts API `layout` positions.
+
+| ID | Rule |
+|----|------|
+| UI-MAP-D1 | Each **node** = one `sceneId`: `locationName`, `isActive`, `presentCount`, computed `{ x, y }` in normalized space `0–100`, optional `zone` label |
+| UI-MAP-D2 | Each **edge** = one exit: `exitId`, `label`, `kind`, `sourceSceneId`, `targetSceneId`, optional `travelSteps`, optional `direction`, optional `doorState` |
+| UI-MAP-D3 | **`travelSteps`** (optional on exit): integer `1` \| `2` \| `3` — abstract distance. Default `1` when omitted. Drives edge length in the mini-map |
+| UI-MAP-D4 | **`direction`** (optional on exit): `N` \| `NE` \| `E` \| `SE` \| `S` \| `SW` \| `W` \| `NW` — bearing from source scene toward target. Used for edge arrow and layout solver bias |
+| UI-MAP-D5 | **`mapPosition`** (optional on scene): `{ "x": 0–100, "y": 0–100 }` — author anchor. Layout solver MUST respect anchors when present; MAY nudge slightly to avoid overlap |
+| UI-MAP-D6 | **`mapZone`** (optional on scene): string (e.g. `Ground floor`, `Upper hall`) — renders as horizontal band or labeled row in the mini-map |
+| UI-MAP-D7 | Worlds with **no** hints: server runs deterministic layered layout from active scene (BFS by `travelSteps`, direction ties broken lexicographically by `sceneId`) |
+| UI-MAP-D8 | **`mapShape`** (optional on scene, v1.1+): footprint primitive — see [§21.2](#212-architectural-shapes-and-diagrams). Default `rect` when omitted |
+| UI-MAP-D9 | **`exitAnchor`** (optional on exit, v1.1+): where the edge meets the source footprint — `side` (`N`\|`E`\|`S`\|`W`) + `offset` `0–1` along that side |
+| UI-MAP-D10 | **`mapFootprint`** (optional on scene, post-v1 / rich worlds): polygon vertices or SVG path in normalized space; overrides `mapShape` for render |
+
+**Exit record extensions** (stored in `exitsJson`, [11-data-model.md](11-data-model.md)): `travelSteps`, `direction`, `exitAnchor` are optional; omission MUST NOT break CC-1 round-trip.
+
+#### Rendering (UI-MAP-R*)
+
+| ID | Rule |
+|----|------|
+| UI-MAP-R1 | **Node footprint**: render per `mapShape` / `mapFootprint` ([§21.2](#212-architectural-shapes-and-diagrams)); scene name centered inside or below; active scene uses `active-scene` stroke; fill `surface-2`, stroke `border` |
+| UI-MAP-R2 | **Edge length**: base unit × `travelSteps` (1 = short, 2 = medium, 3 = long); parallel edges between same pair MAY offset slightly |
+| UI-MAP-R3 | **Edge label**: exit `label` on hover or when space allows; `kind` icon: door ║, path ─, portal ◇ |
+| UI-MAP-R4 | **Direction**: when `direction` set, edge terminates with arrow toward target; optional compass rose inset (8-way) when any edge in view has direction |
+| UI-MAP-R5 | **Zones**: scenes sharing `mapZone` align on a shared horizontal band; zone title in muted rail label style |
+| UI-MAP-R6 | **Neighborhood focus**: default viewport shows active scene + all scenes within **2** hops (`travelSteps` sum along path); farther nodes dimmed (opacity ~0.45) but visible if world has ≤ 8 scenes |
+| UI-MAP-R7 | **Knock affordance**: edge with `doorState` `closed` \| `unlocked` shows door glyph; `ExitList` knock targets same edge highlight |
+| UI-MAP-R8 | Panel min height ~160px; pan within map when world exceeds viewport; no zoom wheel required in v1 |
+| UI-MAP-R9 | **Edge routing (v1.1+):** orthogonal (Manhattan) paths between footprint bounds; no edges drawn through shape interiors |
+| UI-MAP-R10 | **`architectureStyle`** (world default `diagram`): `diagram` — clean fills and 1px strokes; `blueprint` — muted fill, dashed outer walls, lighter labels ([§21.2](#212-architectural-shapes-and-diagrams)) |
+
+#### Layout algorithm (normative for implementers)
+
+When `mapPosition` is absent for a scene, the API/layout engine SHOULD:
+
+1. Place **active scene** at `(50, 50)` (center of normalized canvas).
+2. BFS outward along exits; assign each discovered scene a polar offset from parent using `direction` when present, else distribute evenly by sorted `sceneId`.
+3. Set child distance from parent proportional to `travelSteps` (e.g. 12 / 20 / 28 units for steps 1 / 2 / 3 on 0–100 scale).
+4. Resolve collisions by minimum nudge along grid (8px equivalent in normalized space).
+5. Return stable positions for unchanged graph (same inputs → same layout).
+
+6. When `mapShape` is non-rectangular, reserve bounding box from shape dimensions; route edges to `exitAnchor` on the correct side ([§21.2](#212-architectural-shapes-and-diagrams)).
+
+#### Acceptance (UI-MAP-ACC*)
+
+| ID | Check |
+|----|-------|
+| UI-MAP-ACC1 | Demo world with Hall ↔ Kitchen: mini-map shows two nodes, one edge, active scene centered |
+| UI-MAP-ACC2 | Exit with `travelSteps: 2` visibly longer than `travelSteps: 1` in a three-scene chain |
+| UI-MAP-ACC3 | Exit with `direction: N` places target node above source in default layout |
+| UI-MAP-ACC4 | Hover exit in `ExitList` highlights matching edge (UI-MAP-G5) |
+| UI-MAP-ACC5 | Scene with `mapShape: circle` renders as circle; exit with `exitAnchor` on `E` connects on east rim (v1.1+, [§21.2](#212-architectural-shapes-and-diagrams)) |
+
+### 21.2 Architectural shapes and diagrams
+
+The mini-map SHOULD read like a **small architecture diagram**—footprints and connectors—not only a graph of labeled boxes. Operators infer **building form** (round tower, long wing, courtyard ring) at a glance.
+
+#### Footprint primitives (`mapShape`)
+
+| Value | Use | Render |
+|-------|-----|--------|
+| `rect` | Room, hall, rectangular wing | Rounded rectangle (default v1) |
+| `circle` | Rotunda, round tower, circular keep | Circle; diameter from `mapSize` |
+| `ellipse` | Oval arena, elliptical plaza | Ellipse; two radii from `mapSize` |
+| `corridor` | Narrow passage scene | Rounded capsule / thick line along long axis |
+| `court` | Open courtyard (outdoor) | Rectangle with dashed stroke, lighter fill |
+| `wing` | L-shaped or T-shaped wing | Preset `wingKind`: `L` \| `T` \| `U` + `mapRotation` `0`–`270` |
+| `compound` | Multiple volumes one scene | `subShapes[]` array of child shapes with local offsets |
+| `path` | Custom footprint | `mapFootprint` polygon or SVG path (post-v1 rich; Observer-authored) |
+
+**`mapSize`** (optional): `{ "w": number, "h": number }` in normalized units (default `16×10` for `rect`, equal w=h for `circle`). Layout solver uses bounding box for collision.
+
+**`mapRotation`** (optional): degrees `0` \| `90` \| `180` \| `270` — rotates footprint before layout; `direction` on exits is world-compass, not local to rotation.
+
+#### Exit attachment
+
+Exits SHOULD visually leave from the correct face of the building:
+
+```json
+{
+  "exitId": "keep-door-south",
+  "targetSceneId": "scene-bailey",
+  "kind": "door",
+  "direction": "S",
+  "exitAnchor": { "side": "S", "offset": 0.5 }
+}
+```
+
+- **`side`**: which edge of the bounding shape (for `circle`, anchor point on that rim).
+- **`offset`**: position along that edge (`0` = start, `1` = end, `0.5` = center).
+- If `exitAnchor` omitted, infer from `direction` when present, else center of side toward target node.
+
+#### Diagram style (`architectureStyle`)
+
+| Style | Look |
+|-------|------|
+| `diagram` (default) | Solid fills, 1px borders, name centered — modern facility diagram |
+| `blueprint` | Dark fill ~15% opacity, dashed outer wall, monospace micro-labels, compass rose |
+| `minimal` | Stroke-only footprints, no fill — dense worlds |
+
+World-level default in world settings; per-scene MAY override.
+
+#### Examples (authoring intent)
+
+| Scene | Suggested `mapShape` | Notes |
+|-------|---------------------|-------|
+| Round keep | `circle`, `mapSize: { "w": 14, "h": 14 }` | Bailey scenes as `rect` outside the circle |
+| Grand hall | `rect`, larger `mapSize` | Central hub |
+| Cloister walk | `court` inside + `compound` ring of `corridor` subShapes | Ring around courtyard |
+| Long gallery | `corridor`, `mapSize: { "w": 24, "h": 6 }` | Edge routes along long axis |
+| Gatehouse | `wing`, `wingKind: T` | Three-way junction readable on map |
+
+#### Relationship to future `mapArtifact` (MAP-1)
+
+Post-v1, each scene MAY store a full `mapArtifact` ([18-location-maps.md](18-location-maps.md)). The mini-map MUST show a **simplified footprint** derived from that artifact (convex hull or authored simplification), not the full illustrated map. `MapCanvas` is the zoomed editor; `SpatialGraphMiniMap` stays schematic.
+
+| Phase | Footprint source |
+|-------|------------------|
+| v1 | `rect` only (implicit) |
+| v1.1 | `mapShape` + `mapSize` + `exitAnchor` on scenes/exits |
+| Post-v1 | `mapFootprint` or auto-simplify from `mapArtifact` |
+
+#### Rendering notes (UI-MAP-R extension)
+
+- **Circle example:** A circular keep MUST appear circular in the mini-map viewport—not a square node with a circle icon inside.
+- **Compound:** Sub-shapes share one `sceneId`; one label for the group; edges attach to the sub-shape boundary nearest the target.
+- **Zones:** `mapZone` draws a labeled band **behind** footprints (e.g. “Upper ward”).
+- **Legend inset** (optional, when ≥3 shape types in view): small glyphs for circle / rect / court / corridor.
+
+### 21.3 Building envelopes and navigation
+
+Scenes are **rooms**; structures are **buildings**. The mini-map MUST draw an **outer boundary** around each structure so the operator understands the building as a single entity and their position inside it—not only isolated room footprints floating in space.
+
+#### Concepts
+
+| Layer | What the operator sees |
+|-------|------------------------|
+| **Structure envelope** | Outer wall outline wrapping all scenes in one building |
+| **Scene footprint** | Individual room (hall, kitchen, tower floor) inside the envelope |
+| **You are here** | Active scene footprint highlighted; optional pin; parent structure envelope emphasized |
+| **Exterior** | Scenes with no `structureId` (bailey, road) sit outside building envelopes |
+
+#### Data (UI-MAP-S*)
+
+Returned in `GET .../spatial-graph` as `structures[]` ([12-api-sketch.md](12-api-sketch.md)). Stored on world or derived at layout time.
+
+| ID | Rule |
+|----|------|
+| UI-MAP-S1 | **`structureId`**, **`displayName`**, **`kind`**: `building` \| `wing` \| `outdoor` \| `campus` |
+| UI-MAP-S2 | Each scene MAY set **`structureId`** — belongs to at most one structure (v1.1+) |
+| UI-MAP-S3 | **`boundary`**: outer envelope in normalized `0–100` space — `shape` (`rect` \| `polygon` \| `hull`) + geometry. If omitted, server computes **`hull`** from child scene footprints + padding `4` units |
+| UI-MAP-S4 | **`boundaryAuthor`** (optional): explicit polygon vertices when author draws campus outline; overrides auto-hull |
+| UI-MAP-S5 | Exit MAY set **`crossesStructure`**: `true` when target scene has different `structureId` or no structure — edge MUST route through structure **outer wall**, not through another room footprint |
+| UI-MAP-S6 | **`interiorOnly`**: `true` when source and target share same `structureId` — edge stays inside envelope (room-to-room) |
+
+Domain model: [01-world-model.md](01-world-model.md) §1.2.1.
+
+#### Rendering (UI-MAP-B*)
+
+Draw order (back → front): `mapZone` band → **structure envelope** → scene footprints → edges → labels → you-are-here pin.
+
+| ID | Rule |
+|----|------|
+| UI-MAP-B1 | **Envelope stroke**: 2px; `kind: building` solid; `wing` solid lighter; `outdoor` dashed; `campus` dashed large dash. Color: `border` token; active structure uses `active-scene` at 60% opacity fill inside envelope |
+| UI-MAP-B2 | **Structure label**: `displayName` on envelope — top edge or upper-left inside margin, 12px rail label style, truncated with tooltip |
+| UI-MAP-B3 | **Active structure**: structure containing active scene gets fill `surface-3` at ~25% opacity inside boundary; other structures stroke-only or dimmed fill |
+| UI-MAP-B4 | **You are here**: active scene footprint uses `active-scene` stroke (existing); optional 6px dot at footprint centroid; `SceneHeader` shows **`{structure} › {scene}`** when `structureId` set (UI-MAP-N1) |
+| UI-MAP-B5 | **Exterior crossing**: `crossesStructure` edges terminate on envelope wall with door/gate glyph; interior edges use normal exit anchors on room footprints |
+| UI-MAP-B6 | **Multi-structure viewport**: when active scene has a structure, fit viewport to that envelope + 1-hop neighbors (rooms inside + adjacent outdoor scenes) |
+| UI-MAP-B7 | **Single-room structure**: one scene in a structure — envelope wraps footprint with padding; reads as standalone building (e.g. round keep with one scene) |
+
+#### SceneHeader navigation (UI-MAP-N*)
+
+| ID | Rule |
+|----|------|
+| UI-MAP-N1 | When active scene has `structureId`, `SceneHeader` subtitle or breadcrumb: **`{structure.displayName} › {locationName}`** (e.g. `Manor House › Hall`). Outdoor scene: scene name only |
+| UI-MAP-N2 | Clicking structure name in breadcrumb MAY pan mini-map to fit that envelope (does not change active scene) |
+
+#### Examples
+
+**Manor** — three scenes inside one envelope:
+
+| Scene | `structureId` | `mapShape` |
+|-------|---------------|------------|
+| Hall | `manor` | `rect` |
+| Kitchen | `manor` | `rect` |
+| Upstairs study | `manor` | `rect` |
+
+One `structures[]` entry: `displayName: Manor House`, `boundary.shape: hull` around all three footprints.
+
+**Keep + bailey** — circular keep (one scene) + outdoor bailey:
+
+| Scene | `structureId` | Notes |
+|-------|---------------|-------|
+| Round Keep | `keep` | `mapShape: circle`; envelope ≈ circle |
+| Bailey | — | Outside; exit from keep has `crossesStructure: true` |
+
+**East wing** attached to manor — `kind: wing`, separate envelope sharing a wall edge with manor hull (author `boundaryAuthor` or aligned `mapPosition`).
+
+#### Acceptance (UI-MAP-ACC*)
+
+| ID | Check |
+|----|-------|
+| UI-MAP-ACC6 | Manor demo: three rooms show inside one labeled outer boundary; active room highlighted inside envelope |
+| UI-MAP-ACC7 | Exit from Hall to Bailey crosses envelope wall; Hall ↔ Kitchen edge stays interior |
+| UI-MAP-ACC8 | `SceneHeader` shows `Manor House › Hall` when persona in Hall |
 
 ## 22. UX acceptance (implementation gate)
 
@@ -425,6 +654,8 @@ Per [04-communication.md](04-communication.md). Each scope: **foreground**, **ba
 | `status-idle` | 215 12% 45% | No active GPU job |
 | `status-busy` | 235 55% 58% | Generating |
 | `active-scene` | 235 45% 52% | `SceneHeader` + Places highlight |
+| `structure-fill` | 220 12% 18% at 25% opacity | Interior of active building envelope |
+| `structure-stroke` | 220 10% 28% | Outer building boundary (2px); active structure may use `active-scene` |
 
 ### A.5 Typography
 
@@ -474,6 +705,7 @@ Groupings for implementers — names match [§19](#19-component-inventory-spec-v
 |-------|------------|-------------|
 | Chrome | `AppShell`, `TopBar`, `GpuQueueStrip` | Fixed header + queue strip; 3-region grid |
 | Rails | `SceneNavList`, `PresenceRoster`, `SignalSidebarList` | Dense lists in right rail sections |
+| Spatial | `SpatialGraphMiniMap`, `ExitList` | Building envelopes + room footprints; exit list; shared edge highlight |
 | Transcript | `MessageBubble`, `ScopeBadge`, `StreamingMessage` | Scope stripe, readable body, stream cursor |
 | Compose | `PersonaCompose` | Scope selector + text area + send |
 | Overlays | `ObserverSlideOver`, `SettingsModal`, `ApprovalsDrawer` | Left or center overlays; Esc dismiss |
@@ -504,6 +736,9 @@ Groupings for implementers — names match [§19](#19-component-inventory-spec-v
 |------|--------|
 | 2026-05 | UI/UX master plan merged: right-primary layout (UI-LAY), rich chat (UI-R), transcript integrity (UI-TRN), worlds (UI-WLD), ComfyUI UI (UI-IMG), settings IA (UI-SET), operator policies, wireframes guide |
 | 2026-05 | Design system expanded in Appendix A; accessibility Appendix B (UI-A11Y-*) |
+| 2026-05 | SpatialGraphMiniMap structured layout (UI-MAP-*), §21.1 |
+| 2026-05 | Architectural shapes and diagram style (§21.2); v1.1 footprint primitives |
+| 2026-05 | Building envelopes and navigation context (§21.3); structures in data model |
 
 ## Related documents
 

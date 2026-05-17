@@ -39,7 +39,9 @@ Operator gets a **spatial feel** when moving between scenes—interactive maps i
 
 Maps are **not implemented** in v1. `exits[]` and spatial-graph API (CC-1) prepare data for MAP-2.
 
-**v1 Web UI bridge:** read-only `SpatialGraphMiniMap` in optional left spatial panel; scene switching in right rail **Places** ([14-web-ui.md](14-web-ui.md) UI-LAY-2, §20–§21). Full `MapCanvas` (MAP-5) replaces or expands left panel post-v1.
+**v1 Web UI bridge:** read-only `SpatialGraphMiniMap` — structured layout (§21.1), architectural footprints (§21.2), **building envelopes** (§21.3: outer boundaries, interior vs exterior exits, navigation breadcrumb). Scene switching in right rail **Places** (UI-LAY-2, §20–§21).
+
+**Post-v1:** `mapArtifact` (MAP-1) MAY supply full floor plans; mini-map shows a **simplified footprint** derived from the artifact; `MapCanvas` (MAP-5) is the interactive editor.
 
 ## Related documents
 

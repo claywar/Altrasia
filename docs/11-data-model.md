@@ -24,6 +24,8 @@ erDiagram
   Character ||--o{ DiarySegment : owns
   World ||--o{ CrossSceneSignal : tracks
   World ||--o{ GenerationJob : queues
+  World ||--o{ Structure : envelopes
+  Structure ||--o{ Scene : groups
 ```
 
 ## 3. Core entities
@@ -49,12 +51,26 @@ erDiagram
 | `personaArrivalMaxReplies` | integer | 1 |
 | `idleRoundRobinWeights` | object | optional `characterId` → weight for AO-4 |
 
-### 3.2 Scene
+### 3.2 Structure (v1.1+)
+
+Optional building envelope for mini-map and navigation ([14-web-ui.md](14-web-ui.md) §21.3).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `structureId` | TEXT PK | |
+| `worldId` | TEXT FK | |
+| `displayName` | TEXT | e.g. `Manor House` |
+| `kind` | TEXT | `building` \| `wing` \| `outdoor` \| `campus` |
+| `boundaryJson` | TEXT NULL | `{ "shape": "rect"\|"polygon"\|"hull", "vertices": [...] }` in normalized space; omit for auto-hull |
+| `updatedAt` | TEXT ISO | |
+
+### 3.3 Scene
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `sceneId` | TEXT PK | |
 | `worldId` | TEXT FK | |
+| `structureId` | TEXT FK NULL | Parent building envelope (v1.1+) |
 | `locationName` | TEXT | |
 | `locationDescription` | TEXT | |
 | `presentJson` | TEXT | Array of characterId or `__persona__` |
@@ -72,7 +88,9 @@ erDiagram
   "label": "Oak door to hall",
   "targetSceneId": "scene-hall",
   "kind": "door",
-  "doorState": "closed"
+  "doorState": "closed",
+  "travelSteps": 1,
+  "direction": "N"
 }
 ```
 
@@ -80,7 +98,36 @@ erDiagram
 
 `doorState` (optional on door exits): `closed` \| `unlocked` \| `open` \| `broken` ([03-locations-and-presence.md](03-locations-and-presence.md) §3.3).
 
-### 3.3 Character
+**Mini-map layout (optional, UI-MAP-D* in [14-web-ui.md](14-web-ui.md) §21.1):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `travelSteps` | integer `1`–`3` | Abstract distance for edge length; default `1` when omitted |
+| `direction` | `N` \| `NE` \| `E` \| `SE` \| `S` \| `SW` \| `W` \| `NW` | Bearing from this scene toward `targetSceneId` |
+
+**Scene layout hints (optional on scene row or inside `fixturesJson` meta):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mapPosition` | `{ "x": number, "y": number }` | Normalized `0–100` anchor for `SpatialGraphMiniMap` |
+| `mapZone` | string | Group label (e.g. floor/wing) for banded layout |
+| `mapShape` | string | Footprint primitive: `rect` \| `circle` \| `ellipse` \| `corridor` \| `court` \| `wing` \| `compound` \| `path` (v1.1+, [14-web-ui.md](14-web-ui.md) §21.2) |
+| `mapSize` | `{ "w": number, "h": number }` | Bounding size in normalized units |
+| `mapRotation` | `0` \| `90` \| `180` \| `270` | Footprint rotation (degrees) |
+| `wingKind` | `L` \| `T` \| `U` | When `mapShape` is `wing` |
+| `subShapes` | array | When `mapShape` is `compound` — child shapes with local offsets |
+| `mapFootprint` | polygon or SVG path | Custom footprint; post-v1 / overrides `mapShape` |
+
+**Exit layout (optional, v1.1+):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `exitAnchor` | `{ "side": "N"\|"E"\|"S"\|"W", "offset": number }` | Edge attachment on source footprint (`0–1` along side) |
+| `crossesStructure` | boolean | `true` when target is outside source `structureId` ([14-web-ui.md](14-web-ui.md) §21.3) |
+
+Omission of layout fields MUST NOT break CC-1 round-trip ([17-acceptance-criteria.md](17-acceptance-criteria.md)).
+
+### 3.4 Character
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -91,7 +138,7 @@ erDiagram
 | `speechWeight` | REAL | 0–1; base speak appetite for AO-18 (default 0.5) |
 | `createdAt` | TEXT ISO | |
 
-### 3.4 WorldMember
+### 3.5 WorldMember
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -101,7 +148,7 @@ erDiagram
 | `disabled` | INTEGER | 0/1 |
 | `sceneRole` | TEXT NULL | Optional role tag for AO-18 (e.g. `teacher`, `student`) |
 
-### 3.5 Message
+### 3.6 Message
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -137,7 +184,7 @@ Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`.
 
 **Phone channel** (`comm_channels.endpointsJson`): array of `{ sceneId, participantIds[], speakerphone: boolean }` — speakerphone is **per endpoint**, default `false` ([04-communication.md](04-communication.md) §3.1).
 
-### 3.6 Locus
+### 3.7 Locus
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -147,7 +194,7 @@ Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`.
 | `value` | TEXT | Append-only text (output only) |
 | `updatedAt` | TEXT ISO | |
 
-### 3.7 DiarySegment
+### 3.8 DiarySegment
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -160,7 +207,7 @@ Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`.
 | `kind` | TEXT NULL | |
 | `createdAt` | TEXT ISO | |
 
-### 3.8 CrossSceneSignal (v1 tracking)
+### 3.9 CrossSceneSignal (v1 tracking)
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -173,7 +220,7 @@ Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`.
 | `status` | TEXT | `pending` \| `acknowledged` \| `expired` |
 | `createdAt` | TEXT ISO | |
 
-### 3.9 CommChannel (stub v1)
+### 3.10 CommChannel (stub v1)
 
 Reserved for v1.1 phone; MAY be empty table with schema:
 
@@ -185,7 +232,7 @@ Reserved for v1.1 phone; MAY be empty table with schema:
 | `participantsJson` | TEXT | All participant characterIds |
 | `active` | INTEGER |
 
-### 3.10 GenerationJob
+### 3.11 GenerationJob
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -213,7 +260,7 @@ Reserved for v1.1 phone; MAY be empty table with schema:
 }
 ```
 
-### 3.11 GpuLease / GpuRequest
+### 3.12 GpuLease / GpuRequest
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -223,11 +270,11 @@ Reserved for v1.1 phone; MAY be empty table with schema:
 | `startedAt` | TEXT ISO | |
 | `releasedAt` | TEXT NULL | |
 
-### 3.12 Approval
+### 3.13 Approval
 
 Per [07-approvals.md](07-approvals.md); unified pending store with `approvalId`, `worldId`, `toolName`, `paramsJson`, `state`, etc.
 
-### 3.13 EmbeddingRecord (v1 schema)
+### 3.14 EmbeddingRecord (v1 schema)
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -240,7 +287,7 @@ Per [07-approvals.md](07-approvals.md); unified pending store with `approvalId`,
 
 Table MUST exist in **migration 001** (MAY be empty until embed jobs run). Re-embed on write per [00-inference-runtime.md](00-inference-runtime.md) INF-13. Semantic search assists tools only ([02-memory.md](02-memory.md) §7).
 
-### 3.14 Commission (post-v1 schema)
+### 3.15 Commission (post-v1 schema)
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -260,7 +307,7 @@ Table MUST exist in **migration 001** (MAY be empty until embed jobs run). Re-em
 
 Table MAY ship in migration 001 as empty schema; runtime Phase 4+.
 
-### 3.15 EvidenceRecord (post-v1 schema)
+### 3.16 EvidenceRecord (post-v1 schema)
 
 | Column | Type | Notes |
 |--------|------|-------|

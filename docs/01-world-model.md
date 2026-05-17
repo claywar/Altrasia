@@ -35,6 +35,22 @@ A **scene** is one place-and-time context within a world. Each scene has:
 
 Scenes are the unit of spatial separation. Characters in Scene A do not automatically hear or see Scene B's public traffic unless communication rules bridge them (see [04-communication.md](04-communication.md)).
 
+Optional **`structureId`** links a scene to a **structure** (building or campus envelope) for mini-map boundaries and navigation context ([14-web-ui.md](14-web-ui.md) §21.3).
+
+### 1.2.1 Structure (building envelope)
+
+A **structure** is an optional grouping of one or more scenes under one named building or campus. It exists so the operator UI can draw **outer boundaries** on the spatial mini-map and show **where they are** inside a building—not only which room (scene) is active.
+
+| Field | Description |
+|-------|-------------|
+| `structureId` | Stable identifier |
+| `displayName` | e.g. `Manor House`, `Round Keep`, `East Wing` |
+| `kind` | `building` \| `wing` \| `outdoor` \| `campus` — affects boundary stroke style |
+| `sceneIds` | Scenes whose footprints lie inside this envelope (MAY also use per-scene `structureId`) |
+| `boundary` | Optional outer envelope for mini-map (polygon or shape); MAY be auto-derived from child scenes |
+
+Structures MUST NOT change presence or communication rules; they are **navigational and visual** only. A scene belongs to at most one structure in v1.1+.
+
 ### 1.3 Character
 
 A **character** is an agent (typically LLM-driven) with:
