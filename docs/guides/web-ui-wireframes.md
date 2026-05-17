@@ -2,6 +2,8 @@
 
 ASCII wireframes for the operator console. Normative requirements: [14-web-ui.md](../14-web-ui.md).
 
+**Visual reference images** (WF-14, WF-15, mini-map): [reference-images/README.md](reference-images/README.md).
+
 ### Wireframes (v1 layout)
 
 Low-fidelity ASCII wireframes for the **right-primary** shell. Proportions are approximate; center column is the flexible grow region.

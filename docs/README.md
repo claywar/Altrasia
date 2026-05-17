@@ -51,6 +51,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | — | [personas.md](personas.md) | Operator personas (non-normative) |
 | — | [guides/first-run-experience.md](guides/first-run-experience.md) | Target first session (non-normative) |
 | — | [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) | ASCII wireframes for Web UI (non-normative) |
+| — | [guides/reference-images/](guides/reference-images/README.md) | Map layout reference images for UI + LLM generation targets |
 
 ## Architecture overview
 

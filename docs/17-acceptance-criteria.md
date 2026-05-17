@@ -188,6 +188,7 @@ v1 spatial gate uses demo pre-seeded cast only ([24-character-authoring.md](24-c
 | AO-17 v1.1 | `speak_intent` batch model call on score tie |
 | MAP-7 | Map regen fixture diff surfaces conflict |
 | MAP-ACC-1–6 | Phase 6: world map, level stack, floor plan, vertical exits, mini-map level ghosts ([18-location-maps.md](18-location-maps.md) §11) |
+| MAP-GEN-ACC-1–4 | LLM `map_layout_generate` valid JSON; topology matches [reference-images](guides/reference-images/README.md) (§12) |
 | IMG-1, IMG-8 | ComfyUI via queue; yields to Observer Direct |
 
 ## 7. Reference scale fixture (memory performance)

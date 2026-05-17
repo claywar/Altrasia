@@ -136,6 +136,27 @@ Filesystem and scheduled tasks. Writes require approval (see [07-approvals.md](0
 
 `character_list`, `character_create`, `character_update` — structured record APIs. MUST NOT write raw character binary/card files via filesystem tools.
 
+### 7.6 Map layout tools (Phase 6)
+
+See [18-location-maps.md](18-location-maps.md) §12. JSON output only; MP-14 applies.
+
+| Tool | Scope / target | Persists |
+|------|----------------|----------|
+| `map_layout_generate` | `mini` \| `site` \| `stack` \| `floor` | Scene layout fields, `structures`, `worldMapJson`, exit hints |
+| `map_layout_patch` | Partial layout merge | Same, incremental |
+| `map_generate` | One `sceneId` floor plan | `mapArtifactJson` |
+| `map_update_region` | Region of `mapArtifact` | Patched artifact |
+| `map_set_hotspot` | Hotspot on floor plan | MAP-4 binding |
+
+**Requirements:**
+
+| ID | Requirement |
+|----|-------------|
+| TC-MAP-1 | Tool results MUST parse as JSON; invalid layout rejected before DB write |
+| TC-MAP-2 | `map_layout_generate` MUST NOT persist without operator ack when overwriting site layout (MAP-7) |
+| TC-MAP-3 | Generated layout MUST validate against MAP-GEN schema and render to diagrams comparable to [reference images](guides/reference-images/README.md) |
+| TC-MAP-4 | Tools gated to Observer / location admin (OBS-2); not exposed to cast generation |
+
 ## 8. Context object
 
 Handlers SHOULD receive:

@@ -617,7 +617,7 @@ Large-scale and vertical navigation are specified in [18-location-maps.md](18-lo
 
 #### Wireframes
 
-See [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-14 (world map overlay), WF-15 (level stack).
+See [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-14 (world map overlay), WF-15 (level stack). Reference renders: [guides/reference-images/](guides/reference-images/README.md). LLM-authored layouts: [18-location-maps.md](18-location-maps.md) §12.
 
 #### Acceptance
 

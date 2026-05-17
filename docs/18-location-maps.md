@@ -36,6 +36,12 @@ At full maturity the operator can:
 | MAP-16 | Operator MAY toggle **view mode**: `site` \| `structure` \| `floor` \| `stack` ([14-web-ui.md](14-web-ui.md) §21.4). |
 | MAP-17 | Vertical moves respect presence rules—changing level via map uses same join/exit semantics as horizontal ([03-locations-and-presence.md](03-locations-and-presence.md)). |
 | MAP-18 | Level `-1` (basement) through `+N` (towers) MUST remain stable in world package export (DM-4). |
+| MAP-19 | LLM **`map_layout_generate`** (and related tools) MUST emit **validated JSON** matching §12 schemas—never prose-only or reasoning blocks (MP-14, OQ-3). |
+| MAP-20 | Generated layout MUST be sufficient for Web UI to render mini-map, site map, and level stack without inventing geometry (UI-MAP-D*). |
+| MAP-21 | Reference images in [guides/reference-images/](guides/reference-images/) are the **visual acceptance targets** for generated layouts (non-normative pixels; normative structure). |
+| MAP-22 | Layout generation runs on GpuResourceQueue `kind: chat`; illustration remains ComfyUI `kind: image` ([19-comfyui-media.md](19-comfyui-media.md)). |
+| MAP-23 | Observer or location admin initiates regen; MAP-7 diff + operator ack before overwrite. |
+| MAP-24 | CI fixtures MUST include at least one LLM-produced layout JSON per surface: `mini`, `site`, `stack`. |
 
 **Note on “3D”:** WorldEngine maps are **stacked floor plans + vertical connectivity**, not a game-engine free-camera 3D world. Optional **axonometric preview** (MAP-13) is schematic—operator-console clarity, not walkable geometry.
 
@@ -266,9 +272,182 @@ See [12-api-sketch.md](12-api-sketch.md):
 | MAP-ACC-4 | `FloorPlanView` shows fixtures and exit hotspots from `mapArtifact` |
 | MAP-ACC-5 | Vertical exit changes scene via join; presence rules unchanged |
 | MAP-ACC-6 | MAP-7: regen floor plan shows diff before overwrite |
+| MAP-GEN-ACC-1–4 | LLM layout tools produce valid JSON; render matches reference-image structure (§12) |
+
+## 12. LLM layout generation (MAP-GEN-*)
+
+The primary LLM (and Observer tools) MUST be able to **author and revise** map layouts as structured data that the Web UI renders into diagrams comparable to [reference images](guides/reference-images/README.md).
+
+### 12.1 Surfaces the LLM produces
+
+| Surface | Tool (suggested) | Persists to | Visual reference |
+|---------|------------------|-------------|------------------|
+| **Mini-map / spatial graph** | `map_layout_generate` scope `world` \| `structure` | `exitsJson` hints, scene layout fields, `structures[].boundary` | [worldengine-building-envelope-minimap.png](guides/reference-images/worldengine-building-envelope-minimap.png), [worldengine-architecture-diagram-minimap.png](guides/reference-images/worldengine-architecture-diagram-minimap.png) |
+| **Site / world map** | `map_layout_generate` scope `site` | `worldMapJson` | [worldengine-world-map-overlay-example.png](guides/reference-images/worldengine-world-map-overlay-example.png) |
+| **Level stack** | `map_layout_generate` scope `stack` | scenes `mapLevel`, `planPosition`, vertical exits | [worldengine-level-stack-example.png](guides/reference-images/worldengine-level-stack-example.png) |
+| **Floor plan detail** | `map_generate` (MAP-3) | `mapArtifactJson` per scene | MAP-1 vector/grid (higher resolution than mini-map) |
+
+### 12.2 Tools (MAP-3 extension)
+
+Registered in [05-tool-calling.md](05-tool-calling.md) §7.6. All return **JSON only** in the tool result; `stripReasoning` before parse (MP-14).
+
+| Tool | Purpose |
+|------|---------|
+| `map_layout_generate` | Create or replace layout for `scope`: `mini` \| `site` \| `stack` \| `floor` |
+| `map_layout_patch` | Merge partial update (e.g. add one scene, one exit) without full regen |
+| `map_generate` | Floor-plan artifact for one `sceneId` (walls, fixtures, hotspots) |
+| `map_update_region` | Patch region of existing `mapArtifact` |
+| `map_set_hotspot` | Add/move hotspot binding fixture or exit |
+
+**Gating:** Observer Studio or location admin (OBS-2); `map_layout_generate` for `scope: site` SHOULD require approval when overwriting `worldMapJson` (MAP-23).
+
+### 12.3 Prompt inputs (MAP-6)
+
+`map_layout_generate` MUST receive:
+
+| Input | Source |
+|-------|--------|
+| World name, scene list | `worldId` |
+| Scene framing | `locationName`, `locationDescription`, `fixturesJson` |
+| Existing exits | `exitsJson` (CC-1) |
+| World pool loci | layout hints only (e.g. `kitchen_layout`) — MP-10 if blocking |
+| Target `scope` | operator or tool args |
+| Reference diagram type | enum matching §12.1 (for eval prompts, include link to reference image id) |
+
+MUST NOT include raw diary or mind pool (MP-1). Hidden rooms MUST NOT appear on map layers (MAP-8, MP-1).
+
+### 12.4 Output schema (`map_layout_generate`)
+
+Single JSON object. No markdown fences in stored artifact. Example abbreviated:
+
+```json
+{
+  "schemaVersion": 1,
+  "scope": "site",
+  "architectureStyle": "diagram",
+  "structures": [
+    {
+      "structureId": "manor",
+      "displayName": "Manor House",
+      "kind": "building",
+      "boundary": { "shape": "hull", "vertices": [{ "x": 38, "y": 22 }, { "x": 62, "y": 58 }] }
+    }
+  ],
+  "scenes": [
+    {
+      "sceneId": "scene-hall",
+      "structureId": "manor",
+      "mapLevel": 0,
+      "levelLabel": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": { "w": 18, "h": 12 },
+      "layout": { "x": 50, "y": 50 },
+      "planPosition": { "planX": 12, "planY": 10 }
+    }
+  ],
+  "edges": [
+    {
+      "exitId": "hall-kitchen",
+      "sourceSceneId": "scene-hall",
+      "targetSceneId": "scene-kitchen",
+      "kind": "door",
+      "travelSteps": 1,
+      "direction": "N",
+      "exitAnchor": { "side": "N", "offset": 0.5 },
+      "crossesStructure": false
+    }
+  ],
+  "verticalEdges": [
+    {
+      "exitId": "hall-stairs-up",
+      "sourceSceneId": "scene-hall",
+      "targetSceneId": "scene-hall-upper",
+      "kind": "stairs",
+      "levelDelta": 1,
+      "planPosition": { "planX": 12, "planY": 10 }
+    }
+  ],
+  "worldMap": {
+    "bounds": { "minX": 0, "minY": 0, "maxX": 100, "maxY": 100 },
+    "terrain": [],
+    "structurePlacements": [
+      { "structureId": "manor", "origin": { "x": 45, "y": 40 } },
+      { "structureId": "keep", "origin": { "x": 72, "y": 50 } }
+    ]
+  }
+}
+```
+
+**Validation (server-side, MAP-GEN-2):**
+
+| Rule | Action if fail |
+|------|----------------|
+| JSON Schema match | Reject tool result; retry once with schema errors |
+| All `sceneId` / `structureId` exist in world | Reject |
+| `targetSceneId` on edges valid | Reject |
+| `mapLevel` + `planPosition` present when structure has >1 level | Reject or warn |
+| No duplicate `exitId` | Reject |
+| Coordinates in `0–100` normalized space | Clamp or reject |
+| No `reasoning`, `think`, chain-of-thought fields | Strip per MP-14 |
+
+### 12.5 Structural fidelity (MAP-GEN-3)
+
+Generated layouts MUST satisfy these **diagram invariants** (compare to reference images):
+
+| Invariant | Reference |
+|-----------|-----------|
+| Building = **outer envelope** wrapping room footprints | [worldengine-building-envelope-minimap.png](guides/reference-images/worldengine-building-envelope-minimap.png) |
+| Circular scenes use `mapShape: circle`, not rect icons | [worldengine-architecture-diagram-minimap.png](guides/reference-images/worldengine-architecture-diagram-minimap.png) |
+| Site view places **all structures** with outdoor scenes outside envelopes | [worldengine-world-map-overlay-example.png](guides/reference-images/worldengine-world-map-overlay-example.png) |
+| Stack view lists **levels** with vertical connectors between matching `planPosition` | [worldengine-level-stack-example.png](guides/reference-images/worldengine-level-stack-example.png) |
+| Interior edges do not cross structure outer wall; `crossesStructure` edges do | §21.3 UI-MAP-S5 |
+
+### 12.6 Apply pipeline
+
+```mermaid
+sequenceDiagram
+  participant Obs as Observer
+  participant LLM as Primary LLM
+  participant Val as Layout validator
+  participant DB as SQLite
+
+  Obs->>LLM: map_layout_generate
+  LLM-->>Val: JSON layout
+  Val->>Val: schema + referential checks
+  alt valid
+    Val->>Obs: preview render SVG
+    Obs->>DB: commit on ack MAP-7
+  else invalid
+    Val-->>LLM: repair prompt with errors
+  end
+```
+
+1. Tool returns JSON → validator → optional **preview** in Observer (side-by-side reference thumbnail).
+2. Operator ack → write `worldMapJson`, scene columns, `exitsJson` layout fields.
+3. `GET spatial-graph` reflects new layout immediately for mini-map.
+
+### 12.7 Acceptance (MAP-GEN-ACC*)
+
+| ID | Test |
+|----|------|
+| MAP-GEN-ACC-1 | Given demo world framing only, `map_layout_generate` scope `mini` returns valid JSON; mini-map renders Hall–Kitchen with envelope |
+| MAP-GEN-ACC-2 | scope `site` produces ≥2 structures + 1 outdoor scene; matches WF-14 topology |
+| MAP-GEN-ACC-3 | scope `stack` produces ≥2 `mapLevel` values + `verticalEdges`; matches WF-15 topology |
+| MAP-GEN-ACC-4 | Output contains no reasoning leakage (MP-14 fixture) |
+
+Fixture JSON MAY live under `tests/fixtures/map-layouts/` when implementation starts (MAP-24).
+
+## Documentation history
+
+| Date | Change |
+|------|--------|
+| 2026-05 | Phase 6 world map + level stack plan (§6–§11) |
+| 2026-05 | LLM layout generation (§12, MAP-19–MAP-24); reference images in [guides/reference-images/](guides/reference-images/README.md) |
 
 ## Related documents
 
 - [21-cross-scene-awareness.md](21-cross-scene-awareness.md)
 - [19-comfyui-media.md](19-comfyui-media.md)
 - [14-web-ui.md](14-web-ui.md)
+- [05-tool-calling.md](05-tool-calling.md) §7.6
+- [guides/reference-images/README.md](guides/reference-images/README.md)
