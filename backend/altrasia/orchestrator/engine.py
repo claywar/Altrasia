@@ -11,6 +11,7 @@ from altrasia.domain.presence import PERSONA_ID
 from altrasia.inference.queue import TokenStream
 from altrasia.memory.strip_reasoning import strip_from_message_payload
 from altrasia.tools.registry import ToolContext
+from altrasia.world_geography import lock_geography_on_first_play
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
 
@@ -368,6 +369,7 @@ class Orchestrator:
         self, world_id: str, scene_id: str, message_id: str, text: str
     ) -> dict | None:
         """AO-20: exactly one reactive job per persona line."""
+        lock_geography_on_first_play(self.svc.store, world_id)
         if world_id in self.svc.paused_worlds:
             return None
         if scene_id in self._scene_chain_active:

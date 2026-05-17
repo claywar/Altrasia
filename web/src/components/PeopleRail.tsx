@@ -14,17 +14,59 @@ type Roster = {
   unplaced?: RosterPerson[];
 };
 
+type SceneOption = {
+  sceneId: string;
+  locationName: string;
+};
+
 type Props = {
   worldId: string;
   activeSceneId: string;
+  scenes: SceneOption[];
   roster: Roster;
   onMemory: (characterId: string, displayName: string) => void;
   onPresenceChanged: () => void;
 };
 
+function PlaceAtSelect({
+  scenes,
+  currentSceneId,
+  activeSceneId,
+  onSelect,
+}: {
+  scenes: SceneOption[];
+  currentSceneId: string | null | undefined;
+  activeSceneId: string;
+  onSelect: (sceneId: string) => void;
+}) {
+  const options = scenes.filter((s) => s.sceneId !== currentSceneId);
+  if (options.length === 0) return null;
+  return (
+    <select
+      className="people-place-select"
+      defaultValue=""
+      aria-label="Place at scene"
+      onChange={(e) => {
+        const id = e.target.value;
+        if (id) onSelect(id);
+        e.target.value = "";
+      }}
+    >
+      <option value="">Place at…</option>
+      {options.map((s) => (
+        <option key={s.sceneId} value={s.sceneId}>
+          {s.locationName}
+          {s.sceneId === activeSceneId ? " (here)" : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function PeopleRail({
   worldId,
   activeSceneId,
+  scenes,
   roster,
   onMemory,
   onPresenceChanged,
@@ -34,6 +76,11 @@ export function PeopleRail({
       characterIds: [characterId],
       targetSceneId: activeSceneId,
     });
+    onPresenceChanged();
+  };
+
+  const placeAt = async (characterId: string, sceneId: string) => {
+    await api.joinPresence(worldId, sceneId, characterId);
     onPresenceChanged();
   };
 
@@ -66,6 +113,12 @@ export function PeopleRail({
                   Leave
                 </button>
               )}
+              <PlaceAtSelect
+                scenes={scenes}
+                currentSceneId={p.sceneId ?? activeSceneId}
+                activeSceneId={activeSceneId}
+                onSelect={(sid) => placeAt(p.characterId, sid)}
+              />
             </div>
           </li>
         ))}
@@ -82,6 +135,12 @@ export function PeopleRail({
               >
                 Summon here
               </button>
+              <PlaceAtSelect
+                scenes={scenes}
+                currentSceneId={p.sceneId ?? p.presentSceneId}
+                activeSceneId={activeSceneId}
+                onSelect={(sid) => placeAt(p.characterId, sid)}
+              />
               <button
                 type="button"
                 className="people-memory"
@@ -103,6 +162,12 @@ export function PeopleRail({
               >
                 Bring here
               </button>
+              <PlaceAtSelect
+                scenes={scenes}
+                currentSceneId={null}
+                activeSceneId={activeSceneId}
+                onSelect={(sid) => placeAt(p.characterId, sid)}
+              />
               <button
                 type="button"
                 className="people-memory"

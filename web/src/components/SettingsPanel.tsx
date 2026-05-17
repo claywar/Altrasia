@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type OperatorSettings } from "../api/client";
 import { CharacterDraftPanel } from "./CharacterDraftPanel";
+import { SceneGeographyPanel } from "./SceneGeographyPanel";
+import type { Scene } from "../api/client";
 
 type Props = {
   worldId: string;
@@ -10,6 +12,8 @@ type Props = {
   onWorldPauseChange: () => void;
   onWorldImported: (world: { worldId: string; name: string; activeSceneId: string }) => void;
   onCastChanged?: () => void;
+  scenes?: Scene[];
+  onScenesChanged?: () => void;
 };
 
 export function SettingsPanel({
@@ -20,6 +24,8 @@ export function SettingsPanel({
   onWorldPauseChange,
   onWorldImported,
   onCastChanged,
+  scenes = [],
+  onScenesChanged,
 }: Props) {
   const [settings, setSettings] = useState<OperatorSettings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -107,6 +113,13 @@ export function SettingsPanel({
             </label>
           </div>
         </section>
+        {scenes.length > 0 && onScenesChanged && (
+          <SceneGeographyPanel
+            worldId={worldId}
+            scenes={scenes}
+            onChanged={() => onScenesChanged()}
+          />
+        )}
         <CharacterDraftPanel worldId={worldId} onCharacterAdded={() => onCastChanged?.()} />
         <section className="settings-section">
           <h3>Global heartbeat (v1.1)</h3>

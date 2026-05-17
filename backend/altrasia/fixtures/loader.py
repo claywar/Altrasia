@@ -16,13 +16,15 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
     data = json.loads(fixture_path.read_text(encoding="utf-8"))
     world_id = data.get("worldId") or str(uuid.uuid4())
     now = ISO()
+    config = dict(data.get("config", {}))
+    config.setdefault("layoutDesignMode", False)
     store.insert_world(
         {
             "worldId": world_id,
             "name": data.get("name", "Demo World"),
             "activeSceneId": data["activeSceneId"],
             "defaultModelProfile": data.get("defaultModelProfile", "qwen3.6-35b-a3b"),
-            "configJson": json.dumps(data.get("config", {})),
+            "configJson": json.dumps(config),
             "worldMapJson": None,
             "eventSeq": 0,
             "createdAt": now,

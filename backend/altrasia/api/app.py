@@ -27,6 +27,13 @@ from altrasia.character_authoring import (
     discard_character_draft,
     get_character_draft,
 )
+from altrasia.world_geography import (
+    create_scene as geo_create_scene,
+    geography_status,
+    layout_design_mode,
+    lock_geography,
+    lock_geography_on_first_play,
+)
 from altrasia.world_package import export_world_package, import_world_package
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
@@ -115,6 +122,19 @@ class WorldMemberBody(BaseModel):
     characterId: str
 
 
+class CreateSceneBody(BaseModel):
+    locationName: str
+    locationDescription: str = ""
+    connectFromSceneId: str | None = None
+    exitLabel: str = "Door"
+    reverseExitLabel: str | None = None
+
+
+class PatchSceneBody(BaseModel):
+    locationName: str | None = None
+    locationDescription: str | None = None
+
+
 def _emit(svc: AppServices, world_id: str, event: str, data: dict[str, Any]) -> None:
     svc.event_bus.emit(svc.store, world_id, event, data)
 
@@ -172,7 +192,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "name": body.name or "New World",
                 "activeSceneId": scene_id,
                 "defaultModelProfile": "qwen3.6-35b-a3b",
-                "configJson": "{}",
+                "configJson": json.dumps({"layoutDesignMode": True}),
                 "worldMapJson": None,
                 "eventSeq": 0,
                 "createdAt": now,
@@ -236,6 +256,81 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not sc or sc["worldId"] != world_id:
             raise HTTPException(404, "scene not found")
         return sc
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/geography",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_geography(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        try:
+            return geography_status(svc.store, world_id)
+        except ValueError as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/geography/lock",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_geography_lock(
+        world_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        try:
+            return lock_geography(svc.store, world_id)
+        except ValueError as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_scene(
+        world_id: str, body: CreateSceneBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        if not layout_design_mode(svc.store, world_id):
+            raise HTTPException(403, "geography locked — cannot add scenes")
+        if not body.locationName.strip():
+            raise HTTPException(400, "locationName required")
+        try:
+            sc = geo_create_scene(
+                svc.store,
+                world_id,
+                location_name=body.locationName.strip(),
+                location_description=body.locationDescription,
+                connect_from_scene_id=body.connectFromSceneId,
+                exit_label=body.exitLabel,
+                reverse_exit_label=body.reverseExitLabel,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(
+            svc,
+            world_id,
+            "scene.created",
+            {"sceneId": sc["sceneId"], "locationName": sc["locationName"]},
+        )
+        return sc
+
+    @app.patch(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def patch_scene(
+        world_id: str,
+        scene_id: str,
+        body: PatchSceneBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        fields: dict[str, Any] = {"updatedAt": ISO()}
+        if body.locationName is not None:
+            fields["locationName"] = body.locationName
+        if body.locationDescription is not None:
+            fields["locationDescription"] = body.locationDescription
+        svc.store.update_scene(scene_id, **fields)
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id})
+        return svc.store.get_scene(scene_id)  # type: ignore[return-value]
 
     @app.get(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",
@@ -864,6 +959,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def delete_scene(
         world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
     ) -> dict:
+        if not layout_design_mode(svc.store, world_id):
+            raise HTTPException(403, "geography locked — cannot delete scenes (MAP-AUTH-LOCK-2)")
         scenes = svc.store.list_scenes(world_id)
         if len(scenes) <= 1:
             raise HTTPException(400, "cannot delete last scene (W-1)")

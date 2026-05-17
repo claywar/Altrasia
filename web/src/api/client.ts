@@ -56,6 +56,10 @@ export type QueueSnapshot = {
   depth: number;
   estimatedWaitMs?: number;
   currentJob?: GenerationJob | null;
+  gpu?: {
+    busy: boolean;
+    currentLease?: { kind: string; jobId: string } | null;
+  };
 };
 
 export type OperatorSettings = {
@@ -126,6 +130,43 @@ export const api = {
     request<World>("/worlds", {
       method: "POST",
       body: JSON.stringify({ fixtureId: "demo-spatial-v1" }),
+    }),
+  createBlankWorld: (name: string) =>
+    request<World>("/worlds", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  geography: (worldId: string) =>
+    request<{
+      layoutDesignMode: boolean;
+      geographyLockedAt: string | null;
+      sceneCount: number;
+    }>(`/worlds/${worldId}/geography`),
+  lockGeography: (worldId: string) =>
+    request<{ layoutDesignMode: boolean; geographyLockedAt: string | null }>(
+      `/worlds/${worldId}/geography/lock`,
+      { method: "POST" }
+    ),
+  createScene: (
+    worldId: string,
+    body: {
+      locationName: string;
+      locationDescription?: string;
+      connectFromSceneId?: string;
+      exitLabel?: string;
+      reverseExitLabel?: string;
+    }
+  ) => request<Scene>(`/worlds/${worldId}/scenes`, { method: "POST", body: JSON.stringify(body) }),
+  deleteScene: (worldId: string, sceneId: string) =>
+    request<{ deleted: string }>(`/worlds/${worldId}/scenes/${sceneId}`, { method: "DELETE" }),
+  patchScene: (
+    worldId: string,
+    sceneId: string,
+    body: { locationName?: string; locationDescription?: string }
+  ) =>
+    request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
     }),
   exportPackage: async (worldId: string): Promise<Blob> => {
     const r = await fetch(`${BASE}/worlds/${worldId}/package/export`);

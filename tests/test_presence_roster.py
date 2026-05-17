@@ -42,3 +42,14 @@ def test_unplaced_roster_and_summon(tmp_path: Path) -> None:
     roster2 = client.get(f"/api/v1/worlds/{world_id}/roster").json()
     assert any(p["characterId"] == char_id for p in roster2["atLocation"])
     assert not any(u["characterId"] == char_id for u in roster2["unplaced"])
+
+    kitchen = "scene-kitchen"
+    client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{kitchen}/presence/join",
+        json={"characterId": char_id},
+    )
+    roster3 = client.get(f"/api/v1/worlds/{world_id}/roster").json()
+    assert any(
+        p["characterId"] == char_id and p.get("sceneId") == kitchen
+        for p in roster3["elsewhere"]
+    )

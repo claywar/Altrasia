@@ -17,6 +17,7 @@ import {
 import { MiniMap } from "./components/MiniMap";
 import { PhonePanel } from "./components/PhonePanel";
 import { PeopleRail } from "./components/PeopleRail";
+import { SignalsRail } from "./components/SignalsRail";
 import { ObserverDigest } from "./components/ObserverDigest";
 import { CharacterDraftPanel } from "./components/CharacterDraftPanel";
 import type { ObserverDigest as ObserverDigestData } from "./api/client";
@@ -114,6 +115,18 @@ export default function App() {
     }
   };
 
+  const createArchitectWorld = async () => {
+    setLoading(true);
+    try {
+      const w = await api.createBlankWorld("Untitled world");
+      const full = await api.getWorld(w.worldId);
+      setWorld(full);
+      await refresh(full);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const switchScene = async (sceneId: string) => {
     if (!world) return;
     await api.patchWorld(world.worldId, { activeSceneId: sceneId });
@@ -193,6 +206,8 @@ export default function App() {
         payload.event.startsWith("generation.") ||
         payload.event === "scene.changed" ||
         payload.event === "presence.changed" ||
+        payload.event === "scene.created" ||
+        payload.event === "scene.changed" ||
         payload.event === "signal.created" ||
         payload.event === "signal.updated" ||
         payload.event.startsWith("channel.")
@@ -224,10 +239,22 @@ export default function App() {
         <p className="launcher-tagline">
           Persistent stage for AI characters — memory-grounded, spatial, operator-run.
         </p>
-        <button type="button" className="launcher-primary" onClick={loadDemo} disabled={loading}>
-          {loading ? "Loading…" : "Load demo world"}
-        </button>
-        <p className="launcher-hint">demo-spatial-v1 · Hall + Kitchen · Alice &amp; Bob</p>
+        <div className="launcher-actions">
+          <button type="button" className="launcher-primary" onClick={loadDemo} disabled={loading}>
+            {loading ? "Loading…" : "Load demo world"}
+          </button>
+          <button
+            type="button"
+            className="launcher-secondary"
+            onClick={createArchitectWorld}
+            disabled={loading}
+          >
+            New world (Architect)
+          </button>
+        </div>
+        <p className="launcher-hint">
+          Demo: Hall + Kitchen · Architect: add scenes in Settings, then lock geography
+        </p>
         <ol className="launcher-steps">
           <li>Public line in Hall → NPC reply</li>
           <li>Whisper one character · switch to Kitchen</li>
@@ -266,6 +293,7 @@ export default function App() {
           depth={queue.depth}
           estimatedWaitMs={queue.estimatedWaitMs}
           currentJob={queue.currentJob ?? undefined}
+          leaseKind={queue.gpu?.currentLease?.kind}
           onCancel={
             currentJobId
               ? async () => {
@@ -293,14 +321,21 @@ export default function App() {
           <button
             type="button"
             onClick={async () => {
+              const who =
+                roster?.atLocation.find((c) => c.characterId !== "__persona__") ??
+                roster?.atLocation[0];
+              if (!who) return;
               await api.answerSignal(world.worldId, pendingForScene[0].signalId, {
-                characterId: "char-alice",
+                characterId: who.characterId,
                 targetSceneId: scene?.sceneId,
               });
               await refresh(world);
             }}
           >
-            Answer (Alice)
+            Answer (
+            {roster?.atLocation.find((c) => c.characterId !== "__persona__")?.displayName ??
+              "cast"}
+            )
           </button>
           <button
             type="button"
@@ -468,6 +503,10 @@ export default function App() {
             <PeopleRail
               worldId={world.worldId}
               activeSceneId={scene.sceneId}
+              scenes={scenes.map((s) => ({
+                sceneId: s.sceneId,
+                locationName: s.locationName,
+              }))}
               roster={roster}
               onMemory={(characterId, displayName) =>
                 setMemoryFor({ characterId, displayName })
@@ -475,17 +514,16 @@ export default function App() {
               onPresenceChanged={() => refresh(world)}
             />
           )}
-          <div className="rail-section">
-            <h3>Signals</h3>
-            <ul className="rail-list">
-              {signals.length === 0 && <li style={{ color: "var(--muted)" }}>None</li>}
-              {signals.map((s) => (
-                <li key={s.signalId}>
-                  {s.kind}: {s.sourceSceneId} → {s.targetSceneId}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {world && scene && roster && (
+            <SignalsRail
+              worldId={world.worldId}
+              activeSceneId={scene.sceneId}
+              signals={signals}
+              castAtActive={roster.atLocation}
+              sceneLabel={sceneLabel}
+              onChanged={() => refresh(world)}
+            />
+          )}
         </aside>
       </div>
 
@@ -507,6 +545,10 @@ export default function App() {
             await refresh(full);
           }}
           onCastChanged={async () => {
+            if (world) await refresh(world);
+          }}
+          scenes={scenes}
+          onScenesChanged={async () => {
             if (world) await refresh(world);
           }}
         />

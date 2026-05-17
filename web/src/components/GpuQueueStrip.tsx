@@ -12,6 +12,7 @@ type Props = {
   depth: number;
   estimatedWaitMs?: number;
   currentJob?: QueueJob | null;
+  leaseKind?: string | null;
   onCancel?: () => void;
 };
 
@@ -34,14 +35,23 @@ function parseRationale(raw: string | undefined): string | null {
   }
 }
 
+function leaseLabel(kind: string | null | undefined): string | null {
+  if (!kind) return null;
+  if (kind === "character_draft") return "character draft";
+  if (kind === "generation") return null;
+  return kind.replace(/_/g, " ");
+}
+
 export function GpuQueueStrip({
   busy,
   depth,
   estimatedWaitMs,
   currentJob,
+  leaseKind,
   onCancel,
 }: Props) {
   const rationale = parseRationale(currentJob?.selectionRationaleJson);
+  const lease = leaseLabel(leaseKind);
   const waitSec =
     estimatedWaitMs && estimatedWaitMs > 0
       ? `~${Math.ceil(estimatedWaitMs / 1000)}s`
@@ -64,6 +74,7 @@ export function GpuQueueStrip({
           {currentJob.characterId.replace("char-", "")}
         </span>
       )}
+      {lease && !currentJob && <span className="queue-rationale">{lease}</span>}
       {rationale && <span className="queue-rationale">{rationale}</span>}
       {busy && currentJob && onCancel && (
         <button type="button" className="queue-cancel" onClick={onCancel}>
