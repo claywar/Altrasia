@@ -113,7 +113,7 @@ export const api = {
   sendMessage: (
     worldId: string,
     sceneId: string,
-    body: { text: string; scope: string; participants?: string[] }
+    body: { text: string; scope: string; participants?: string[]; channelId?: string }
   ) =>
     request<{ messageId: string; generationJob?: { jobId: string } }>(
       `/worlds/${worldId}/scenes/${sceneId}/messages`,
@@ -180,6 +180,44 @@ export const api = {
     request(`/worlds/${worldId}/pause`, { method: "POST" }),
   resumeWorld: (worldId: string) =>
     request(`/worlds/${worldId}/resume`, { method: "POST" }),
+  listChannels: (worldId: string) => request<PhoneChannel[]>(`/worlds/${worldId}/channels`),
+  createPhoneChannel: (
+    worldId: string,
+    body: {
+      sceneIdA: string;
+      characterIdA: string;
+      sceneIdB: string;
+      characterIdB: string;
+    }
+  ) => request<PhoneChannel>(`/worlds/${worldId}/channels`, { method: "POST", body: JSON.stringify(body) }),
+  setSpeakerphone: (worldId: string, channelId: string, sceneId: string, speakerphone: boolean) =>
+    request<PhoneChannel>(
+      `/worlds/${worldId}/channels/${channelId}/endpoints/${sceneId}`,
+      { method: "PATCH", body: JSON.stringify({ speakerphone }) }
+    ),
+  endPhoneChannel: (worldId: string, channelId: string) =>
+    request(`/worlds/${worldId}/channels/${channelId}/end`, { method: "POST" }),
+  answerSignal: (
+    worldId: string,
+    signalId: string,
+    body: { characterId: string; targetSceneId?: string }
+  ) =>
+    request(`/worlds/${worldId}/signals/${signalId}/answer`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};
+
+export type PhoneChannel = {
+  channelId: string;
+  worldId: string;
+  active: boolean;
+  participants: string[];
+  endpoints: Array<{
+    sceneId: string;
+    participantIds: string[];
+    speakerphone: boolean;
+  }>;
 };
 
 export function connectWorldEvents(

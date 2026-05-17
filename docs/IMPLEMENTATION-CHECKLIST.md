@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** Sprint 1/2 **~97%** — v1 wedge feature-complete; manual first-run UX pass remains. **25 pytest** + golden path 1–8.
+**Status:** v1 + v1.1 **feature-complete** in code; manual first-run UX pass remains. **32 pytest** + golden path 1–8.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -42,7 +42,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | Idle `roundRobin` (AO-4) | Done (tab-visible) |
 | v1.1 heartbeat | Done (settings UI + HB-1) |
 | DM-4 | World package export/import | Done (`world_package.py`, `test_world_package.py`) |
-| v1.1 phone | Spec only |
+| CC-8–CC-13 phone play | Done (`communication/phone.py`, `test_phone.py`) |
 | Phase 3+ character wizard, maps, commissions | Spec only |
 
 ## Sprint 1 — inference + memory spike

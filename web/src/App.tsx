@@ -15,6 +15,7 @@ import {
   type World,
 } from "./api/client";
 import { MiniMap } from "./components/MiniMap";
+import { PhonePanel } from "./components/PhonePanel";
 
 function parseScope(metaJson: string): string {
   try {
@@ -56,6 +57,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [worldPaused, setWorldPaused] = useState(false);
   const [savedWorlds, setSavedWorlds] = useState<World[]>([]);
+  const [phoneChannelId, setPhoneChannelId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!world) {
@@ -64,13 +66,15 @@ export default function App() {
   }, [world]);
 
   const refresh = useCallback(async (w: World) => {
-    const [scList, g, r, sig, q] = await Promise.all([
+    const [scList, g, r, sig, q, chs] = await Promise.all([
       api.listScenes(w.worldId),
       api.spatialGraph(w.worldId),
       api.roster(w.worldId),
       api.signals(w.worldId),
       api.queue(w.worldId),
+      api.listChannels(w.worldId).catch(() => []),
     ]);
+    setPhoneChannelId(chs[0]?.channelId ?? null);
     setScenes(scList);
     setGraph(g);
     setRoster(r);
@@ -127,6 +131,7 @@ export default function App() {
         text: text.trim(),
         scope,
         participants,
+        channelId: scope === "phone" ? phoneChannelId ?? undefined : undefined,
       });
       setText("");
       await refresh(world);
@@ -184,7 +189,8 @@ export default function App() {
         payload.event === "scene.changed" ||
         payload.event === "presence.changed" ||
         payload.event === "signal.created" ||
-        payload.event === "signal.updated"
+        payload.event === "signal.updated" ||
+        payload.event.startsWith("channel.")
       ) {
         refresh(world);
       }
@@ -278,6 +284,18 @@ export default function App() {
           <span>
             Knock from {sceneLabel(pendingForScene[0].sourceSceneId)} ({pendingForScene[0].kind})
           </span>
+          <button
+            type="button"
+            onClick={async () => {
+              await api.answerSignal(world.worldId, pendingForScene[0].signalId, {
+                characterId: "char-alice",
+                targetSceneId: scene?.sceneId,
+              });
+              await refresh(world);
+            }}
+          >
+            Answer (Alice)
+          </button>
           <button
             type="button"
             onClick={async () => {
@@ -376,6 +394,7 @@ export default function App() {
                 <option value="public">Public</option>
                 <option value="whisper">Whisper</option>
                 <option value="dm">DM</option>
+                {phoneChannelId && <option value="phone">Phone</option>}
               </select>
               {(scope === "whisper" || scope === "dm") && (
                 <select
@@ -426,6 +445,15 @@ export default function App() {
               ))}
             </ul>
           </div>
+          {world && scene && roster && (
+            <PhonePanel
+              worldId={world.worldId}
+              activeSceneId={scene.sceneId}
+              atLocation={roster.atLocation}
+              elsewhere={roster.elsewhere}
+              onChannelChange={() => refresh(world)}
+            />
+          )}
           <div className="rail-section">
             <h3>People</h3>
             <ul className="rail-list">

@@ -332,6 +332,38 @@ class Orchestrator:
                     trigger_message_id=msg_id,
                 )
 
+    async def on_phone_persona_message(
+        self, world_id: str, channel_id: str, speaker_scene_id: str, message_id: str
+    ) -> dict | None:
+        """CC-12: enqueue phone_target for participant at other endpoint."""
+        if world_id in self.svc.paused_worlds:
+            return None
+        target = self.svc.phone.phone_target_at_other_end(channel_id, speaker_scene_id)
+        if not target:
+            return None
+        cid, remote_scene = target
+        if remote_scene in self._scene_chain_active:
+            return None
+        return await self.enqueue_generation(
+            world_id=world_id,
+            scene_id=remote_scene,
+            character_id=cid,
+            trigger="phone_target",
+            trigger_message_id=message_id,
+        )
+
+    async def on_knock_answered(
+        self, world_id: str, scene_id: str, character_id: str, signal_id: str
+    ) -> dict | None:
+        """CC-11 / CC-12: explicit operator answer at target scene."""
+        return await self.enqueue_generation(
+            world_id=world_id,
+            scene_id=scene_id,
+            character_id=character_id,
+            trigger="knock_answered",
+            trigger_message_id=signal_id,
+        )
+
     async def on_persona_message(
         self, world_id: str, scene_id: str, message_id: str, text: str
     ) -> dict | None:

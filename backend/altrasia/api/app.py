@@ -35,7 +35,24 @@ class PostMessageBody(BaseModel):
     text: str
     scope: str = "public"
     participants: list[str] = Field(default_factory=list)
+    channelId: str | None = None
     asPersona: bool = True
+
+
+class CreatePhoneChannelBody(BaseModel):
+    sceneIdA: str
+    characterIdA: str
+    sceneIdB: str
+    characterIdB: str
+
+
+class SpeakerphonePatch(BaseModel):
+    speakerphone: bool
+
+
+class SignalAnswerBody(BaseModel):
+    characterId: str
+    targetSceneId: str | None = None
 
 
 class PresenceBody(BaseModel):
@@ -210,11 +227,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not scene:
             raise HTTPException(404, "scene not found")
         present = PresenceService.parse_present(scene["presentJson"])
+        channels = {c["channelId"]: c for c in svc.phone.list_active(world_id)}
         out = []
         for m in svc.store.list_messages(world_id, scene_id=scene_id):
             row = dict(m)
+            comm = json.loads(m.get("metaJson") or "{}").get("communication", {})
+            ch_id = comm.get("channelId")
+            ch = channels.get(ch_id) if ch_id else None
             row["perceivedByPersona"] = can_perceive(
-                viewer_id=PERSONA_ID, message=m, present=present
+                viewer_id=PERSONA_ID,
+                message=m,
+                present=present,
+                viewer_scene_id=scene_id,
+                channel=ch,
             )
             out.append(row)
         return out
@@ -255,6 +280,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         body: PostMessageBody,
         svc: AppServices = Depends(get_services),
     ) -> dict:
+        now = ISO()
+        job = None
+        if body.scope == "phone":
+            if not body.channelId:
+                raise HTTPException(400, "channelId required for phone scope")
+            ch = svc.phone.get(body.channelId)
+            if not ch or ch["worldId"] != world_id:
+                raise HTTPException(404, "phone channel not found")
+            msg_id, mirror_ids = svc.phone.insert_phone_line(
+                world_id=world_id,
+                speaker_scene_id=scene_id,
+                channel_id=body.channelId,
+                text=body.text,
+                created_at=now,
+            )
+            _emit(
+                svc,
+                world_id,
+                "channel.message",
+                {"channelId": body.channelId, "messageId": msg_id, "mirrors": mirror_ids},
+            )
+            if body.asPersona:
+                job = await svc.orchestrator.on_phone_persona_message(
+                    world_id, body.channelId, scene_id, msg_id
+                )
+            return {"messageId": msg_id, "generationJob": job, "mirrorIds": mirror_ids}
+
         msg_id = str(uuid.uuid4())
         meta = {
             "communication": {
@@ -275,10 +327,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "streamStatus": "final",
                 "generationJobId": None,
                 "metaJson": json.dumps(meta),
-                "createdAt": ISO(),
+                "createdAt": now,
             }
         )
-        job = None
         if body.asPersona:
             job = await svc.orchestrator.on_persona_message(
                 world_id, scene_id, msg_id, body.text
@@ -384,6 +435,71 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def spatial_graph(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
         return build_spatial_graph(svc.store, world_id)
 
+    @app.get("/api/v1/worlds/{world_id}/channels", dependencies=[Depends(verify_auth)])
+    def _channel_payload(ch: dict) -> dict:
+        return {
+            "channelId": ch["channelId"],
+            "worldId": ch["worldId"],
+            "active": bool(ch.get("active")),
+            "participants": json.loads(ch.get("participantsJson") or "[]"),
+            "endpoints": json.loads(ch.get("endpointsJson") or "[]"),
+        }
+
+    @app.get("/api/v1/worlds/{world_id}/channels", dependencies=[Depends(verify_auth)])
+    def list_channels(world_id: str, svc: AppServices = Depends(get_services)) -> list[dict]:
+        return [_channel_payload(c) for c in svc.phone.list_active(world_id)]
+
+    @app.post("/api/v1/worlds/{world_id}/channels", dependencies=[Depends(verify_auth)])
+    def create_phone_channel(
+        world_id: str, body: CreatePhoneChannelBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        ch = svc.phone.create_channel(
+            world_id=world_id,
+            scene_a=body.sceneIdA,
+            character_a=body.characterIdA,
+            scene_b=body.sceneIdB,
+            character_b=body.characterIdB,
+        )
+        _emit(svc, world_id, "channel.created", {"channelId": ch["channelId"]})
+        return _channel_payload(ch)
+
+    @app.patch(
+        "/api/v1/worlds/{world_id}/channels/{channel_id}/endpoints/{scene_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def patch_speakerphone(
+        world_id: str,
+        channel_id: str,
+        scene_id: str,
+        body: SpeakerphonePatch,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        ch = svc.phone.get(channel_id)
+        if not ch or ch["worldId"] != world_id:
+            raise HTTPException(404, "channel not found")
+        updated = svc.phone.set_speakerphone(channel_id, scene_id, body.speakerphone)
+        _emit(
+            svc,
+            world_id,
+            "channel.updated",
+            {"channelId": channel_id, "sceneId": scene_id},
+        )
+        return _channel_payload(updated)
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/channels/{channel_id}/end",
+        dependencies=[Depends(verify_auth)],
+    )
+    def end_phone_channel(
+        world_id: str, channel_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        ch = svc.phone.get(channel_id)
+        if not ch or ch["worldId"] != world_id:
+            raise HTTPException(404, "channel not found")
+        svc.phone.end_channel(channel_id)
+        _emit(svc, world_id, "channel.ended", {"channelId": channel_id})
+        return {"channelId": channel_id, "active": False}
+
     @app.get("/api/v1/worlds/{world_id}/signals", dependencies=[Depends(verify_auth)])
     def list_signals(world_id: str, svc: AppServices = Depends(get_services)) -> list[dict]:
         return svc.store.list_signals(world_id, status="pending")
@@ -431,6 +547,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {"signalId": signal_id, "status": body.status},
         )
         return {"signalId": signal_id, "status": body.status}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/signals/{signal_id}/answer",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def answer_signal(
+        world_id: str,
+        signal_id: str,
+        body: SignalAnswerBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        sig = svc.store.get_signal(signal_id)
+        if not sig or sig["worldId"] != world_id:
+            raise HTTPException(404, "signal not found")
+        svc.store.update_signal(signal_id, status="acknowledged")
+        scene_id = body.targetSceneId or sig["targetSceneId"]
+        job = await svc.orchestrator.on_knock_answered(
+            world_id, scene_id, body.characterId, signal_id
+        )
+        _emit(
+            svc,
+            world_id,
+            "signal.updated",
+            {"signalId": signal_id, "status": "acknowledged"},
+        )
+        return {"signalId": signal_id, "status": "acknowledged", "generationJob": job}
 
     @app.post("/api/v1/worlds/{world_id}/generate", dependencies=[Depends(verify_auth)])
     async def generate(

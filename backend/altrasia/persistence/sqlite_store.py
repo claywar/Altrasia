@@ -217,6 +217,46 @@ class SqlitePersistence:
         )
         return self._rows(cur.fetchall())
 
+    def list_channels(self, world_id: str, *, active_only: bool = True) -> list[dict[str, Any]]:
+        if active_only:
+            cur = self.conn.execute(
+                "SELECT * FROM CommChannel WHERE worldId = ? AND active = 1",
+                (world_id,),
+            )
+        else:
+            cur = self.conn.execute(
+                "SELECT * FROM CommChannel WHERE worldId = ?", (world_id,)
+            )
+        return self._rows(cur.fetchall())
+
+    def get_channel(self, channel_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            "SELECT * FROM CommChannel WHERE channelId = ?", (channel_id,)
+        )
+        return self._row(cur.fetchone())
+
+    def insert_channel(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO CommChannel (channelId, worldId, endpointsJson, participantsJson, active)
+               VALUES (:channelId, :worldId, :endpointsJson, :participantsJson, :active)""",
+            row,
+        )
+        self.conn.commit()
+
+    def update_channel(self, channel_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [channel_id]
+        self.conn.execute(f"UPDATE CommChannel SET {cols} WHERE channelId = ?", vals)
+        self.conn.commit()
+
+    def get_signal(self, signal_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            "SELECT * FROM CrossSceneSignal WHERE signalId = ?", (signal_id,)
+        )
+        return self._row(cur.fetchone())
+
     def list_signals(self, world_id: str, *, status: str | None = None) -> list[dict[str, Any]]:
         if status:
             cur = self.conn.execute(

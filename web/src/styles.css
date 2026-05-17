@@ -159,6 +159,22 @@ select {
   border-left-color: var(--scope-dm);
 }
 
+.bubble.phone {
+  border-left-color: hsl(175, 50%, 55%);
+}
+
+.phone-start,
+.phone-active {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.phone-start select,
+.phone-active button {
+  font-size: 12px;
+}
+
 .bubble.dimmed {
   opacity: 0.55;
 }

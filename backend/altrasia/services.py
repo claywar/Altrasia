@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from altrasia.event_bus import EventBus
 from altrasia.config import Settings
+from altrasia.communication.phone import PhoneService
 from altrasia.domain.presence import PresenceService
 from altrasia.inference.client import LlmClient
 from altrasia.inference.queue import GpuResourceQueue
@@ -22,6 +23,7 @@ class AppServices:
     store: SqlitePersistence
     memory: MemoryService
     presence: PresenceService
+    phone: PhoneService
     gpu_queue: GpuResourceQueue
     llm: LlmClient
     tools: ToolRegistry
@@ -39,6 +41,7 @@ class AppServices:
         store.migrate()
         memory = MemoryService(store)
         presence = PresenceService(store)
+        phone = PhoneService(store)
         gpu = GpuResourceQueue()
         llm = LlmClient(
             base_url=settings.llm_base_url,
@@ -53,6 +56,7 @@ class AppServices:
             store=store,
             memory=memory,
             presence=presence,
+            phone=phone,
             gpu_queue=gpu,
             llm=llm,
             tools=tools,
