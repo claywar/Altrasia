@@ -34,7 +34,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 | 11 | [11-data-model.md](11-data-model.md) | SQLite entities, events |
 | 12 | [12-api-sketch.md](12-api-sketch.md) | REST, WebSocket, SSE |
 | 13 | [13-agent-orchestration.md](13-agent-orchestration.md) | Scheduler, fairness, GPU integration |
-| 14 | [14-web-ui.md](14-web-ui.md) | Operator console, streaming, Observer Studio |
+| 14 | [14-web-ui.md](14-web-ui.md) | Operator console, streaming, Observer Studio; design system (Appendix A), accessibility (Appendix B) |
 | 15 | [15-plugin-platform.md](15-plugin-platform.md) | Future plugins |
 | 16 | [16-learning.md](16-learning.md) | Output-only storage, stripReasoning |
 | 17 | [17-acceptance-criteria.md](17-acceptance-criteria.md) | Test matrix, golden path |

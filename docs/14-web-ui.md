@@ -6,6 +6,8 @@ Professional **operator console** for WorldEngine. **Persona-first** play; **Obs
 
 Component names in [§19](#19-component-inventory-spec-vocabulary) are **spec vocabulary** for implementers—not implied to exist in any given milestone until an implementation plan says so.
 
+**Design system:** tokens, scope colors, typography, and visual vocabulary — [Appendix A](#appendix-a--design-system-non-normative). **Accessibility:** [Appendix B](#appendix-b--accessibility-normative-when-web-ui-exists).
+
 ## 1. Design principles (UI-*)
 
 | ID | Principle |
@@ -373,25 +375,135 @@ See [12-api-sketch.md](12-api-sketch.md). Desktop-first; responsive layout SHOUL
 | Queue | `GET .../queue` | queue position |
 | Settings | `PATCH /worlds/{id}`, v1.1 `PATCH /operator/settings` | — |
 
-## Appendix A — Design tokens (non-normative)
+## Appendix A — Design system (non-normative)
 
-Implementers SHOULD treat this appendix as guidance; normative behavior is in UI-* IDs above.
+Visual language for the operator console. Normative behavior remains in UI-* IDs above. Wireframe proportions: [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md).
 
-| Token / pattern | Guidance |
-|-----------------|----------|
-| Theme | Dark operator console; low glare |
-| Scope colors | public neutral; whisper violet; dm amber; narrator italic slate; phone teal (v1.1) |
-| Typography | Transcript 15–16px; compose 16px; rail labels 12px |
-| Spacing | 8px grid; bubble max-width ~720px in center column |
-| Motion | Subtle stream cursor only |
-| Keyboard | Compose send; Esc closes overlays; scene shortcuts 1–9 optional |
-| Right rail width | ~260px expanded; icon-only collapsed |
+### A.1 Principles → visual rules
+
+| Principle | Visual rule |
+|-----------|-------------|
+| UI-1 | `GpuQueueStrip` shows monospace job metadata; selection rationale collapsible but discoverable |
+| UI-2 | Queue strip always in chrome; busy/idle visually distinct; progress visible within 500ms of enqueue |
+| UI-3 | Every message shows scope via `ScopeBadge` and/or bubble accent; narrator uses italic body |
+| UI-4 | Transcript readable at 15–16px; markdown structure clear; Mermaid/code blocks visually contained |
+| UI-5 | Active scene highlighted in `SceneHeader` and right **Places**; scene switch has no decorative animation |
+
+### A.2 Surfaces (dark operator console)
+
+Low-glare dark — surfaces step up in lightness, not pure black.
+
+| Token | HSL (reference) | Use |
+|-------|-----------------|-----|
+| `background` | 220 15% 9% | App canvas |
+| `surface-1` | 220 14% 12% | Center column, transcript |
+| `surface-2` | 220 13% 15% | Rails, side panels |
+| `surface-3` | 220 12% 18% | Hover, nested cards |
+| `border` | 220 10% 22% | Dividers |
+| `foreground` | 210 20% 92% | Primary text |
+| `muted-foreground` | 215 12% 58% | Labels, metadata |
+| `accent` | 235 55% 58% | Primary actions, focus |
+| `destructive` | 0 62% 50% | Cancel, errors |
+
+### A.3 Scope colors
+
+Per [04-communication.md](04-communication.md). Each scope: **foreground**, **background-subtle**, **border** for badges and bubble accent. Do not rely on color alone — badge MUST include scope label text.
+
+| Scope | Foreground (HSL) | Background-subtle | Border | Notes |
+|-------|------------------|-------------------|--------|-------|
+| `public` | 210 20% 85% | 220 12% 16% | 220 10% 28% | Neutral |
+| `whisper` | 270 60% 78% | 270 25% 18% | 270 40% 35% | Violet |
+| `dm` | 38 90% 72% | 38 30% 16% | 38 50% 32% | Amber |
+| `narrator` | 215 15% 70% | 215 12% 16% | 215 10% 28% | Slate + italic body |
+| `phone` (v1.1) | 175 50% 72% | 175 25% 16% | 175 40% 32% | Teal |
+| Non-perceived | — | — | — | Bubble body opacity 0.55 (minimum 0.40); stripe stays full contrast |
+
+### A.4 Status and active scene
+
+| Token | HSL (reference) | Use |
+|-------|-----------------|-----|
+| `status-idle` | 215 12% 45% | No active GPU job |
+| `status-busy` | 235 55% 58% | Generating |
+| `active-scene` | 235 45% 52% | `SceneHeader` + Places highlight |
+
+### A.5 Typography
+
+| Role | Size | Use |
+|------|------|-----|
+| Transcript body | 15–16px, line-height 1.6 | `MessageBubble` |
+| Compose | 16px | `PersonaCompose` |
+| Rail section labels | 12px | Places, People, Signals |
+| Queue metadata | Monospace, rail label size | `GpuQueueStrip` |
+| Narrator | Transcript size + italic | `scope: narrator` |
+
+Sans-serif for UI chrome; monospace for queue metadata and code blocks.
+
+### A.6 Spacing and layout
+
+| Rule | Value | Spec |
+|------|-------|------|
+| Grid | 8px base unit | — |
+| Bubble max-width | 720px | Center column |
+| Right rail expanded | 260px | UI-LAY-1, WF-1 |
+| Right rail collapsed | 48px icon-only | WF-3 |
+| Center min-width | 640px (768px target) | UI-LAY-3 |
+| Drawer breakpoint | 1280px | UI-LAY-4 |
+
+### A.7 Motion
+
+| Allowed | Forbidden |
+|---------|-----------|
+| Stream cursor blink (thin caret) | Parallax, bounce on scene switch |
+| Overlay open/close ~150–200ms | Decorative page transitions |
+| Respect `prefers-reduced-motion` | Ambient or decorative animation |
+
+### A.8 Keyboard
+
+| Key | Action |
+|-----|--------|
+| Enter (compose) | Send persona message |
+| Shift+Enter | Newline in compose |
+| Esc | Close overlays |
+| 1–9 (optional) | Scene shortcuts when compose not focused |
+
+### A.9 Visual vocabulary (spec components)
+
+Groupings for implementers — names match [§19](#19-component-inventory-spec-vocabulary):
+
+| Group | Components | Visual role |
+|-------|------------|-------------|
+| Chrome | `AppShell`, `TopBar`, `GpuQueueStrip` | Fixed header + queue strip; 3-region grid |
+| Rails | `SceneNavList`, `PresenceRoster`, `SignalSidebarList` | Dense lists in right rail sections |
+| Transcript | `MessageBubble`, `ScopeBadge`, `StreamingMessage` | Scope stripe, readable body, stream cursor |
+| Compose | `PersonaCompose` | Scope selector + text area + send |
+| Overlays | `ObserverSlideOver`, `SettingsModal`, `ApprovalsDrawer` | Left or center overlays; Esc dismiss |
+
+### A.10 What to avoid
+
+- Generic chat-app styling (pill bubbles, gradient avatars) — undermines operator-console positioning ([20-product-principles.md](20-product-principles.md))
+- Light theme in v1
+- Hard-coded colors outside scope/surface tokens
+- Delete or inline-edit on committed transcript messages (UI-TRN-*)
+
+## Appendix B — Accessibility (normative when Web UI exists)
+
+| ID | Requirement |
+|----|-------------|
+| UI-A11Y-1 | Overlays: focus trap while open; **Esc** closes |
+| UI-A11Y-2 | Visible focus indicator on all interactive controls (minimum 3px, high contrast on dark surfaces) |
+| UI-A11Y-3 | `ScopeBadge`: text label required; foreground on background-subtle ≥ WCAG AA (4.5:1) |
+| UI-A11Y-4 | `PerceptionDimming`: bubble body opacity ≥ 0.40; scope stripe unchanged |
+| UI-A11Y-5 | Compose: Enter send, Shift+Enter newline (Settings MAY document override) |
+| UI-A11Y-6 | Active streaming container: `aria-live="polite"` |
+| UI-A11Y-7 | `prefers-reduced-motion`: disable stream cursor blink and non-essential transitions |
+| UI-A11Y-8 | Scene shortcuts 1–9 (optional): MUST NOT steal focus from compose |
 
 ## Documentation history
 
 | Date | Change |
 |------|--------|
 | 2026-05 | UI/UX master plan merged: right-primary layout (UI-LAY), rich chat (UI-R), transcript integrity (UI-TRN), worlds (UI-WLD), ComfyUI UI (UI-IMG), settings IA (UI-SET), operator policies, wireframes guide |
+| 2026-05 | Design system expanded in Appendix A; accessibility Appendix B (UI-A11Y-*) |
 
 ## Related documents
 
