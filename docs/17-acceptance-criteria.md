@@ -23,6 +23,7 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | 5 | Observer meta-chat renames scene / fixture; framing updates (OBS-2, UI-OBS-CHAT) |
 | 6 | Restart server; presence, exits, signals hydrate (MP-11, CC-2) |
 | 7 | Group scene: Alice and Bob present; Alice public line → Bob replies; restart → Bob mandatory recall diary contains Alice's line (MP-6, MP-17, MP-20) |
+| 8 | Same scene + Carol present: Alice public → Bob reactive; Bob line → Alice `agent_continue` before Carol idle (AO-19) |
 
 ## 3. Requirement matrix
 
@@ -88,6 +89,13 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 |----|------|
 | AO-11 | Second job waits until lease released |
 | AO-12 | Idle tick skipped when queue full |
+| AO-4a | After operator public line, reactive job characterId is **not** chosen by `Scene.roundRobinIndex` advance alone |
+| AO-19 | Alice public → Bob reactive (`continueDepth=0`); Bob line → Alice `agent_continue` (`continueDepth=1`); Carol not scheduled until chain ends or idle tick |
+| AO-19a | While continue chain active at scene, `idle_timer` does not enqueue for that scene |
+| AO-20 | Single operator public line → exactly one reactive GenerationJob |
+| AO-17 / AO-18 | Classroom: Teacher asks "capital of France"; Student A has matching mind locus, Student B does not → reactive job schedules Student A; `selectionRationaleJson` includes relevance factor |
+| AO-4 | Scene with 3+ eligible NPCs: three consecutive `idle_timer` ticks visit three distinct characters in RR order (wrap) |
+| AO-18a | Operator line "@Bob …" → Bob scheduled when eligible regardless of lower `speechWeight` |
 
 ### Communication (v1)
 
@@ -125,6 +133,8 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 
 | ID | Test |
 |----|------|
+| AO-22 | `scene.activity.kind=conversation` or `banter` overlays (post-v1) |
+| AO-17 v1.1 | `speak_intent` batch model call on score tie |
 | MAP-7 | Map regen fixture diff surfaces conflict |
 | IMG-1, IMG-8 | ComfyUI via queue; yields to Observer Direct |
 

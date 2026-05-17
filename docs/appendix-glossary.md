@@ -40,7 +40,11 @@
 | **Stealth tool** | Tool that does not write transcript rows or recurse |
 | **Transcript** | Ordered message log for one scene |
 | **World** | Container for scenes, cast, and world-scoped inventory/channels |
-| **World activity** | Background NPC generations (idle/reactive) |
+| **World activity** | Background NPC generations (idle/reactive/continue) |
+| **agent_continue** | Trigger: follow-up NPC job after a cast scene line (AO-19) |
+| **scoreSpeakers** | Orchestrator function: weighted pick among eligible cast (AO-18) |
+| **Speak-readiness probe** | Bounded FTS query per character for scheduling relevance (AO-17) |
+| **speechWeight** | Character trait 0–1 biasing how often they are selected to speak |
 | **World pool** | Shared memory loci for a scene's objective facts |
 | **WorldEngine** | This specification's target platform name |
 | **Model profile** | Config bundle per LLM (e.g. `qwen3.6-35b-a3b`) — router id, stripReasoning tags |

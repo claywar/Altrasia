@@ -165,13 +165,24 @@ Hook/event equivalent: `message.perceive_filter` with `{ viewerId, message, incl
 
 Legacy fallback: callback `shouldIncludeMessageForViewer` if no listeners registered.
 
-### 5.1 Generation member filter
+### 5.1 Generation member filter and speaker selection
 
-**Group generation** SHOULD filter which characters are eligible to reply:
+**Eligibility** — which characters MAY be scheduled:
 
 - Default: present at active scene.
 - Optional: include phone participants from linked channel when `phone_participants_eligible` is true.
 - Same filter MAY apply to `getWorldMembers()` when `filter_members_by_presence` is enabled.
+
+**Selection** — which eligible character SHOULD speak on reactive and `agent_continue` paths ([13-agent-orchestration.md](13-agent-orchestration.md) AO-18):
+
+| Step | Rule |
+|------|------|
+| 1 | Apply eligibility filter (above). |
+| 2 | If trigger line addresses a character, that character wins if eligible. |
+| 3 | Else `scoreSpeakers`: `speechWeight`, AO-17 relevance probe, `sceneRole` fit, recency, starvation guard. |
+| 4 | Idle `idle_timer` uses AO-4 round-robin only — not this table. |
+
+MUST NOT enqueue multiple reactive NPCs for one operator public line (AO-20).
 
 ## 6. Operator compose
 
@@ -227,6 +238,7 @@ Debate is not a separate channel; it uses the scene transcript and existing scop
 | C-9 | Handset bystanders hear only messages whose `speakerSceneId` matches their present scene (one side). |
 | C-10 | `speakerphone` is per endpoint; default false; toggling one end does not toggle the other. |
 | C-11 | Speakerphone on at an endpoint lets present bystanders at **that scene only** hear both sides. |
+| C-12 | Reactive and continue speaker selection uses AO-18; idle uses AO-4 only ([13-agent-orchestration.md](13-agent-orchestration.md)). |
 | C-12 | Debate activity uses public scope and DEB-2 turn eligibility (post-v1). |
 
 ## Related documents

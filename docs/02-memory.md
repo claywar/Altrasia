@@ -161,6 +161,17 @@ Header MUST state that the character MUST treat diary and loci as **authoritativ
 | World loci filtered by active `sceneId` only | MUST |
 | MUST NOT load or scan all cast memories on every turn | MUST |
 
+### 3.1.1 Orchestrator speak-readiness (AO-17 exception)
+
+The orchestrator MAY run a **bounded** FTS probe per eligible character **only** to pick the next speaker ([13-agent-orchestration.md](13-agent-orchestration.md) AO-17–AO-18). This is not mandatory recall assembly.
+
+| Rule | Level |
+|------|-------|
+| Probe queries scoped to one `characterId` at a time | MUST |
+| ≤8 characters probed per scheduling decision | MUST |
+| Probe hits MUST NOT be written into other characters' prompts | MUST |
+| Full mandatory recall for every present cast member on every scheduling tick | MUST NOT |
+
 ### 3.2 Assembly cache (MEM-PERF-3)
 
 Implementations SHOULD cache assembled mandatory recall blocks:

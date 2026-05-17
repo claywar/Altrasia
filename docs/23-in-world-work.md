@@ -92,7 +92,7 @@ activity:
 | ID | Requirement |
 |----|-------------|
 | **DEB-1** | At `synthesis` phase, MUST `memory_store` to **each** `speakingOrder` participant mind pool under `debate:{sceneId}:` unless `debateDeliverablePolicy: world_pool_at_scene`. |
-| **DEB-2** | Only `speakingOrder[currentIndex]` MAY be scheduled for debate turns (overrides idle round-robin at that scene). |
+| **DEB-2** | Only `speakingOrder[currentIndex]` MAY be scheduled for debate turns (overrides idle round-robin, `agent_continue`, and AO-18 scoring at that scene). |
 | **DEB-3** | Speech uses `channelKind=scene`, scope `public` (or whisper per [04-communication.md](04-communication.md)). MP-20 fan-out applies. |
 | **DEB-4** | Moderator: Observer **Narrate** or designated cast character—no new meta product. |
 
@@ -150,6 +150,8 @@ See [17-acceptance-criteria.md](17-acceptance-criteria.md) §10.
 - [06-web-tools.md](06-web-tools.md) — web after memory
 - [08-real-world-capabilities.md](08-real-world-capabilities.md) — FS, scheduler
 - [11-data-model.md](11-data-model.md) — SQLite entities
-- [13-agent-orchestration.md](13-agent-orchestration.md) — triggers, debate gating
+- [13-agent-orchestration.md](13-agent-orchestration.md) — triggers, debate gating, `agent_continue`, `scoreSpeakers`
+
+**Post-v1:** Optional `scene.activity.kind` values `conversation` and `banter` (AO-22) are lighter than debate; v1 ensemble dialogue uses `agent_continue` + AO-18 only.
 - [14-web-ui.md](14-web-ui.md) — commission queue, evidence inspector
 - [17-acceptance-criteria.md](17-acceptance-criteria.md) — test matrix

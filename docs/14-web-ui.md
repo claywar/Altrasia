@@ -6,7 +6,7 @@ Professional **operator console** for WorldEngine. **Persona-first** play; **Obs
 
 | ID | Principle |
 |----|-----------|
-| UI-1 | **Legible causality** — show why a character spoke (memory tools, framing, queue position). |
+| UI-1 | **Legible causality** — show why a character spoke (memory tools, framing, queue position, **selection rationale** from `GenerationJob.selectionRationaleJson`). |
 | UI-2 | **Queue honesty** — visible GPU busy state and wait (INF-5f). |
 | UI-3 | **Scope clarity** — public / whisper / DM visually distinct; narrator lines distinct. |
 
@@ -32,7 +32,7 @@ flowchart LR
 | **Center** | Active scene transcript + persona compose (hero) |
 | **Sidebar** | Scene switcher, presence roster, elsewhere list |
 | **Slide-over** | Observer Studio (meta chat + modes) |
-| **Strip** | GPU queue status |
+| **Strip** | GPU queue status; per-job trigger, `continueDepth`, selection rationale summary (UI-1) |
 | **Drawer** | Approvals |
 
 ## 3. Persona compose
@@ -43,6 +43,7 @@ flowchart LR
 | UI-P2 | v1.1 adds phone; **per-scene speakerphone toggle** (not global); bystanders see one-sided overhear unless speakerphone on at their scene ([04-communication.md](04-communication.md) §3). |
 | UI-P3 | Persona speak guard feedback when not present ([09-roles-and-privilege.md](09-roles-and-privilege.md)). |
 | UI-P4 | Send enqueues cast reply generation after persona message. |
+| UI-Q1 | Queue strip shows `trigger`, `continueDepth`, and collapsed selection rationale (AO-18, UI-1). |
 
 ## 4. Scene switcher (spatial wedge)
 

@@ -18,6 +18,18 @@ stateDiagram-v2
 
 The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourceQueue** decides *when* GPU work executes. Orchestrator MUST NOT overlap primary completions for two jobs (AO-11, INF-5a).
 
+### 1.1 v1 scheduling policy
+
+| Path | Who speaks next | Mechanism |
+|------|-----------------|-----------|
+| `idle_timer` | One NPC per eligible scene | **AO-4** scene-scoped round-robin (fair background rotation) |
+| `operator_message` (reactive) | One NPC after persona/operator public line | **AO-18** `scoreSpeakers` (not round-robin) |
+| `agent_continue` | Up to `maxContinueDepth` NPCs after a cast line | **AO-18** `scoreSpeakers` per step |
+| `whisper_target` / operator direct | Named character | Targeted; no scoring |
+| `debate_turn` (post-v1) | `speakingOrder[currentIndex]` only | DEB-2 overrides AO-4 and continue |
+
+**Ensemble dialogue:** Alice and Bob MAY trade lines via **`agent_continue`** before Carol speaks on **idle**. Round-robin MUST NOT be used for reactive or continue paths (AO-4a).
+
 ## 2. GenerationJob
 
 | Field | Description |
@@ -30,22 +42,27 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 | `priority` | Numeric; mapped from INF-5c bands |
 | `observerMode` | NULL or `Watch` \| `Narrate` \| `Intervene` \| `Direct` |
 | `status` | `queued` \| `running` \| `done` \| `cancelled` |
+| `continueDepth` | INTEGER NULL — 0 = reactive first beat; 1..N for `agent_continue` chain (AO-19) |
+| `triggerMessageId` | TEXT NULL — scene message that caused scheduling (for scoring cache) |
+| `selectionRationaleJson` | TEXT NULL — factors for UI-1 (AO-18) |
 
 ## 3. Triggers (AO-2)
 
 | Trigger | v1 | Description |
 |---------|-----|-------------|
-| `operator_message` | Yes | Persona or operator sent a line |
-| `persona_arrival` | Yes | Persona joined scene with NPCs |
-| `idle_timer` | Yes | World activity tick |
+| `operator_message` | Yes | Persona or operator sent a line; on completion enqueue **one** reactive NPC job (AO-18) |
+| `persona_arrival` | Yes | Persona joined scene with NPCs; queue up to `personaArrivalMaxReplies` reactive jobs (default 1) |
+| `idle_timer` | Yes | World activity tick; **one** NPC via AO-4 round-robin per eligible scene |
 | `whisper_target` | Yes | Character targeted by whisper |
 | `agent_tool` | Yes | Scene/comm tool initiated follow-up |
-| `agent_continue` | Optional | Public line → optional NPC chain |
+| `agent_continue` | Yes | After cast scene line completes; optional NPC chain (AO-19) when enabled |
 | `phone_target` | v1.1 | CC-12 |
 | `knock_answered` | v1.1 | CC-11 |
 | `commission_started` | Post-v1 | Operator/API started commission ([23-in-world-work.md](23-in-world-work.md)) |
 | `commission_tick` | Post-v1 | Scheduler tick while commission `running` |
 | `debate_turn` | Post-v1 | Debate phase advance at scene with `activity.kind=debate` |
+
+**Post-v1 (not v1):** `scene.activity.kind` values `conversation` and `banter` are reserved for optional structured overlays; v1 uses `agent_continue` + `scoreSpeakers` only (AO-22).
 
 ## 4. Eligibility (AO-3)
 
@@ -60,15 +77,93 @@ A character MAY be scheduled when:
 
 **Commission (COM-6, post-v1):** Assignee MUST be present at commission `targetSceneId` for `commission_started` / `commission_tick` jobs. Status `queued` or `blocked` until presence matches.
 
-**Debate (DEB-2, post-v1):** When `scene.activity.kind=debate`, only `speakingOrder[currentIndex]` is eligible for `debate_turn` jobs at that scene (overrides AO-4 round-robin until phase advances).
+**Debate (DEB-2, post-v1):** When `scene.activity.kind=debate`, only `speakingOrder[currentIndex]` is eligible for `debate_turn` jobs at that scene (overrides AO-4 round-robin and `agent_continue` until phase advances).
 
-## 5. Fairness and caps
+## 5. Round-robin — idle only (AO-4)
+
+| ID | Requirement |
+|----|-------------|
+| AO-4 | For **`idle_timer` only**, advance a scene-scoped round-robin cursor across eligible NPCs at that scene; optional static per-character weights. |
+| AO-4a | Round-robin MUST NOT select speakers for `operator_message` reactive jobs or `agent_continue` jobs. |
+| AO-4b | `Scene.roundRobinIndex` stores cursor; reset or wrap when eligible set changes. |
+| AO-4c | Idle selection ignores “reply to last line”; idle is time-driven ambient rotation, not dialogue rhythm. |
+
+With exactly two eligible NPCs, idle RR alternates A→B→A→B. With three or more, the third tick reaches the next character in cursor order—**not** contextual reply selection.
+
+## 6. Reactive and continue chains
+
+### 6.1 Reactive (`operator_message`, `persona_arrival`)
+
+After a persona or operator **public** scene line completes:
+
+1. Enqueue **one** `GenerationJob` with `trigger=operator_message` (or `persona_arrival`) and `continueDepth=0`.
+2. Pick `characterId` via **AO-18** `scoreSpeakers` — not AO-4.
+3. MUST NOT enqueue multiple reactive NPCs for a single operator line (AO-20).
+
+### 6.2 `agent_continue` (AO-19)
+
+When `agentContinueEnabled` is true (world or preset default on):
+
+1. After any completed **cast** scene line (`channelKind=scene`, assistant/character), orchestrator MAY enqueue follow-up jobs with `trigger=agent_continue`.
+2. Each chain step increments `continueDepth` (1..`maxContinueDepth`).
+3. Pick speaker via AO-18 at each step (allows A↔B ping-pong before a third party).
+4. While `continueDepth > 0` chain is active for a scene, **`idle_timer` jobs for that scene MUST be suppressed** (AO-19a).
+5. Continue job priority: below `whisper_target` and operator direct generate; **above** `idle_timer` (INF-5c spirit).
+
+| Config | Default (Solo story) | Writer | Aquarium |
+|--------|----------------------|--------|----------|
+| `agentContinueEnabled` | true | true | false |
+| `maxContinueDepth` | 2 | 3 | 1 |
+| `personaArrivalMaxReplies` | 1 | 1 | 1 |
+
+Presets: [20-product-principles.md](20-product-principles.md) §6.
+
+## 7. Speaker selection — `scoreSpeakers` (AO-18)
+
+Shared by reactive and `agent_continue` paths. Idle RR does **not** call this function.
+
+### 7.1 Algorithm
+
+1. **Filter** eligible characters (AO-3 + [04-communication.md](04-communication.md) §5.1).
+2. **Addressed override:** if the trigger line names a character (display name, `@`, whisper/DM metadata, or `targetCharacterId`), that character wins if eligible (AO-18a).
+3. Else compute **speak score** per eligible character (§7.2).
+4. **Pick:** weighted random among top scores, or argmax with small jitter; apply **starvation guard** (boost if never spoke this scene session).
+5. Persist `selectionRationaleJson` on the job for UI-1.
+
+### 7.2 Score factors
+
+| Factor | Source | Notes |
+|--------|--------|-------|
+| Base appetite | `Character.speechWeight` (0–1, default 0.5) | Opinionated / outgoing cast |
+| Relevance | AO-17 speak-readiness probe | FTS top hit in speaker's mind + diary vs trigger line |
+| Addressed | Parse trigger metadata | Large bonus; near-certain pick |
+| Role fit | `WorldMember.sceneRole` optional | e.g. `teacher` penalized on open class questions; `student` boosted |
+| Recency penalty | Last N scene speakers | Reduces same-voice spam; does not block addressed |
+| Dyad boost | Not last speaker when scores tie | Encourages A↔B before third party |
+| Starvation guard | Time since last spoke in scene | Small boost if never spoke |
+
+Third parties (Carol) need higher relevance or address unless only one dyad remains active.
+
+### 7.3 Speak-readiness probe (AO-17)
+
+Before scheduling, orchestrator MAY query memory **only** for speaker selection—not full mandatory recall per cast member (MEM-PERF-4 exception, [02-memory.md](02-memory.md) §3.1.1).
+
+| Rule | Level |
+|------|-------|
+| ≤1 FTS query per eligible character (mind + diary pools for that `characterId` only) | MUST |
+| ≤8 eligible characters scored per pick | MUST |
+| P95 total scoring latency &lt;100ms excluding GPU | SHOULD |
+| Cache key `(sceneId, triggerMessageId, eligibleSetHash)` | SHOULD |
+| Probe results MUST NOT be injected as mandatory recall for non-selected characters | MUST |
+
+Optional: hybrid embed rerank top-1 per character when `EmbeddingRecord` exists ([02-memory.md](02-memory.md) §7).
+
+## 8. Fairness and caps
 
 | ID | Requirement |
 |----|-------------|
 | AO-1 | Per-world FIFO queue of GenerationJobs with priority bands. |
 | AO-3a | Operator-initiated Observer jobs above idle NPC. |
-| AO-4 | Round-robin across eligible characters at a scene; configurable weights. |
 | AO-5 | Respect `maxGenerationsPerHour`, tab-hidden pause ([03-locations-and-presence.md](03-locations-and-presence.md)). |
 | AO-6 | Quiet vs full context presets for ambient generations. |
 | AO-10 | `pause_world` / `pause_scene` drains queue without dropping jobs; release GPU lease if in flight. |
@@ -78,8 +173,14 @@ A character MAY be scheduled when:
 | AO-14 | `commission_*` jobs priority below `operator_message` and `whisper_target`. |
 | AO-15 | Commission `done` requires mind-pool `memory_store` per COM-2 unless force-complete. |
 | AO-16 | Debate `synthesis` phase writes mind loci per DEB-1 before marking activity complete. |
+| AO-17 | Bounded speak-readiness probe for AO-18 (see §7.3). |
+| AO-18 | `scoreSpeakers` for reactive and continue; addressed override; rationale on job. |
+| AO-19 | `agent_continue` chain depth, idle suppression during chain (see §6.2). |
+| AO-20 | One reactive NPC per operator public line completion. |
+| AO-21 | v1 MUST NOT enqueue parallel reactive generations for one stimulus. |
+| AO-22 | `conversation` / `banter` scene activities are post-v1; not required for v1 ensemble dialogue. |
 
-## 6. Tool loop integration
+## 9. Tool loop integration
 
 Generation MUST follow [05-tool-calling.md](05-tool-calling.md):
 
@@ -88,27 +189,33 @@ Generation MUST follow [05-tool-calling.md](05-tool-calling.md):
 3. On tool_calls → execute → recurse until limit or done
 4. `stripReasoning` → persist `outputText` to `channelKind=scene` (AO-9)
 5. Diary capture: witnessed scene snippet + fan-out to present cast (MP-6, MP-17, MP-20)
+6. On done: evaluate `agent_continue` enqueue per AO-19
 
 Meta channel (`channelKind=meta`) excluded from AO-9 scene transcript rules.
 
-## 7. Movement (AO-7)
+## 10. Movement (AO-7)
 
 `scene_join`, `scene_leave`, and narrative presence ([03-locations-and-presence.md](03-locations-and-presence.md) §7) MUST emit `presence.changed`. One scene per character per world (W-3).
 
-## 8. Learning pass (AO-8, optional Phase 4)
+## 11. Learning pass (AO-8, optional Phase 4)
 
 Post-generation **reflection** job MAY propose `memory_store` mind loci from output-only summary. Reflection uses GPU queue like any chat call. MP-14 applies.
 
-## 9. Requirements summary
+## 12. Requirements summary
 
 | ID | Requirement |
 |----|-------------|
-| AO-1–AO-16 | Scheduler, triggers, eligibility, caps, GPU integration, in-world work |
+| AO-1–AO-22 | Scheduler, triggers, eligibility, idle RR, continue chains, speak scoring, GPU integration, in-world work |
 
 ## Related documents
 
 - [00-inference-runtime.md](00-inference-runtime.md)
+- [02-memory.md](02-memory.md)
 - [03-locations-and-presence.md](03-locations-and-presence.md)
+- [04-communication.md](04-communication.md)
 - [05-tool-calling.md](05-tool-calling.md)
 - [09-roles-and-privilege.md](09-roles-and-privilege.md)
+- [11-data-model.md](11-data-model.md)
+- [14-web-ui.md](14-web-ui.md)
+- [20-product-principles.md](20-product-principles.md)
 - [23-in-world-work.md](23-in-world-work.md)

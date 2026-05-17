@@ -88,7 +88,10 @@ Inventory MUST be distinguished from fixtures in prompts and tools.
 Warm hearth, rain on shutters.
 Fixtures: kettle (discrete), herb rack (aggregate, 3 picks left)
 Present: Alice [worn: apron; held: ladle], Bob
+Present roles (optional): Alice (teacher), Bob (student)
 ```
+
+When `WorldMember.sceneRole` is set, framing SHOULD include role labels for AO-18 role-fit scoring.
 
 Requirements:
 
@@ -105,10 +108,13 @@ Requirements:
 
 | Trigger | Typical behavior |
 |---------|------------------|
-| Persona joins scene with NPCs | Queue up to N reactive NPC replies (`persona_arrival`) |
-| Operator public message completes | One ambient NPC at active scene |
+| Persona joins scene with NPCs | Up to `personaArrivalMaxReplies` reactive jobs via `scoreSpeakers` ([13-agent-orchestration.md](13-agent-orchestration.md) AO-18; default 1) |
+| Operator public message completes | **One** reactive NPC at active scene via `scoreSpeakers` (not round-robin) |
+| Cast scene line completes | Optional `agent_continue` chain (AO-19) when enabled |
 | Whisper/phone to character | Target generates |
-| Idle timer | Round-robin one NPC per eligible scene |
+| Idle timer | **AO-4 only:** round-robin one NPC per eligible scene |
+
+Reactive and continue paths use contextual speaker selection; idle uses fair rotation when the operator is not driving the scene.
 
 ### 6.2 Eligibility
 

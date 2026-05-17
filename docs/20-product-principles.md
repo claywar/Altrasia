@@ -50,11 +50,13 @@ See [17-acceptance-criteria.md](17-acceptance-criteria.md).
 
 ## 6. Presets
 
-| Preset | Idle activity | Default for |
-|--------|---------------|-------------|
-| **Solo story** | Moderate | v1 default |
-| **Writer** | Off | Focused drafting |
-| **Aquarium** | Higher | Watch agents; requires queue honesty UI |
+| Preset | Idle activity | `agentContinue` | `maxContinueDepth` | Default for |
+|--------|---------------|-----------------|-------------------|-------------|
+| **Solo story** | Moderate | on | 2 | v1 default |
+| **Writer** | Off | on | 3 | Focused drafting |
+| **Aquarium** | Higher | off or 1 | 1 | Watch agents; requires queue honesty UI |
+
+Orchestration detail: [13-agent-orchestration.md](13-agent-orchestration.md) §6.2.
 
 ## 7. Success metrics (targets)
 

@@ -40,6 +40,15 @@ erDiagram
 | `createdAt` | TEXT ISO | |
 | `updatedAt` | TEXT ISO | |
 
+**Orchestration keys in `configJson`:**
+
+| Key | Type | Default |
+|-----|------|---------|
+| `agentContinueEnabled` | boolean | true (preset may override) |
+| `maxContinueDepth` | integer | 2 |
+| `personaArrivalMaxReplies` | integer | 1 |
+| `idleRoundRobinWeights` | object | optional `characterId` → weight for AO-4 |
+
 ### 3.2 Scene
 
 | Column | Type | Notes |
@@ -52,6 +61,7 @@ erDiagram
 | `fixturesJson` | TEXT | Map fixtureKey → fixture record |
 | `exitsJson` | TEXT | Array of exit records (CC-1) |
 | `activityJson` | TEXT NULL | Optional debate overlay ([23-in-world-work.md](23-in-world-work.md)) |
+| `roundRobinIndex` | INTEGER | Idle-only speaker cursor (AO-4b); per scene |
 | `updatedAt` | TEXT ISO | |
 
 **Exit record shape:**
@@ -75,6 +85,7 @@ erDiagram
 | `displayName` | TEXT | |
 | `definitionJson` | TEXT | Persona, instructions |
 | `modelProfile` | TEXT | Default `qwen3.6-35b-a3b` |
+| `speechWeight` | REAL | 0–1; base speak appetite for AO-18 (default 0.5) |
 | `createdAt` | TEXT ISO | |
 
 ### 3.4 WorldMember
@@ -85,6 +96,7 @@ erDiagram
 | `characterId` | TEXT FK | |
 | `muted` | INTEGER | 0/1 |
 | `disabled` | INTEGER | 0/1 |
+| `sceneRole` | TEXT NULL | Optional role tag for AO-18 (e.g. `teacher`, `student`) |
 
 ### 3.5 Message
 
@@ -182,7 +194,21 @@ Reserved for v1.1 phone; MAY be empty table with schema:
 | `priority` | INTEGER | |
 | `observerMode` | TEXT NULL | Watch, Narrate, etc. |
 | `status` | TEXT | `queued` \| `running` \| `done` \| `cancelled` |
+| `continueDepth` | INTEGER NULL | 0 = reactive; 1..N for `agent_continue` (AO-19) |
+| `triggerMessageId` | TEXT NULL FK | Message that triggered scheduling |
+| `selectionRationaleJson` | TEXT NULL | AO-18 factors for UI-1 |
 | `createdAt` | TEXT ISO | |
+
+**`selectionRationaleJson` shape (example):**
+
+```json
+{
+  "pick": "addressed",
+  "scores": {
+    "char-alice": { "total": 0.92, "relevance": 0.82, "speechWeight": 0.5, "recency": -0.1 }
+  }
+}
+```
 
 ### 3.11 GpuLease / GpuRequest
 
