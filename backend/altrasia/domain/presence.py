@@ -48,6 +48,9 @@ class PresenceService:
         self.store.update_scene(scene_id, presentJson=self.dump_present(present))
 
     def roster(self, world_id: str) -> dict[str, list[dict[str, Any]]]:
+        """CC-3: elsewhere roster includes presentSceneId for cast not in active scene."""
+        world = self.store.get_world(world_id)
+        active_scene_id = world["activeSceneId"] if world else None
         scenes = self.store.list_scenes(world_id)
         chars = {c["characterId"]: c for c in self.store.list_world_characters(world_id)}
         at_location: list[dict] = []
@@ -64,8 +67,12 @@ class PresenceService:
                     "displayName": ch.get("displayName", cid),
                     "sceneId": scene["sceneId"],
                     "locationName": scene["locationName"],
+                    "presentSceneId": scene["sceneId"],
                 }
-                at_location.append(entry)
+                if scene["sceneId"] == active_scene_id:
+                    at_location.append(entry)
+                else:
+                    elsewhere.append(entry)
         for cid, ch in chars.items():
             if cid not in placed_ids and not ch.get("disabled"):
                 elsewhere.append(
@@ -74,6 +81,7 @@ class PresenceService:
                         "displayName": ch["displayName"],
                         "sceneId": None,
                         "locationName": None,
+                        "presentSceneId": None,
                     }
                 )
         return {

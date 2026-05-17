@@ -127,15 +127,16 @@ class Orchestrator:
             character_id=job["characterId"], scene_id=job["sceneId"]
         )
         scene = self.svc.store.get_scene(job["sceneId"])
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    f"You are {ch['displayName']}. Stay in character.\n\n"
-                    f"Scene: {scene['locationName']}\n\n{recall}"
-                ),
-            }
-        ]
+        from altrasia.inference.profiles import quality_addendum
+
+        addendum = quality_addendum(self.svc.settings, ch.get("modelProfile", "qwen3.6-35b-a3b"))
+        system = (
+            f"You are {ch['displayName']}. Stay in character.\n\n"
+            f"Scene: {scene['locationName']}\n\n{recall}"
+        )
+        if addendum:
+            system += f"\n\n{addendum}"
+        messages = [{"role": "system", "content": system}]
         for m in self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-12:]:
             role = "assistant" if m["role"] == "assistant" else "user"
             messages.append({"role": role, "content": m["outputText"]})

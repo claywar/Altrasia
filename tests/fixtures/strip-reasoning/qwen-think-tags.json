@@ -1,4 +1,4 @@
 {
-  "input": "Hello secret chain world!",
+  "input": "Hello \u003cthink\u003esecret chain\u003c/think\u003e world!",
   "expected": "Hello  world!"
 }

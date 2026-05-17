@@ -1,7 +1,8 @@
-.DS_Store
-Thumbs.db
-*.swp
-*~
-.idea/
-.vscode/
+﻿__pycache__/
+*.py[cod]
+.pytest_cache/
 node_modules/
+web/dist/
+web/tsconfig.tsbuildinfo
+.env
+*.db

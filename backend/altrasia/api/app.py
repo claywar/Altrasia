@@ -140,6 +140,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         world_id: str, body: dict[str, Any], svc: AppServices = Depends(get_services)
     ) -> dict:
         allowed = {k: v for k, v in body.items() if k in ("name", "activeSceneId", "configJson")}
+        if "activeSceneId" in allowed:
+            svc.presence.join(allowed["activeSceneId"], PERSONA_ID)
         svc.store.update_world(world_id, **allowed, updatedAt=ISO())
         return svc.store.get_world(world_id)  # type: ignore
 
