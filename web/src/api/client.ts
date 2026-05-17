@@ -63,6 +63,24 @@ export type OperatorSettings = {
   lastHeartbeatAt: string | null;
 };
 
+export type CharacterDefinition = {
+  persona: string;
+  instructions: string;
+  focusTags?: string[];
+  speechWeight?: number;
+  modelProfile?: string;
+};
+
+export type CharacterDraft = {
+  draftId: string;
+  status: string;
+  operatorBrief: string;
+  definitionJson: CharacterDefinition | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ObserverDigest = {
   worldId: string;
   worldName?: string;
@@ -187,6 +205,32 @@ export const api = {
     request<Message[]>(`/worlds/${worldId}/observer/meta-messages`),
   observerDigest: (worldId: string) =>
     request<ObserverDigest>(`/worlds/${worldId}/observer/digest`),
+  createCharacterDraft: (brief: string) =>
+    request<CharacterDraft>("/characters/draft", {
+      method: "POST",
+      body: JSON.stringify({ brief }),
+    }),
+  getCharacterDraft: (draftId: string) =>
+    request<CharacterDraft>(`/characters/draft/${draftId}`),
+  discardCharacterDraft: (draftId: string) =>
+    request<{ draftId: string; status: string }>(`/characters/draft/${draftId}`, {
+      method: "DELETE",
+    }),
+  approveCharacter: (body: {
+    draftId: string;
+    worldId?: string;
+    displayName?: string;
+    definitionJson?: CharacterDefinition;
+  }) =>
+    request<{ characterId: string; draftId: string; displayName: string }>("/characters", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  addWorldMember: (worldId: string, characterId: string) =>
+    request<{ worldId: string; characterId: string }>(`/worlds/${worldId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ characterId }),
+    }),
   postMeta: (worldId: string, text: string) =>
     request(`/worlds/${worldId}/observer/meta-messages`, {
       method: "POST",

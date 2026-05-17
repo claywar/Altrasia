@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-_MIGRATION = Path(__file__).parent / "sqlite" / "migrations" / "001_initial.sql"
+_MIGRATIONS_DIR = Path(__file__).parent / "sqlite" / "migrations"
 
 
 class SqlitePersistence:
@@ -17,8 +17,8 @@ class SqlitePersistence:
         self.conn.row_factory = sqlite3.Row
 
     def migrate(self) -> None:
-        sql = _MIGRATION.read_text(encoding="utf-8")
-        self.conn.executescript(sql)
+        for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+            self.conn.executescript(path.read_text(encoding="utf-8"))
         self.conn.commit()
 
     def close(self) -> None:
@@ -109,6 +109,30 @@ class SqlitePersistence:
     def get_character(self, character_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute("SELECT * FROM Character WHERE characterId = ?", (character_id,))
         return self._row(cur.fetchone())
+
+    def insert_character_draft(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO CharacterDraft (draftId, operatorBrief, definitionJson, status,
+               errorMessage, createdAt, updatedAt)
+               VALUES (:draftId, :operatorBrief, :definitionJson, :status,
+               :errorMessage, :createdAt, :updatedAt)""",
+            row,
+        )
+        self.conn.commit()
+
+    def get_character_draft(self, draft_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            "SELECT * FROM CharacterDraft WHERE draftId = ?", (draft_id,)
+        )
+        return self._row(cur.fetchone())
+
+    def update_character_draft(self, draft_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [draft_id]
+        self.conn.execute(f"UPDATE CharacterDraft SET {cols} WHERE draftId = ?", vals)
+        self.conn.commit()
 
     def add_world_member(self, world_id: str, character_id: str, **kw: Any) -> None:
         self.conn.execute(

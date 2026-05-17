@@ -21,6 +21,12 @@ from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.perception.scope import can_perceive
 from altrasia.fixtures.loader import load_fixture_by_id
 from altrasia.services import AppServices
+from altrasia.character_authoring import (
+    approve_character_draft,
+    create_character_draft,
+    discard_character_draft,
+    get_character_draft,
+)
 from altrasia.world_package import export_world_package, import_world_package
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
@@ -92,6 +98,21 @@ class HeartbeatPatch(BaseModel):
 
 class OperatorSettingsPatch(BaseModel):
     heartbeat: HeartbeatPatch | None = None
+
+
+class CharacterDraftCreateBody(BaseModel):
+    brief: str
+
+
+class CharacterApproveBody(BaseModel):
+    draftId: str
+    definitionJson: dict[str, Any] | None = None
+    displayName: str | None = None
+    worldId: str | None = None
+
+
+class WorldMemberBody(BaseModel):
+    characterId: str
 
 
 def _emit(svc: AppServices, world_id: str, event: str, data: dict[str, Any]) -> None:
@@ -724,6 +745,69 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return import_world_package(svc.store, data, assets_dir=assets)
         except (ValueError, zipfile.BadZipFile, KeyError) as exc:
             raise HTTPException(400, f"invalid package: {exc}") from exc
+
+    @app.post("/api/v1/characters/draft", dependencies=[Depends(verify_auth)])
+    async def post_character_draft(
+        body: CharacterDraftCreateBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        if not body.brief.strip():
+            raise HTTPException(400, "brief is required")
+        try:
+            return await create_character_draft(svc, body.brief.strip())
+        except Exception as exc:
+            raise HTTPException(500, str(exc)) from exc
+
+    @app.get(
+        "/api/v1/characters/draft/{draft_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_character_draft_route(
+        draft_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        row = get_character_draft(svc, draft_id)
+        if not row:
+            raise HTTPException(404, "draft not found")
+        return row
+
+    @app.delete(
+        "/api/v1/characters/draft/{draft_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def delete_character_draft_route(
+        draft_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        if not discard_character_draft(svc, draft_id):
+            raise HTTPException(404, "draft not found or already approved")
+        return {"draftId": draft_id, "status": "discarded"}
+
+    @app.post("/api/v1/characters", dependencies=[Depends(verify_auth)])
+    def post_character_from_draft(
+        body: CharacterApproveBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        try:
+            return approve_character_draft(
+                svc,
+                body.draftId,
+                definition_override=body.definitionJson,
+                display_name=body.displayName,
+                world_id=body.worldId,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/members",
+        dependencies=[Depends(verify_auth)],
+    )
+    def add_world_member(
+        world_id: str, body: WorldMemberBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        if not svc.store.get_character(body.characterId):
+            raise HTTPException(404, "character not found")
+        svc.store.add_world_member(world_id, body.characterId)
+        return {"worldId": world_id, "characterId": body.characterId}
 
     @app.get("/api/v1/operator/settings", dependencies=[Depends(verify_auth)])
     def get_operator_settings(svc: AppServices = Depends(get_services)) -> dict:

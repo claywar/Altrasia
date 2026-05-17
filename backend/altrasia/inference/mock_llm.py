@@ -21,11 +21,34 @@ async def mock_chat_completion(
     if tools is not None:
         _tool_snapshots.append([t["function"]["name"] for t in tools])
     last_user = ""
+    system_text = ""
+    for m in messages:
+        if m.get("role") == "system":
+            system_text += m.get("content", "")
     for m in reversed(messages):
         if m.get("role") == "user":
             last_user = m.get("content", "")
             break
     lower = last_user.lower()
+    if "character authoring assistant" in system_text.lower():
+        brief = last_user.strip() or "a mysterious stranger"
+        payload = {
+            "persona": f"A composed figure shaped by the brief: {brief[:120]}",
+            "instructions": "Speak in short, vivid lines. Respect scene presence and memory tools.",
+            "focusTags": ["draft"],
+            "speechWeight": 0.5,
+            "modelProfile": "qwen3.6-35b-a3b",
+        }
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": json.dumps(payload),
+                    }
+                }
+            ]
+        }
     if tools and ("remember" in lower or "capital" in lower):
         return {
             "choices": [

@@ -14,6 +14,9 @@ Run Altrasia locally (v1 spatial wedge).
 cd backend
 pip install -e ".[dev]"
 altrasia serve --port 8787
+# optional: seed demo without the Web UI
+altrasia load-demo
+altrasia worlds   # list saved worlds
 ```
 
 Default uses **mock LLM** (no GPU). Health: http://127.0.0.1:8787/api/v1/health

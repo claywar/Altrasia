@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type OperatorSettings } from "../api/client";
+import { CharacterDraftPanel } from "./CharacterDraftPanel";
 
 type Props = {
   worldId: string;
@@ -8,6 +9,7 @@ type Props = {
   onClose: () => void;
   onWorldPauseChange: () => void;
   onWorldImported: (world: { worldId: string; name: string; activeSceneId: string }) => void;
+  onCastChanged?: () => void;
 };
 
 export function SettingsPanel({
@@ -17,6 +19,7 @@ export function SettingsPanel({
   onClose,
   onWorldPauseChange,
   onWorldImported,
+  onCastChanged,
 }: Props) {
   const [settings, setSettings] = useState<OperatorSettings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,6 +107,7 @@ export function SettingsPanel({
             </label>
           </div>
         </section>
+        <CharacterDraftPanel worldId={worldId} onCharacterAdded={() => onCastChanged?.()} />
         <section className="settings-section">
           <h3>Global heartbeat (v1.1)</h3>
           <p className="settings-muted">

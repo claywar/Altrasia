@@ -524,6 +524,9 @@ export default function App() {
             setWorld(full);
             await refresh(full);
           }}
+          onCastChanged={async () => {
+            if (world) await refresh(world);
+          }}
         />
       )}
 
