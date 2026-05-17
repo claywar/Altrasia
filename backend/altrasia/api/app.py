@@ -13,8 +13,9 @@ from pydantic import BaseModel, Field
 
 from altrasia.api.deps import get_services, verify_auth
 from altrasia.config import Settings, get_settings
-from altrasia.domain.presence import PERSONA_ID
+from altrasia.domain.presence import PERSONA_ID, PresenceService
 from altrasia.domain.spatial_graph import build_spatial_graph
+from altrasia.perception.scope import can_perceive
 from altrasia.fixtures.loader import load_fixture_by_id
 from altrasia.services import AppServices
 
@@ -167,7 +168,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def list_messages(
         world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
     ) -> list[dict]:
-        return svc.store.list_messages(world_id, scene_id=scene_id)
+        scene = svc.store.get_scene(scene_id)
+        if not scene:
+            raise HTTPException(404, "scene not found")
+        present = PresenceService.parse_present(scene["presentJson"])
+        out = []
+        for m in svc.store.list_messages(world_id, scene_id=scene_id):
+            row = dict(m)
+            row["perceivedByPersona"] = can_perceive(
+                viewer_id=PERSONA_ID, message=m, present=present
+            )
+            out.append(row)
+        return out
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/diary",
+        dependencies=[Depends(verify_auth)],
+    )
+    def character_diary(
+        world_id: str, character_id: str, svc: AppServices = Depends(get_services)
+    ) -> list[dict]:
+        return svc.memory.store.list_diary(character_id, limit=30)
 
     @app.post(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",

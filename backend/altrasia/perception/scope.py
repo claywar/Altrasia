@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+PERSONA_ID = "__persona__"
+
 
 def parse_comm(meta_json: str) -> dict[str, Any]:
     meta = json.loads(meta_json or "{}")
@@ -16,13 +18,15 @@ def can_perceive(
     present: list[str],
 ) -> bool:
     """CC-7 v1: public, whisper, dm, narrator."""
+    if viewer_id == PERSONA_ID and message.get("role") == "user":
+        return True
     comm = parse_comm(message.get("metaJson", "{}"))
     scope = comm.get("scope", "public")
     if scope == "public" or scope == "narrator":
         return True
     if scope == "whisper":
         participants = comm.get("participants") or []
-        return viewer_id in participants or viewer_id == "__persona__"
+        return viewer_id in participants or viewer_id == PERSONA_ID
     if scope == "dm":
         participants = comm.get("participants") or []
         speaker = message.get("characterId")

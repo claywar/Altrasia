@@ -138,6 +138,14 @@ export default function App() {
     }
   }, [observerOpen, world]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setObserverOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!world) {
     return (
       <div className="launcher">
@@ -232,6 +240,7 @@ export default function App() {
           <div className="transcript">
             {messages.map((m) => {
               const sc = parseScope(m.metaJson);
+              const perceived = m.perceivedByPersona !== false;
               const label =
                 m.role === "user"
                   ? "Persona"
@@ -239,7 +248,8 @@ export default function App() {
               return (
                 <article
                   key={m.messageId}
-                  className={`bubble ${sc} ${m.streamStatus === "streaming" ? "streaming" : ""}`}
+                  className={`bubble ${sc} ${m.streamStatus === "streaming" ? "streaming" : ""} ${perceived ? "" : "dimmed"}`}
+                  title={perceived ? undefined : "Not perceived at your position"}
                 >
                   <div className="bubble-header">
                     {label} · {sc}

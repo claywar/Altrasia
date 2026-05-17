@@ -37,6 +37,7 @@ export type Message = {
   outputText: string;
   streamStatus: string;
   metaJson: string;
+  perceivedByPersona?: boolean;
 };
 
 export type SpatialGraph = {

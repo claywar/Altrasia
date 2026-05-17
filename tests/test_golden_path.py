@@ -12,7 +12,7 @@ from altrasia.inference.profiles import quality_addendum
 
 
 @pytest.fixture
-def client(tmp_path: Path) -> tuple[TestClient, Path]:
+def client(tmp_path: Path) -> tuple[TestClient, Path, object]:
     db = tmp_path / "golden.db"
     settings = Settings(
         db_path=db,
@@ -20,7 +20,7 @@ def client(tmp_path: Path) -> tuple[TestClient, Path]:
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
     )
     app = create_app(settings)
-    return TestClient(app), db
+    return TestClient(app), db, app.state.services
 
 
 def _wait_jobs(client: TestClient, world_id: str, timeout: float = 5.0) -> None:
@@ -33,8 +33,8 @@ def _wait_jobs(client: TestClient, world_id: str, timeout: float = 5.0) -> None:
     raise TimeoutError("generation did not finish")
 
 
-def test_golden_path_spatial(client: tuple[TestClient, Path]) -> None:
-    client, db_path = client
+def test_golden_path_spatial(client: tuple[TestClient, Path, object]) -> None:
+    client, db_path, services = client
     # GP-SETUP
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     assert r.status_code == 200
@@ -91,6 +91,38 @@ def test_golden_path_spatial(client: tuple[TestClient, Path]) -> None:
     assert w2["activeSceneId"] == kitchen
     sigs2 = client2.get(f"/api/v1/worlds/{world_id}/signals").json()
     assert any(s["status"] == "pending" for s in sigs2)
+
+    # Step 7: group scene — Bob joins hall; diary fan-out (MP-20)
+    client.patch(f"/api/v1/worlds/{world_id}", json={"activeSceneId": hall})
+    client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{hall}/presence/join",
+        json={"characterId": "char-bob"},
+    )
+    client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
+        json={"text": "Good evening both of you.", "scope": "public"},
+    )
+    _wait_jobs(client, world_id, timeout=10.0)
+    bob_diary = client.get(
+        f"/api/v1/worlds/{world_id}/characters/char-bob/diary"
+    ).json()
+    assert len(bob_diary) >= 1
+    assert any("evening" in seg["text"].lower() for seg in bob_diary)
+
+    # Step 8: agent_continue chain — Bob then Alice (AO-19)
+    client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
+        json={"text": "Bob, what do you think?", "scope": "public"},
+    )
+    _wait_jobs(client, world_id, timeout=12.0)
+    cur = services.store.conn.execute(
+        """SELECT characterId, continueDepth, trigger, status FROM GenerationJob
+           WHERE worldId = ? AND sceneId = ? ORDER BY createdAt""",
+        (world_id, hall),
+    ).fetchall()
+    assert len(cur) >= 2
+    depths = [row[1] for row in cur if row[3] == "done"]
+    assert 0 in depths and 1 in depths
 
 
 def test_oq1_quality_addendum(tmp_path: Path) -> None:

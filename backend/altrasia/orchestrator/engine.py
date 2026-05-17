@@ -19,26 +19,55 @@ class Orchestrator:
     def __init__(self, services: Any) -> None:
         self.svc = services
         self._workers: dict[str, asyncio.Task] = {}
+        self._scene_chain_active: set[str] = set()
+
+    def _world_config(self, world_id: str) -> dict[str, Any]:
+        world = self.svc.store.get_world(world_id)
+        if not world:
+            return {}
+        return json.loads(world.get("configJson") or "{}")
+
+    def _max_continue_depth(self, world_id: str) -> int:
+        return int(self._world_config(world_id).get("maxContinueDepth", 2))
 
     def pick_reactive_character(
         self, world_id: str, scene_id: str, trigger_text: str
     ) -> tuple[str | None, dict]:
-        """AO-18 simplified: @mention, addressed name, else highest speechWeight present."""
+        """AO-18: @mention, name in text, else highest speechWeight among present cast."""
         scene = self.svc.store.get_scene(scene_id)
         present = json.loads(scene["presentJson"])
         cast = [c for c in present if c not in (PERSONA_ID,)]
         if not cast:
             return None, {}
-        mention = re.search(r"@(\w+)", trigger_text)
         chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
+        lower = trigger_text.lower()
+
+        mention = re.search(r"@(\w+)", trigger_text, re.I)
         if mention:
             name = mention.group(1).lower()
             for cid in cast:
-                ch = chars.get(cid, {})
-                if name in ch.get("displayName", "").lower():
+                if name in chars.get(cid, {}).get("displayName", "").lower():
                     return cid, {"pick": "mention", "scores": {cid: {"total": 1.0}}}
+
+        for cid in cast:
+            display = chars.get(cid, {}).get("displayName", "")
+            if display and display.lower() in lower:
+                return cid, {"pick": "addressed", "scores": {cid: {"total": 0.95}}}
+
         best = max(cast, key=lambda c: float(chars.get(c, {}).get("speechWeight", 0.5)))
         return best, {"pick": "speechWeight", "scores": {best: {"total": 0.8}}}
+
+    def _pick_continue_character(
+        self, world_id: str, scene_id: str, exclude_id: str
+    ) -> str | None:
+        """AO-19: next cast member for agent_continue after reactive reply."""
+        scene = self.svc.store.get_scene(scene_id)
+        present = json.loads(scene["presentJson"])
+        cast = [c for c in present if c not in (PERSONA_ID, exclude_id)]
+        if not cast:
+            return None
+        chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
+        return max(cast, key=lambda c: float(chars.get(c, {}).get("speechWeight", 0.5)))
 
     async def enqueue_generation(
         self,
@@ -69,6 +98,7 @@ class Orchestrator:
                 "createdAt": ISO(),
             }
         )
+        self._scene_chain_active.add(scene_id)
         stream = TokenStream()
         self.svc.streams[job_id] = stream
         task = asyncio.create_task(self._run_job(job_id, stream))
@@ -119,7 +149,20 @@ class Orchestrator:
             self.svc.store.update_job(job_id, status="cancelled")
             await stream.push("generation.error", {"jobId": job_id, "error": str(exc)})
         finally:
+            if not self._scene_has_pending_jobs(job["worldId"], job["sceneId"]):
+                self._scene_chain_active.discard(job["sceneId"])
             await stream.close()
+
+    def _scene_has_pending_jobs(self, world_id: str, scene_id: str) -> bool:
+        for j in self.svc.store.list_queued_jobs(world_id):
+            if j["sceneId"] == scene_id:
+                return True
+        row = self.svc.store.conn.execute(
+            """SELECT 1 FROM GenerationJob WHERE worldId = ? AND sceneId = ?
+               AND status = 'running' LIMIT 1""",
+            (world_id, scene_id),
+        ).fetchone()
+        return row is not None
 
     async def _generate_text(self, job: dict, msg_id: str) -> str:
         ch = self.svc.store.get_character(job["characterId"])
@@ -173,36 +216,44 @@ class Orchestrator:
     async def _after_reply(self, job: dict, msg_id: str, text: str) -> None:
         scene = self.svc.store.get_scene(job["sceneId"])
         present = [c for c in json.loads(scene["presentJson"]) if c != PERSONA_ID]
-        recent = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-4:]
-        snippet = "\n".join(f"{m.get('characterId') or 'persona'}: {m['outputText']}" for m in recent)
+        recent = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-6:]
+        snippet = "\n".join(
+            f"{m.get('characterId') or 'persona'}: {m['outputText']}" for m in recent
+        )
         self.svc.memory.capture_diary_fanout(
             scene_id=job["sceneId"],
             present_ids=present,
             snippet=snippet,
             message_ids=[m["messageId"] for m in recent],
         )
-        if job["continueDepth"] == 0 and job["trigger"] == "persona_message":
-            trigger_msg = job.get("triggerMessageId")
-            msgs = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
-            persona_line = next(
-                (m for m in reversed(msgs) if m["messageId"] == trigger_msg),
-                None,
+
+        depth = int(job.get("continueDepth") or 0)
+        max_depth = self._max_continue_depth(job["worldId"])
+        # AO-19: reactive (depth 0) → one agent_continue (depth 1) when another cast present
+        if (
+            depth == 0
+            and job["trigger"] == "persona_message"
+            and depth + 1 <= max_depth
+        ):
+            nxt = self._pick_continue_character(
+                job["worldId"], job["sceneId"], job["characterId"]
             )
-            if persona_line:
-                other = [c for c in present if c != job["characterId"]]
-                if other:
-                    await self.enqueue_generation(
-                        world_id=job["worldId"],
-                        scene_id=job["sceneId"],
-                        character_id=other[0],
-                        trigger="agent_continue",
-                        continue_depth=1,
-                        trigger_message_id=msg_id,
-                    )
+            if nxt:
+                await self.enqueue_generation(
+                    world_id=job["worldId"],
+                    scene_id=job["sceneId"],
+                    character_id=nxt,
+                    trigger="agent_continue",
+                    continue_depth=depth + 1,
+                    trigger_message_id=msg_id,
+                )
 
     async def on_persona_message(
         self, world_id: str, scene_id: str, message_id: str, text: str
     ) -> dict | None:
+        """AO-20: exactly one reactive job per persona line."""
+        if scene_id in self._scene_chain_active:
+            return None
         cid, rationale = self.pick_reactive_character(world_id, scene_id, text)
         if not cid:
             return None

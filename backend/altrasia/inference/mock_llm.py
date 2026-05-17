@@ -35,12 +35,13 @@ async def mock_chat_completion(
                 }
             ]
         }
-    name = "there"
+    name = "NPC"
     for m in messages:
         if m.get("role") == "system" and "You are" in m.get("content", ""):
             line = m["content"]
             if "You are " in line:
                 name = line.split("You are ", 1)[1].split(".")[0].strip()
+                break
     reply = f"*nods* I hear you. ({name} responds in character.)"
     if "whisper" in lower:
         reply = f"*(quietly)* {reply}"
