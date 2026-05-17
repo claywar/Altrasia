@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import {
   api,
+  connectWorldEvents,
   streamGeneration,
   type Message,
   type Scene,
@@ -41,6 +42,8 @@ export default function App() {
   const [observerOpen, setObserverOpen] = useState(false);
   const [metaMessages, setMetaMessages] = useState<Message[]>([]);
   const [metaText, setMetaText] = useState("");
+  const [whisperTarget, setWhisperTarget] = useState("");
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
   const refresh = useCallback(async (w: World) => {
     const [scList, g, r, sig, q] = await Promise.all([
@@ -84,19 +87,28 @@ export default function App() {
     if (!world || !scene || !text.trim()) return;
     setLoading(true);
     try {
+      const participants =
+        scope === "whisper" || scope === "dm"
+          ? whisperTarget
+            ? [whisperTarget]
+            : []
+          : [];
       const res = await api.sendMessage(world.worldId, scene.sceneId, {
         text: text.trim(),
         scope,
+        participants,
       });
       setText("");
       await refresh(world);
       if (res.generationJob?.jobId) {
+        setCurrentJobId(res.generationJob.jobId);
         setQueueBusy(true);
         streamGeneration(world.worldId, res.generationJob.jobId, async (ev) => {
           if (ev === "generation.done" || ev === "generation.error") {
             await refresh(world);
             const q = await api.queue(world.worldId);
             setQueueBusy(q.busy);
+            setCurrentJobId(null);
           }
         });
       }
@@ -125,12 +137,22 @@ export default function App() {
 
   useEffect(() => {
     if (!world) return;
-    const t = setInterval(async () => {
-      const q = await api.queue(world.worldId);
-      setQueueBusy(q.busy);
-    }, 2000);
-    return () => clearInterval(t);
-  }, [world]);
+    return connectWorldEvents(world.worldId, (payload) => {
+      if (payload.event === "queue.updated") {
+        const d = payload.data as { busy?: boolean; currentJob?: { jobId: string } };
+        setQueueBusy(!!d.busy);
+        setCurrentJobId(d.currentJob?.jobId ?? null);
+      }
+      if (
+        payload.event.startsWith("generation.") ||
+        payload.event === "scene.changed" ||
+        payload.event === "presence.changed" ||
+        payload.event === "signal.created"
+      ) {
+        refresh(world);
+      }
+    });
+  }, [world, refresh]);
 
   useEffect(() => {
     if (observerOpen && world) {
@@ -170,6 +192,18 @@ export default function App() {
         <span className={`queue-strip ${queueBusy ? "busy" : ""}`}>
           GPU {queueBusy ? "busy" : "idle"}
         </span>
+        {currentJobId && (
+          <button
+            type="button"
+            onClick={async () => {
+              await api.cancelJob(currentJobId);
+              setCurrentJobId(null);
+              if (world) await refresh(world);
+            }}
+          >
+            Cancel
+          </button>
+        )}
         <button type="button" onClick={() => setObserverOpen(true)}>
           Observer Studio
         </button>
@@ -260,11 +294,27 @@ export default function App() {
             })}
           </div>
           <footer className="compose">
-            <select value={scope} onChange={(e) => setScope(e.target.value)}>
-              <option value="public">Public</option>
-              <option value="whisper">Whisper</option>
-              <option value="dm">DM</option>
-            </select>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <select value={scope} onChange={(e) => setScope(e.target.value)}>
+                <option value="public">Public</option>
+                <option value="whisper">Whisper</option>
+                <option value="dm">DM</option>
+              </select>
+              {(scope === "whisper" || scope === "dm") && (
+                <select
+                  value={whisperTarget}
+                  onChange={(e) => setWhisperTarget(e.target.value)}
+                  aria-label="Whisper target"
+                >
+                  <option value="">Select character…</option>
+                  {[...(roster?.atLocation ?? []), ...(roster?.elsewhere ?? [])].map((p) => (
+                    <option key={p.characterId} value={p.characterId}>
+                      {p.displayName}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
             <div className="compose-row">
               <textarea
                 value={text}

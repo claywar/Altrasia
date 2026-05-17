@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -57,6 +57,15 @@ class GenerateBody(BaseModel):
 
 class MetaMessageBody(BaseModel):
     text: str
+
+
+class SummonBody(BaseModel):
+    characterIds: list[str]
+    targetSceneId: str
+
+
+def _emit(svc: AppServices, world_id: str, event: str, data: dict[str, Any]) -> None:
+    svc.event_bus.emit(svc.store, world_id, event, data)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -143,6 +152,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allowed = {k: v for k, v in body.items() if k in ("name", "activeSceneId", "configJson")}
         if "activeSceneId" in allowed:
             svc.presence.join(allowed["activeSceneId"], PERSONA_ID)
+            _emit(svc, world_id, "scene.changed", {"sceneId": allowed["activeSceneId"]})
         svc.store.update_world(world_id, **allowed, updatedAt=ISO())
         return svc.store.get_world(world_id)  # type: ignore
 
@@ -286,7 +296,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         world_id: str, scene_id: str, body: PresenceBody, svc: AppServices = Depends(get_services)
     ) -> dict:
         svc.presence.join(scene_id, body.characterId)
+        _emit(
+            svc,
+            world_id,
+            "presence.changed",
+            {"sceneId": scene_id, "characterId": body.characterId, "action": "join"},
+        )
         return {"ok": True}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/presence/summon",
+        dependencies=[Depends(verify_auth)],
+    )
+    def presence_summon(
+        world_id: str, body: SummonBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        for cid in body.characterIds:
+            svc.presence.join(body.targetSceneId, cid)
+            _emit(
+                svc,
+                world_id,
+                "presence.changed",
+                {"sceneId": body.targetSceneId, "characterId": cid, "action": "summon"},
+            )
+        return {"ok": True, "targetSceneId": body.targetSceneId}
 
     @app.post(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/presence/leave",
@@ -326,6 +359,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "status": "pending",
                 "createdAt": ISO(),
             }
+        )
+        _emit(
+            svc,
+            world_id,
+            "signal.created",
+            {"signalId": sid, "targetSceneId": body.targetSceneId},
         )
         return {"signalId": sid, "status": "pending"}
 
@@ -409,5 +448,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await asyncio.sleep(0)
 
         return StreamingResponse(gen(), media_type="text/event-stream")
+
+    @app.delete("/api/v1/inference/queue/{job_id}", dependencies=[Depends(verify_auth)])
+    def cancel_job(job_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        ok = svc.orchestrator.cancel_job(job_id)
+        if not ok:
+            raise HTTPException(404, "job not found")
+        return {"jobId": job_id, "status": "cancelled"}
+
+    @app.post("/api/v1/worlds/{world_id}/pause", dependencies=[Depends(verify_auth)])
+    def pause_world(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        svc.paused_worlds.add(world_id)
+        return {"worldId": world_id, "paused": True}
+
+    @app.post("/api/v1/worlds/{world_id}/resume", dependencies=[Depends(verify_auth)])
+    def resume_world(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        svc.paused_worlds.discard(world_id)
+        return {"worldId": world_id, "paused": False}
+
+    @app.get("/api/v1/health/llm")
+    def health_llm(svc: AppServices = Depends(get_services)) -> dict:
+        return {"mock": svc.settings.mock_llm, "baseUrl": svc.settings.llm_base_url}
+
+    @app.websocket("/api/v1/worlds/{world_id}/events")
+    async def world_events(websocket: WebSocket, world_id: str) -> None:
+        await websocket.accept()
+        svc: AppServices = websocket.app.state.services  # type: ignore[attr-defined]
+        q = svc.event_bus.subscribe(world_id)
+        try:
+            while True:
+                payload = await q.get()
+                await websocket.send_json(payload)
+        except WebSocketDisconnect:
+            svc.event_bus.unsubscribe(world_id, q)
 
     return app

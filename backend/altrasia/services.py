@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from altrasia.event_bus import EventBus
 from altrasia.config import Settings
 from altrasia.domain.presence import PresenceService
 from altrasia.inference.client import LlmClient
@@ -23,7 +24,9 @@ class AppServices:
     llm: LlmClient
     tools: ToolRegistry
     orchestrator: Orchestrator
+    event_bus: EventBus = field(default_factory=EventBus)
     streams: dict = field(default_factory=dict)
+    paused_worlds: set[str] = field(default_factory=set)
 
     @classmethod
     def create(cls, settings: Settings | None = None) -> "AppServices":

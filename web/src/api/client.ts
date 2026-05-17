@@ -116,7 +116,26 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ text }),
     }),
+  cancelJob: (jobId: string) =>
+    request(`/inference/queue/${jobId}`, { method: "DELETE" }),
 };
+
+export function connectWorldEvents(
+  worldId: string,
+  onEvent: (payload: { event: string; eventSeq: number; data: unknown }) => void
+): () => void {
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.host;
+  const ws = new WebSocket(`${proto}//${host}/api/v1/worlds/${worldId}/events`);
+  ws.onmessage = (ev) => {
+    try {
+      onEvent(JSON.parse(ev.data));
+    } catch {
+      /* ignore */
+    }
+  };
+  return () => ws.close();
+}
 
 export function streamGeneration(
   worldId: string,

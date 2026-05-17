@@ -2,7 +2,21 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** Sprint 1/2 scaffold landed — verify boxes against tests and golden path.
+**Status:** Sprint 1/2 **~85%** — core path implemented; see gaps below. **13+ pytest** + golden path 1–8.
+
+### Remaining for v1 tag
+
+| Area | Status |
+|------|--------|
+| WebSocket events + `eventSeq` | Done |
+| UI cancel generation (UI-REG-1) | Done |
+| Whisper/DM target picker | Done |
+| Mermaid in transcript (UI-R2/R5) | Partial — markdown only |
+| MP-9 blocking memory tools on first turn | Not done |
+| MEM-PERF / scale fixtures | Not done |
+| Idle `roundRobin` (AO-4) | Not done |
+| v1.1 phone, heartbeat, world package | Spec only |
+| Phase 3+ character wizard, maps, commissions | Spec only |
 
 ## Sprint 1 — inference + memory spike
 
@@ -37,9 +51,9 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 
 ## v1 ship gate
 
-- [ ] Golden path steps 1–8 pass (manual or e2e nightly)
-- [ ] OQ-1, OQ-3 in CI integration layer
-- [ ] Operator can complete [guides/first-run-experience.md](guides/first-run-experience.md) without reading normative specs
+- [x] Golden path steps 1–8 pass (`tests/test_golden_path.py`)
+- [x] OQ-1, OQ-3 in CI integration layer
+- [ ] Operator can complete [guides/first-run-experience.md](guides/first-run-experience.md) without reading normative specs (manual UX pass)
 
 ## Explicitly not Sprint 2
 

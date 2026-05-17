@@ -17,8 +17,8 @@ Product principles, personas, and milestones: [docs/20-product-principles.md](do
 | | |
 |--|--|
 | **Design specifications** | Complete (normative docs `00`–`25`) |
-| **Implementation** | **In progress** — Python backend + Web UI SPA (see [docs/guides/getting-started.md](docs/guides/getting-started.md)) |
-| **Shipped** | **Alpha** — demo world, spatial play, mock LLM; golden path partially automated in tests |
+| **Implementation** | **~85% v1** — Sprint 1/2 core done; see [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
+| **Shipped** | **Alpha** — golden path 1–8 in CI, WebSocket events, mock or real LLM |
 
 This repository is a **greenfield design specification**, not a product you can install today. Target first session (when built): [docs/guides/first-run-experience.md](docs/guides/first-run-experience.md).
 

@@ -21,6 +21,33 @@ class Orchestrator:
         self._workers: dict[str, asyncio.Task] = {}
         self._scene_chain_active: set[str] = set()
 
+    def _emit(self, world_id: str, event: str, data: dict[str, Any]) -> None:
+        self.svc.event_bus.emit(self.svc.store, world_id, event, data)
+
+    def _emit_queue(self, world_id: str) -> None:
+        jobs = self.svc.store.list_queued_jobs(world_id)
+        gpu = self.svc.gpu_queue.snapshot()
+        self._emit(
+            world_id,
+            "queue.updated",
+            {
+                "busy": gpu["busy"] or bool(jobs),
+                "depth": len(jobs),
+                "currentJob": jobs[0] if jobs else None,
+            },
+        )
+
+    def cancel_job(self, job_id: str) -> bool:
+        task = self._workers.pop(job_id, None)
+        job = self.svc.store.get_job(job_id)
+        if task and not task.done():
+            task.cancel()
+        if job:
+            self.svc.store.update_job(job_id, status="cancelled")
+            self._emit_queue(job["worldId"])
+            return True
+        return False
+
     def _world_config(self, world_id: str) -> dict[str, Any]:
         world = self.svc.store.get_world(world_id)
         if not world:
@@ -79,7 +106,9 @@ class Orchestrator:
         continue_depth: int = 0,
         trigger_message_id: str | None = None,
         observer_mode: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
+        if world_id in self.svc.paused_worlds:
+            return None
         job_id = str(uuid.uuid4())
         rationale = json.dumps({"pick": trigger, "characterId": character_id})
         self.svc.store.insert_job(
@@ -103,6 +132,7 @@ class Orchestrator:
         self.svc.streams[job_id] = stream
         task = asyncio.create_task(self._run_job(job_id, stream))
         self._workers[job_id] = task
+        self._emit_queue(world_id)
         return {"jobId": job_id, "status": "queued"}
 
     async def _run_job(self, job_id: str, stream: TokenStream) -> None:
@@ -128,6 +158,11 @@ class Orchestrator:
             }
         )
         await stream.push("generation.start", {"jobId": job_id, "messageId": msg_id})
+        self._emit(
+            job["worldId"],
+            "generation.start",
+            {"jobId": job_id, "messageId": msg_id},
+        )
 
         async def work() -> str:
             return await self._generate_text(job, msg_id)
@@ -141,16 +176,32 @@ class Orchestrator:
                 streamStatus="final",
             )
             await stream.push("generation.token", {"jobId": job_id, "messageId": msg_id, "delta": cleaned})
+            self._emit(
+                job["worldId"],
+                "generation.token",
+                {"jobId": job_id, "messageId": msg_id, "delta": cleaned},
+            )
             await stream.push("generation.done", {"jobId": job_id, "messageId": msg_id})
+            self._emit(
+                job["worldId"],
+                "generation.done",
+                {"jobId": job_id, "messageId": msg_id},
+            )
             self.svc.store.update_job(job_id, status="done")
             await self._after_reply(job, msg_id, cleaned)
         except Exception as exc:
             self.svc.store.update_message(msg_id, streamStatus="interrupted")
             self.svc.store.update_job(job_id, status="cancelled")
             await stream.push("generation.error", {"jobId": job_id, "error": str(exc)})
+            self._emit(
+                job["worldId"],
+                "generation.error",
+                {"jobId": job_id, "message": str(exc)},
+            )
         finally:
             if not self._scene_has_pending_jobs(job["worldId"], job["sceneId"]):
                 self._scene_chain_active.discard(job["sceneId"])
+            self._emit_queue(job["worldId"])
             await stream.close()
 
     def _scene_has_pending_jobs(self, world_id: str, scene_id: str) -> bool:
@@ -252,6 +303,8 @@ class Orchestrator:
         self, world_id: str, scene_id: str, message_id: str, text: str
     ) -> dict | None:
         """AO-20: exactly one reactive job per persona line."""
+        if world_id in self.svc.paused_worlds:
+            return None
         if scene_id in self._scene_chain_active:
             return None
         cid, rationale = self.pick_reactive_character(world_id, scene_id, text)
