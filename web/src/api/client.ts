@@ -81,11 +81,27 @@ export type SpatialGraph = {
 };
 
 export const api = {
+  listWorlds: () => request<World[]>("/worlds"),
   loadDemo: () =>
     request<World>("/worlds", {
       method: "POST",
       body: JSON.stringify({ fixtureId: "demo-spatial-v1" }),
     }),
+  exportPackage: async (worldId: string): Promise<Blob> => {
+    const r = await fetch(`${BASE}/worlds/${worldId}/package/export`);
+    if (!r.ok) throw new Error(r.statusText);
+    return r.blob();
+  },
+  importPackage: async (file: File): Promise<World> => {
+    const form = new FormData();
+    form.append("file", file);
+    const r = await fetch(`${BASE}/worlds/import`, { method: "POST", body: form });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err?.detail ?? r.statusText);
+    }
+    return r.json() as Promise<World>;
+  },
   getWorld: (id: string) => request<World>(`/worlds/${id}`),
   patchWorld: (id: string, body: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(body) }),

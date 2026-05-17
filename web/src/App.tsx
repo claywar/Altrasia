@@ -55,6 +55,13 @@ export default function App() {
   } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [worldPaused, setWorldPaused] = useState(false);
+  const [savedWorlds, setSavedWorlds] = useState<World[]>([]);
+
+  useEffect(() => {
+    if (!world) {
+      api.listWorlds().then(setSavedWorlds).catch(() => setSavedWorlds([]));
+    }
+  }, [world]);
 
   const refresh = useCallback(async (w: World) => {
     const [scList, g, r, sig, q] = await Promise.all([
@@ -75,6 +82,17 @@ export default function App() {
     const msgs = await api.listMessages(w.worldId, active.sceneId);
     setMessages(msgs);
   }, []);
+
+  const openWorld = async (w: World) => {
+    setLoading(true);
+    try {
+      const full = await api.getWorld(w.worldId);
+      setWorld(full);
+      await refresh(full);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadDemo = async () => {
     setLoading(true);
@@ -203,6 +221,20 @@ export default function App() {
           <li>Whisper one character · switch to Kitchen</li>
           <li>Knock on exit · Observer Studio for tweaks</li>
         </ol>
+        {savedWorlds.length > 0 && (
+          <div className="launcher-saved">
+            <h2>Resume a world</h2>
+            <ul>
+              {savedWorlds.map((w) => (
+                <li key={w.worldId}>
+                  <button type="button" disabled={loading} onClick={() => openWorld(w)}>
+                    {w.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   }
@@ -446,6 +478,7 @@ export default function App() {
       {settingsOpen && world && (
         <SettingsPanel
           worldId={world.worldId}
+          worldName={world.name}
           worldPaused={worldPaused}
           onClose={() => setSettingsOpen(false)}
           onWorldPauseChange={async () => {
@@ -453,6 +486,11 @@ export default function App() {
             setWorld(w2);
             setWorldPaused(!!w2.paused);
             await refresh(w2);
+          }}
+          onWorldImported={async (w) => {
+            const full = await api.getWorld(w.worldId);
+            setWorld(full);
+            await refresh(full);
           }}
         />
       )}

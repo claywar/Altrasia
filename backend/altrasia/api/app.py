@@ -3,14 +3,15 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+import zipfile
 from datetime import datetime, timezone
 from typing import Any
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from altrasia.api.deps import get_services, verify_auth
@@ -20,6 +21,7 @@ from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.perception.scope import can_perceive
 from altrasia.fixtures.loader import load_fixture_by_id
 from altrasia.services import AppServices
+from altrasia.world_package import export_world_package, import_world_package
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
 
@@ -110,7 +112,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/v1/worlds", dependencies=[Depends(verify_auth)])
     def list_worlds(svc: AppServices = Depends(get_services)) -> list[dict]:
-        return svc.store.list_worlds()
+        out = []
+        for w in svc.store.list_worlds():
+            row = dict(w)
+            row["paused"] = w["worldId"] in svc.paused_worlds
+            out.append(row)
+        return out
 
     @app.post("/api/v1/worlds", dependencies=[Depends(verify_auth)])
     def create_world(
@@ -499,6 +506,40 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not ok:
             raise HTTPException(404, "job not found")
         return {"jobId": job_id, "status": "cancelled"}
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/package/export",
+        dependencies=[Depends(verify_auth)],
+    )
+    def export_package(world_id: str, svc: AppServices = Depends(get_services)) -> Response:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        assets = svc.settings.data_dir / "assets"
+        try:
+            blob = export_world_package(svc.store, world_id, assets_dir=assets)
+        except ValueError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        safe_name = world_id[:8]
+        return Response(
+            content=blob,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="altrasia-world-{safe_name}.zip"'
+            },
+        )
+
+    @app.post("/api/v1/worlds/import", dependencies=[Depends(verify_auth)])
+    async def import_package(
+        file: UploadFile = File(...), svc: AppServices = Depends(get_services)
+    ) -> dict:
+        data = await file.read()
+        if not data:
+            raise HTTPException(400, "empty package")
+        assets = svc.settings.data_dir / "assets"
+        try:
+            return import_world_package(svc.store, data, assets_dir=assets)
+        except (ValueError, zipfile.BadZipFile, KeyError) as exc:
+            raise HTTPException(400, f"invalid package: {exc}") from exc
 
     @app.get("/api/v1/operator/settings", dependencies=[Depends(verify_auth)])
     def get_operator_settings(svc: AppServices = Depends(get_services)) -> dict:

@@ -3,16 +3,20 @@ import { api, type OperatorSettings } from "../api/client";
 
 type Props = {
   worldId: string;
+  worldName: string;
   worldPaused: boolean;
   onClose: () => void;
   onWorldPauseChange: () => void;
+  onWorldImported: (world: { worldId: string; name: string; activeSceneId: string }) => void;
 };
 
 export function SettingsPanel({
   worldId,
+  worldName,
   worldPaused,
   onClose,
   onWorldPauseChange,
+  onWorldImported,
 }: Props) {
   const [settings, setSettings] = useState<OperatorSettings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -56,6 +60,49 @@ export function SettingsPanel({
           >
             {worldPaused ? "Resume world" : "Pause world"}
           </button>
+          <div className="settings-actions">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  const blob = await api.exportPackage(worldId);
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `altrasia-${worldName.replace(/\s+/g, "-").toLowerCase()}.zip`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Export world package
+            </button>
+            <label className="settings-file">
+              Import package
+              <input
+                type="file"
+                accept=".zip,application/zip"
+                disabled={saving}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setSaving(true);
+                  try {
+                    const w = await api.importPackage(file);
+                    onWorldImported(w);
+                    onClose();
+                  } finally {
+                    setSaving(false);
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </label>
+          </div>
         </section>
         <section className="settings-section">
           <h3>Global heartbeat (v1.1)</h3>

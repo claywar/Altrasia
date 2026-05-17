@@ -41,7 +41,8 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | MEM-PERF / scale fixtures | Done (`tests/test_memory_perf.py`, `memory-scale/`) |
 | Idle `roundRobin` (AO-4) | Done (tab-visible) |
 | v1.1 heartbeat | Done (settings UI + HB-1) |
-| v1.1 phone, world package | Spec only |
+| DM-4 | World package export/import | Done (`world_package.py`, `test_world_package.py`) |
+| v1.1 phone | Spec only |
 | Phase 3+ character wizard, maps, commissions | Spec only |
 
 ## Sprint 1 — inference + memory spike

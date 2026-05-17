@@ -30,6 +30,8 @@ Open http://localhost:5173 → **Load demo world** → play as persona in the Ha
 
 Optional: **Settings** → enable **Global heartbeat** for NPC idle when the browser tab is closed (saved in `~/.altrasia/config.yaml`).
 
+**World package:** Settings → **Export world package** (`.zip`); import via **Import package** or `POST /api/v1/worlds/import`.
+
 ## 3. Real inference (optional)
 
 Start llama.cpp with an OpenAI-compatible API, then:
