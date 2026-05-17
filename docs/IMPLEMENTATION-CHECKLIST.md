@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** design-only repo — check boxes when code lands.
+**Status:** Sprint 1/2 scaffold landed — verify boxes against tests and golden path.
 
 ## Sprint 1 — inference + memory spike
 

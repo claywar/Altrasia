@@ -1,0 +1,4 @@
+{
+  "input": "Hello secret chain world!",
+  "expected": "Hello  world!"
+}

@@ -17,8 +17,8 @@ Product principles, personas, and milestones: [docs/20-product-principles.md](do
 | | |
 |--|--|
 | **Design specifications** | Complete (normative docs `00`–`25`) |
-| **Implementation** | **Not started** — no runnable app, API, or bundled demo database in this repo |
-| **Shipped** | **Nothing** — golden path in [docs/17-acceptance-criteria.md](docs/17-acceptance-criteria.md) is the future v1 gate |
+| **Implementation** | **In progress** — Python backend + Web UI SPA (see [docs/guides/getting-started.md](docs/guides/getting-started.md)) |
+| **Shipped** | **Alpha** — demo world, spatial play, mock LLM; golden path partially automated in tests |
 
 This repository is a **greenfield design specification**, not a product you can install today. Target first session (when built): [docs/guides/first-run-experience.md](docs/guides/first-run-experience.md).
 
@@ -48,11 +48,21 @@ Concepts were extracted from a prior SillyTavern deployment and reframed greenfi
 
 Primary LLM: **Qwen3.6-35B-A3B** via local llama.cpp router ([`config/models/qwen3.6-35b-a3b.yaml`](config/models/qwen3.6-35b-a3b.yaml)).
 
-## Planned implementation (not started)
+## Run locally
 
-**Architecture:** [docs/26-system-architecture.md](docs/26-system-architecture.md) — Python backend (`backend/altrasia/…`) + professional Web UI SPA (`web/`).
+See [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
-Proposed build order when implementation begins:
+```bash
+# Terminal 1
+cd backend && pip install -e ".[dev]" && altrasia serve
+
+# Terminal 2
+cd web && npm install && npm run dev
+```
+
+**Architecture:** [docs/26-system-architecture.md](docs/26-system-architecture.md) — Python backend (`backend/altrasia/…`) + Web UI SPA (`web/`).
+
+Build order (Sprint 1/2):
 
 ### Sprint 1 — inference + memory spike
 

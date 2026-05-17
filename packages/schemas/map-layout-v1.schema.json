@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://altrasia.local/schemas/map-layout-v1.json",
+  "title": "MapLayoutV1",
+  "type": "object",
+  "required": ["schemaVersion", "scope"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "scope": { "enum": ["mini", "site", "stack"] },
+    "nodes": { "type": "array" },
+    "edges": { "type": "array" }
+  }
+}

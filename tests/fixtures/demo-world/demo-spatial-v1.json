@@ -1,0 +1,108 @@
+{
+  "fixtureId": "demo-spatial-v1",
+  "name": "Demo Spatial v1",
+  "activeSceneId": "scene-hall",
+  "personaSceneId": "scene-hall",
+  "defaultModelProfile": "qwen3.6-35b-a3b",
+  "config": {
+    "agentContinueEnabled": true,
+    "maxContinueDepth": 2
+  },
+  "structures": [
+    {
+      "structureId": "manor",
+      "displayName": "Manor House",
+      "kind": "building",
+      "boundary": {
+        "shape": "hull",
+        "vertices": [
+          { "x": 38, "y": 22 },
+          { "x": 62, "y": 22 },
+          { "x": 62, "y": 58 },
+          { "x": 38, "y": 58 }
+        ]
+      }
+    }
+  ],
+  "characters": [
+    {
+      "characterId": "char-alice",
+      "displayName": "Alice",
+      "speechWeight": 0.7,
+      "sceneRole": "host",
+      "definition": {
+        "personality": "Warm, observant host in the manor hall."
+      },
+      "mindLoci": [
+        { "key": "role", "value": "Alice is the host of the manor hall." }
+      ]
+    },
+    {
+      "characterId": "char-bob",
+      "displayName": "Bob",
+      "speechWeight": 0.6,
+      "sceneRole": "guest",
+      "definition": {
+        "personality": "Curious guest, often in the kitchen."
+      },
+      "mindLoci": [
+        { "key": "role", "value": "Bob is a guest who enjoys the kitchen." }
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "sceneId": "scene-hall",
+      "locationName": "Hall",
+      "locationDescription": "A wide hall with an oak door north to the kitchen.",
+      "structureId": "manor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": { "w": 18, "h": 12 },
+      "mapPosition": { "x": 50, "y": 50 },
+      "present": ["char-alice"],
+      "fixtures": {
+        "chandelier": { "label": "Brass chandelier", "kind": "fixture" }
+      },
+      "exits": [
+        {
+          "exitId": "hall-kitchen-door",
+          "label": "Door to kitchen",
+          "targetSceneId": "scene-kitchen",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N"
+        }
+      ],
+      "worldLoci": {
+        "ambience": "Draft from the north door; fire low in the hearth."
+      }
+    },
+    {
+      "sceneId": "scene-kitchen",
+      "locationName": "Kitchen",
+      "locationDescription": "Stone counters and the smell of herbs.",
+      "structureId": "manor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": { "w": 14, "h": 10 },
+      "mapPosition": { "x": 50, "y": 28 },
+      "present": ["char-bob"],
+      "fixtures": {
+        "kettle": { "label": "Iron kettle", "kind": "fixture" }
+      },
+      "exits": [
+        {
+          "exitId": "kitchen-hall-door",
+          "label": "Door to hall",
+          "targetSceneId": "scene-hall",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S"
+        }
+      ]
+    }
+  ]
+}

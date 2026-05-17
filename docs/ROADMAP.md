@@ -7,7 +7,7 @@ Single-page view of milestones, repository status, and what ships when. Normativ
 | Layer | Status |
 |-------|--------|
 | **Design specifications** | Complete (docs `00`–`25`, appendices, acceptance criteria) |
-| **Implementation** | **Not started** — no application source, API server, Web UI, or bundled demo database in this repo |
+| **Implementation** | **Alpha** — Python backend, Web UI SPA, demo fixture; mock LLM default ([getting-started.md](guides/getting-started.md)) |
 | **Shipped product** | **Nothing** — release gates in [17-acceptance-criteria.md](17-acceptance-criteria.md) apply when code exists |
 
 Specs describe **MUST** behavior for a future build. Passing the spatial golden path is the first **v1** ship criterion.
