@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** v1 + v1.1 **feature-complete**; Phase 3 character draft API shipped. **37 pytest** + golden path 1–8.
+**Status:** v1 + v1.1 **feature-complete**; Phase 3 character draft + cast placement UI. **38 pytest** + golden path 1–8.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -45,6 +45,8 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | DM-4 | World package export/import | Done (`world_package.py`, `test_world_package.py`) |
 | CC-8–CC-13 phone play | Done (`communication/phone.py`, `test_phone.py`) |
 | CHAR-1–CHAR-5 | Character draft API + Settings UI | Done (`character_authoring.py`, `test_character_authoring.py`) |
+| UI-CHAR-2 | Observer + Settings draft entry | Done |
+| LP-1 / roster | Unplaced cast + summon/leave UI | Done (`PeopleRail`, `test_presence_roster.py`) |
 | Phase 3+ Architect wizard, maps, commissions | Spec only (UI wizard shell deferred) |
 
 ## Sprint 1 — inference + memory spike

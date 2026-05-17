@@ -73,9 +73,10 @@ class PresenceService:
                     at_location.append(entry)
                 else:
                     elsewhere.append(entry)
+        unplaced: list[dict] = []
         for cid, ch in chars.items():
             if cid not in placed_ids and not ch.get("disabled"):
-                elsewhere.append(
+                unplaced.append(
                     {
                         "characterId": cid,
                         "displayName": ch["displayName"],
@@ -88,5 +89,5 @@ class PresenceService:
             "atLocation": at_location,
             "elsewhere": elsewhere,
             "muted": [c for c in chars.values() if c.get("muted")],
-            "unplaced": [],
+            "unplaced": unplaced,
         }

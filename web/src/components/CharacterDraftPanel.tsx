@@ -4,9 +4,14 @@ import { api, type CharacterDraft } from "../api/client";
 type Props = {
   worldId: string;
   onCharacterAdded: () => void;
+  variant?: "settings" | "observer";
 };
 
-export function CharacterDraftPanel({ worldId, onCharacterAdded }: Props) {
+export function CharacterDraftPanel({
+  worldId,
+  onCharacterAdded,
+  variant = "settings",
+}: Props) {
   const [brief, setBrief] = useState("");
   const [draft, setDraft] = useState<CharacterDraft | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -61,7 +66,11 @@ export function CharacterDraftPanel({ worldId, onCharacterAdded }: Props) {
   };
 
   return (
-    <section className="settings-section">
+    <section
+      className={
+        variant === "observer" ? "observer-char-draft settings-section" : "settings-section"
+      }
+    >
       <h3>Create character (AI draft)</h3>
       <p className="settings-muted">
         Describe a new cast member in natural language. Review the draft before adding to this

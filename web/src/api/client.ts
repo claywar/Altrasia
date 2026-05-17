@@ -161,9 +161,33 @@ export const api = {
     ),
   roster: (worldId: string) =>
     request<{
-      atLocation: Array<{ characterId: string; displayName: string; sceneId: string }>;
-      elsewhere: Array<{ characterId: string; displayName: string; locationName: string | null }>;
+      atLocation: Array<{
+        characterId: string;
+        displayName: string;
+        sceneId: string;
+        locationName?: string;
+      }>;
+      elsewhere: Array<{
+        characterId: string;
+        displayName: string;
+        locationName: string | null;
+        sceneId?: string;
+      }>;
+      unplaced?: Array<{ characterId: string; displayName: string }>;
     }>(`/worlds/${worldId}/roster`),
+  summonPresence: (
+    worldId: string,
+    body: { characterIds: string[]; targetSceneId: string }
+  ) =>
+    request<{ ok: boolean; targetSceneId: string }>(`/worlds/${worldId}/presence/summon`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  leavePresence: (worldId: string, sceneId: string, characterId: string) =>
+    request(`/worlds/${worldId}/scenes/${sceneId}/presence/leave`, {
+      method: "POST",
+      body: JSON.stringify({ characterId }),
+    }),
   spatialGraph: (worldId: string) => request<SpatialGraph>(`/worlds/${worldId}/spatial-graph`),
   queue: (worldId: string) => request<QueueSnapshot>(`/worlds/${worldId}/queue`),
   getGeneration: (worldId: string, jobId: string) =>

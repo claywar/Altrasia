@@ -53,11 +53,13 @@ def test_character_draft_and_approve(client: TestClient) -> None:
     assert char_id.startswith("char-")
 
     roster = client.get(f"/api/v1/worlds/{world_id}/roster").json()
-    all_ids = {c["characterId"] for c in roster.get("atLocation", [])} | {
-        c["characterId"] for c in roster.get("elsewhere", [])
-    }
+    all_ids = (
+        {c["characterId"] for c in roster.get("atLocation", [])}
+        | {c["characterId"] for c in roster.get("elsewhere", [])}
+        | {c["characterId"] for c in roster.get("unplaced", [])}
+    )
     assert char_id in all_ids
-    assert len(all_ids) >= count_before + 1
+    assert len(roster.get("unplaced", [])) >= 1
 
     poll = client.get(f"/api/v1/characters/draft/{draft_id}").json()
     assert poll["status"] == "approved"
@@ -93,7 +95,9 @@ def test_add_world_member_endpoint(client: TestClient) -> None:
     )
     assert r.status_code == 200
     roster = client.get(f"/api/v1/worlds/{world_id}/roster").json()
-    all_ids = {c["characterId"] for c in roster.get("atLocation", [])} | {
-        c["characterId"] for c in roster.get("elsewhere", [])
-    }
+    all_ids = (
+        {c["characterId"] for c in roster.get("atLocation", [])}
+        | {c["characterId"] for c in roster.get("elsewhere", [])}
+        | {c["characterId"] for c in roster.get("unplaced", [])}
+    )
     assert char_id in all_ids

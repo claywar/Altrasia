@@ -16,7 +16,9 @@ import {
 } from "./api/client";
 import { MiniMap } from "./components/MiniMap";
 import { PhonePanel } from "./components/PhonePanel";
+import { PeopleRail } from "./components/PeopleRail";
 import { ObserverDigest } from "./components/ObserverDigest";
+import { CharacterDraftPanel } from "./components/CharacterDraftPanel";
 import type { ObserverDigest as ObserverDigestData } from "./api/client";
 
 function parseScope(metaJson: string): string {
@@ -407,7 +409,11 @@ export default function App() {
                   aria-label="Whisper target"
                 >
                   <option value="">Select character…</option>
-                  {[...(roster?.atLocation ?? []), ...(roster?.elsewhere ?? [])].map((p) => (
+                  {[
+                    ...(roster?.atLocation ?? []),
+                    ...(roster?.elsewhere ?? []),
+                    ...(roster?.unplaced ?? []),
+                  ].map((p) => (
                     <option key={p.characterId} value={p.characterId}>
                       {p.displayName}
                     </option>
@@ -458,41 +464,17 @@ export default function App() {
               onChannelChange={() => refresh(world)}
             />
           )}
-          <div className="rail-section">
-            <h3>People</h3>
-            <ul className="rail-list">
-              {roster?.atLocation.map((p) => (
-                <li key={p.characterId} className="people-row">
-                  <span>{p.displayName} (here)</span>
-                  <button
-                    type="button"
-                    className="people-memory"
-                    onClick={() =>
-                      setMemoryFor({ characterId: p.characterId, displayName: p.displayName })
-                    }
-                  >
-                    Memory
-                  </button>
-                </li>
-              ))}
-              {roster?.elsewhere.map((p) => (
-                <li key={p.characterId} className="people-row">
-                  <span>
-                    {p.displayName} — {p.locationName ?? "away"}
-                  </span>
-                  <button
-                    type="button"
-                    className="people-memory"
-                    onClick={() =>
-                      setMemoryFor({ characterId: p.characterId, displayName: p.displayName })
-                    }
-                  >
-                    Memory
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {world && scene && roster && (
+            <PeopleRail
+              worldId={world.worldId}
+              activeSceneId={scene.sceneId}
+              roster={roster}
+              onMemory={(characterId, displayName) =>
+                setMemoryFor({ characterId, displayName })
+              }
+              onPresenceChanged={() => refresh(world)}
+            />
+          )}
           <div className="rail-section">
             <h3>Signals</h3>
             <ul className="rail-list">
@@ -547,8 +529,20 @@ export default function App() {
               Esc — Close
             </button>
           </header>
-          <ObserverDigest digest={observerDigest} />
-          <div className="transcript">
+          <div className="observer-sidebar">
+            <ObserverDigest digest={observerDigest} />
+            {world && (
+              <CharacterDraftPanel
+                variant="observer"
+                worldId={world.worldId}
+                onCharacterAdded={async () => {
+                  await refresh(world);
+                  setObserverDigest(await api.observerDigest(world.worldId));
+                }}
+              />
+            )}
+          </div>
+          <div className="transcript observer-meta-scroll">
             {metaMessages.map((m) => (
               <article key={m.messageId} className="bubble">
                 <div className="bubble-header">{m.role}</div>
