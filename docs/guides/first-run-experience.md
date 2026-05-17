@@ -39,8 +39,8 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 **Expected:**
 
 - Alice (or eligible NPC in Hall) replies in scene transcript
-- GPU queue strip shows job trigger and wait if busy (UI-2)
-- Selection rationale available in collapsed form (UI-1)
+- GPU queue strip shows job trigger and wait if busy (UI-2, WF-20)
+- Selection rationale available via queue strip or message ⓘ popover (UI-1, WF-21)
 
 **Failure modes to design against:**
 
@@ -82,6 +82,7 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 
 - Scene framing updates on next generation (OBS-2)
 - Meta thread separate from scene transcript (UI-O1)
+- Optional: open **Memory inspector** for a cast member from People (WF-17, UI-M4)
 
 ### 7. Rich message rendering (when UI exists)
 

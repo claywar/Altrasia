@@ -8,13 +8,13 @@ Phase 6 MAY store operator-specific renders under `assets/{worldId}/maps/` ([11-
 
 ## Index
 
-| File | Wireframe | Depicts |
-|------|-----------|---------|
-| [worldengine-structured-minimap.png](worldengine-structured-minimap.png) | WF-2 (partial) | Structured mini-map: compass, `travelSteps`, north-aligned rooms |
-| [worldengine-building-envelope-minimap.png](worldengine-building-envelope-minimap.png) | WF-2 | Building **outer boundary** + interior rooms + knock exit |
-| [worldengine-architecture-diagram-minimap.png](worldengine-architecture-diagram-minimap.png) | WF-2 | Shapes: circle keep, rect manor, orthogonal edges |
-| [worldengine-world-map-overlay-example.png](worldengine-world-map-overlay-example.png) | **WF-14** | **WorldMapCanvas** site view: multiple structures, terrain, mini-map inset |
-| [worldengine-level-stack-example.png](worldengine-level-stack-example.png) | **WF-15** | **LevelStackView**: exploded floors, stairs/ladder connectors |
+| File | Pack | Wireframe | Depicts |
+|------|------|-----------|---------|
+| [worldengine-structured-minimap.png](worldengine-structured-minimap.png) | **v1** (Stitch Pack A) | WF-2 | Structured mini-map: compass, `travelSteps`, north-aligned rect rooms |
+| [worldengine-building-envelope-minimap.png](worldengine-building-envelope-minimap.png) | **v1.1** (Pack B) | WF-2b | Building **outer boundary** + interior rooms + knock exit |
+| [worldengine-architecture-diagram-minimap.png](worldengine-architecture-diagram-minimap.png) | **v1.1** (Pack B) | WF-2b | Shapes: circle keep, rect manor, orthogonal edges |
+| [worldengine-world-map-overlay-example.png](worldengine-world-map-overlay-example.png) | **Phase 6** | WF-14 | **WorldMapCanvas** site view: multiple structures, terrain, mini-map inset |
+| [worldengine-level-stack-example.png](worldengine-level-stack-example.png) | **Phase 6** | WF-15 | **LevelStackView**: exploded floors, stairs/ladder connectors |
 
 ## Use in development
 

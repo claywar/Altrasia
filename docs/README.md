@@ -52,6 +52,8 @@ This specification describes *what* the system MUST do. Normative specs are `00`
 | — | [personas.md](personas.md) | Operator personas (non-normative) |
 | — | [guides/first-run-experience.md](guides/first-run-experience.md) | Target first session (non-normative) |
 | — | [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) | ASCII wireframes for Web UI (non-normative) |
+| — | [guides/stitch-handoff.md](guides/stitch-handoff.md) | Stitch Pack A screen list + global prompt (non-normative) |
+| — | [guides/design-tokens.yaml](guides/design-tokens.yaml) | Machine-readable tokens from 14 Appendix A |
 | — | [guides/reference-images/](guides/reference-images/README.md) | Map layout reference images for UI + LLM generation targets |
 | — | [REQUIREMENTS-INDEX.md](REQUIREMENTS-INDEX.md) | Requirement ID → defining document |
 | — | [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md) | Sprint 1/2 → golden path → fixtures |

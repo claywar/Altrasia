@@ -141,7 +141,8 @@ Reuse of [20-product-principles.md](20-product-principles.md) §10:
 | OpenAPI from code | API implemented per [12-api-sketch.md](12-api-sketch.md) |
 | `SECURITY.md` | Network exposure or external security process |
 | `CONTRIBUTING.md` | Accepting external PRs |
-| Screenshots in guides | UI per [14-web-ui.md](14-web-ui.md) |
+| Screenshots in guides | UI per [14-web-ui.md](14-web-ui.md); Stitch mockups from [guides/stitch-handoff.md](guides/stitch-handoff.md) Pack A |
+| Stitch Pack A wireframes | **Complete** — WF-1–12, WF-17–21; [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md), [guides/design-tokens.yaml](guides/design-tokens.yaml) |
 | Checked-in `demo-spatial-v1.sqlite` or seed script | Fixture implementation per [demo-world README](../tests/fixtures/demo-world/README.md) |
 
 ## Related documents

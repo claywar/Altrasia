@@ -47,7 +47,7 @@ From [17-acceptance-criteria.md](17-acceptance-criteria.md) §2, §2b, §3 (subs
 | Memory privacy / perf | MP-1, MP-8–MP-20b, MEM-ACC-1–5, MEM-PERF-1–4 |
 | Inference | INF-5*, STR-*, router `Qwen3.6-35B-A3B` |
 | Orchestration | AO-4*, AO-11–12, AO-19–20 |
-| Web UI (when built) | UI-LAY-6, UI-R*, UI-TRN-1, UI-REG-1, UI-2, UI-SET-*, UI-WLD-1, UI-S4, UI-MAP-ACC1–4 |
+| Web UI (when built) | UI-LAY-6, UI-R*, UI-TRN-1, UI-REG-1, UI-2, UI-SET-*, UI-WLD-1, UI-S4, UI-MAP-ACC1–4, UI-M4–M6, UI-W6–W7, UI-R8 |
 
 ## OQ-2 and OQ-4 (not v1 CI blockers)
 

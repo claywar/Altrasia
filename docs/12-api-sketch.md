@@ -60,7 +60,9 @@ All world-scoped routes assume one operator; no multi-tenant headers.
 
 Scopes v1: `public`, `whisper`, `dm`. v1.1 adds `phone` ([21-cross-scene-awareness.md](21-cross-scene-awareness.md)).
 
-**Presentation (Web UI):** `text` is stored as plain string; MAY include markdown and fenced `mermaid` blocks. Optional request field `contentFormat: "markdown"` is a hint for compose preview only—persistence unchanged. Rendering rules: [14-web-ui.md](14-web-ui.md) UI-R1–R7. Committed messages MUST NOT be deleted via API (UI-TRN-1).
+**Presentation (Web UI):** `text` is stored as plain string; MAY include markdown and fenced `mermaid` blocks. Optional request field `contentFormat: "markdown"` is a hint for compose preview only—persistence unchanged. Rendering rules: [14-web-ui.md](14-web-ui.md) UI-R1–R8. Committed messages MUST NOT be deleted via API (UI-TRN-1).
+
+**GET messages (assistant row, illustrative):** includes `streamStatus`, optional `generationJobId` for `SelectionRationalePopover` → `GET .../generations/{jobId}` ([11-data-model.md](11-data-model.md) §3.6).
 
 ## 5. Presence
 
@@ -255,6 +257,47 @@ See [25-map-authoring.md](25-map-authoring.md). Schema: [`packages/schemas/map-l
 | POST | `/worlds/{worldId}/resume` | Resume |
 | DELETE | `/inference/queue/{jobId}` | Cancel GPU job (INF-5g) |
 | GET | `/worlds/{worldId}/generations/{jobId}/stream` | SSE token stream (STR-*) |
+| GET | `/worlds/{worldId}/generations/{jobId}` | Job detail for rationale popover (UI-1, WF-21) |
+
+**GET queue response (illustrative):**
+
+```json
+{
+  "busy": true,
+  "depth": 2,
+  "estimatedWaitMs": 12000,
+  "currentJob": {
+    "jobId": "job-abc",
+    "characterId": "char-alice",
+    "sceneId": "scene-hall",
+    "trigger": "persona_message",
+    "continueDepth": 1,
+    "status": "running",
+    "selectionRationaleJson": {
+      "pick": "addressed",
+      "scores": {
+        "char-alice": { "total": 0.92, "relevance": 0.82, "speechWeight": 0.5, "recency": -0.1 }
+      }
+    }
+  }
+}
+```
+
+**GET generations/{jobId} response (illustrative):**
+
+```json
+{
+  "jobId": "job-abc",
+  "status": "done",
+  "characterId": "char-alice",
+  "sceneId": "scene-hall",
+  "messageId": "msg-xyz",
+  "selectionRationaleJson": { "pick": "addressed", "scores": { "char-alice": { "total": 0.92 } } },
+  "toolTraceJson": [
+    { "tool": "memory_search", "argsSummary": "kettle", "ok": true }
+  ]
+}
+```
 
 **POST generate body:**
 

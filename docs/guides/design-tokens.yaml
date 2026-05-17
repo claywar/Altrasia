@@ -1,0 +1,84 @@
+# WorldEngine operator console design tokens (non-normative)
+# Source of truth for visuals: docs/14-web-ui.md Appendix A
+# Use in Stitch prompts, CSS variables, and implementer theming.
+
+color:
+  background: { h: 220, s: 15, l: 9 }
+  surface-1: { h: 220, s: 14, l: 12 }
+  surface-2: { h: 220, s: 13, l: 15 }
+  surface-3: { h: 220, s: 12, l: 18 }
+  border: { h: 220, s: 10, l: 22 }
+  foreground: { h: 210, s: 20, l: 92 }
+  muted-foreground: { h: 215, s: 12, l: 58 }
+  accent: { h: 235, s: 55, l: 58 }
+  destructive: { h: 0, s: 62, l: 50 }
+  status-idle: { h: 215, s: 12, l: 45 }
+  status-busy: { h: 235, s: 55, l: 58 }
+  active-scene: { h: 235, s: 45, l: 52 }
+  structure-fill: { h: 220, s: 12, l: 18, opacity: 0.25 }
+  structure-stroke: { h: 220, s: 10, l: 28 }
+
+scope:
+  public:
+    foreground: { h: 210, s: 20, l: 85 }
+    background-subtle: { h: 220, s: 12, l: 16 }
+    border: { h: 220, s: 10, l: 28 }
+  whisper:
+    foreground: { h: 270, s: 60, l: 78 }
+    background-subtle: { h: 270, s: 25, l: 18 }
+    border: { h: 270, s: 40, l: 35 }
+  dm:
+    foreground: { h: 38, s: 90, l: 72 }
+    background-subtle: { h: 38, s: 30, l: 16 }
+    border: { h: 38, s: 50, l: 32 }
+  narrator:
+    foreground: { h: 215, s: 15, l: 70 }
+    background-subtle: { h: 215, s: 12, l: 16 }
+    border: { h: 215, s: 10, l: 28 }
+    body-style: italic
+  phone:
+    foreground: { h: 175, s: 50, l: 72 }
+    background-subtle: { h: 175, s: 25, l: 16 }
+    border: { h: 175, s: 40, l: 32 }
+    milestone: v1.1
+  non-perceived:
+    body-opacity: 0.55
+    body-opacity-min: 0.4
+
+message-state:
+  streaming:
+    body: plain-text-only
+    caret: accent-thin-blink
+    label: Generating
+  interrupted:
+    border: dashed
+    label-color: destructive
+    label-opacity: 0.6
+    markdown-pass: false
+
+typography:
+  transcript-body: { size: 16, line-height: 1.6 }
+  compose: { size: 16 }
+  rail-label: { size: 12 }
+  queue-metadata: { size: 12, family: monospace }
+  narrator: { inherit: transcript-body, style: italic }
+
+spacing:
+  grid-unit: 8
+  bubble-max-width: 720
+
+layout:
+  right-rail-expanded: 260
+  right-rail-collapsed: 48
+  center-min-width: 640
+  center-target-width: 768
+  drawer-breakpoint: 1280
+
+motion:
+  overlay-duration-ms: 175
+  stream-caret-blink: true
+  respect-prefers-reduced-motion: true
+  forbidden:
+    - parallax
+    - bounce-on-scene-switch
+    - decorative-page-transitions

@@ -171,6 +171,7 @@ Omission of layout fields MUST NOT break CC-1 round-trip ([17-acceptance-criteri
 | `outputText` | TEXT | Post-strip canonical text |
 | `reasoning` | TEXT NULL | Debug-only; not in memory pipeline |
 | `streamStatus` | TEXT | `streaming` \| `final` \| `interrupted` |
+| `generationJobId` | TEXT NULL FK | `GenerationJob.jobId` for assistant lines; powers ⓘ rationale after refresh ([14-web-ui.md](14-web-ui.md) UI-1) |
 | `metaJson` | TEXT | `communication`, `tool_calls`, etc. |
 | `createdAt` | TEXT ISO | |
 
