@@ -247,6 +247,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return svc.store.list_scenes(world_id)
 
     @app.get(
+        "/api/v1/worlds/{world_id}/characters",
+        dependencies=[Depends(verify_auth)],
+    )
+    def list_world_characters(
+        world_id: str, svc: AppServices = Depends(get_services)
+    ) -> list[dict]:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        rows = svc.store.list_world_characters(world_id)
+        out = []
+        for c in rows:
+            entry = {
+                "characterId": c["characterId"],
+                "displayName": c["displayName"],
+                "modelProfile": c.get("modelProfile"),
+                "speechWeight": c.get("speechWeight"),
+                "muted": bool(c.get("muted")),
+                "disabled": bool(c.get("disabled")),
+            }
+            try:
+                entry["definition"] = json.loads(c.get("definitionJson") or "{}")
+            except json.JSONDecodeError:
+                entry["definition"] = {}
+            out.append(entry)
+        return out
+
+    @app.get(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}", dependencies=[Depends(verify_auth)]
     )
     def get_scene(
@@ -286,8 +313,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def post_scene(
         world_id: str, body: CreateSceneBody, svc: AppServices = Depends(get_services)
     ) -> dict:
-        if not layout_design_mode(svc.store, world_id):
-            raise HTTPException(403, "geography locked — cannot add scenes")
+        in_design = layout_design_mode(svc.store, world_id)
+        if not in_design and not body.connectFromSceneId:
+            raise HTTPException(
+                403,
+                "geography locked — new scenes must connect from an existing location (MAP-GROW)",
+            )
         if not body.locationName.strip():
             raise HTTPException(400, "locationName required")
         try:

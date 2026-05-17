@@ -18,6 +18,8 @@ export function SceneGeographyPanel({ worldId, scenes, onChanged }: Props) {
   const [name, setName] = useState("");
   const [connectFrom, setConnectFrom] = useState("");
   const [exitLabel, setExitLabel] = useState("Door");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +31,42 @@ export function SceneGeographyPanel({ worldId, scenes, onChanged }: Props) {
   }, [worldId, scenes.length]);
 
   const design = geo?.layoutDesignMode ?? false;
+  const locked = geo && !design;
+
+  const addScene = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.createScene(worldId, {
+        locationName: name.trim(),
+        connectFromSceneId: connectFrom || undefined,
+        exitLabel: exitLabel.trim() || "Door",
+      });
+      setName("");
+      onChanged();
+      await refreshGeo();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveRename = async (sceneId: string) => {
+    if (!editName.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patchScene(worldId, sceneId, { locationName: editName.trim() });
+      setEditingId(null);
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Rename failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <section className="settings-section">
@@ -37,43 +75,77 @@ export function SceneGeographyPanel({ worldId, scenes, onChanged }: Props) {
         {design
           ? "Layout design mode — add scenes and exits, then lock geography before play."
           : geo?.geographyLockedAt
-            ? `Geography locked · ${geo.sceneCount} scene(s)`
-            : "Geography locked — scene graph is fixed for play."}
+            ? `Geography locked · ${geo.sceneCount} scene(s) · rename or add connected locations`
+            : "Geography locked — rename scenes or add locations linked by exits."}
       </p>
       <ul className="scene-geo-list">
         {scenes.map((s) => (
           <li key={s.sceneId} className="scene-geo-row">
-            <span>{s.locationName}</span>
-            {design && scenes.length > 1 && (
-              <button
-                type="button"
-                className="people-secondary"
-                disabled={busy}
-                onClick={async () => {
-                  if (!confirm(`Delete scene "${s.locationName}"?`)) return;
-                  setBusy(true);
-                  setError(null);
-                  try {
-                    await api.deleteScene(worldId, s.sceneId);
-                    onChanged();
-                    await refreshGeo();
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Delete failed");
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Delete
-              </button>
+            {editingId === s.sceneId ? (
+              <div className="scene-geo-rename">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveRename(s.sceneId);
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
+                />
+                <button type="button" className="people-secondary" onClick={() => saveRename(s.sceneId)}>
+                  Save
+                </button>
+              </div>
+            ) : (
+              <>
+                <span>{s.locationName}</span>
+                <div className="people-actions">
+                  <button
+                    type="button"
+                    className="people-memory"
+                    onClick={() => {
+                      setEditingId(s.sceneId);
+                      setEditName(s.locationName);
+                    }}
+                  >
+                    Rename
+                  </button>
+                  {design && scenes.length > 1 && (
+                    <button
+                      type="button"
+                      className="people-secondary"
+                      disabled={busy}
+                      onClick={async () => {
+                        if (!confirm(`Delete scene "${s.locationName}"?`)) return;
+                        setBusy(true);
+                        setError(null);
+                        try {
+                          await api.deleteScene(worldId, s.sceneId);
+                          onChanged();
+                          await refreshGeo();
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Delete failed");
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </>
             )}
           </li>
         ))}
       </ul>
-      {design && (
+      {(design || locked) && (
         <>
+          <p className="settings-muted">
+            {locked ? "In-map growth: new location must connect from an existing scene." : null}
+          </p>
           <label className="settings-row">
-            New location name
+            {locked ? "New connected location" : "New location name"}
             <input
               type="text"
               value={name}
@@ -100,47 +172,28 @@ export function SceneGeographyPanel({ worldId, scenes, onChanged }: Props) {
             />
           </label>
           <div className="settings-actions">
-            <button
-              type="button"
-              disabled={busy || !name.trim()}
-              onClick={async () => {
-                setBusy(true);
-                setError(null);
-                try {
-                  await api.createScene(worldId, {
-                    locationName: name.trim(),
-                    connectFromSceneId: connectFrom || undefined,
-                    exitLabel: exitLabel.trim() || "Door",
-                  });
-                  setName("");
-                  onChanged();
-                  await refreshGeo();
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Create failed");
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Add scene
+            <button type="button" disabled={busy || !name.trim()} onClick={addScene}>
+              {locked ? "Add connected location" : "Add scene"}
             </button>
-            <button
-              type="button"
-              disabled={busy || scenes.length < 1}
-              onClick={async () => {
-                if (!confirm("Lock geography? You will not be able to add or delete scenes."))
-                  return;
-                setBusy(true);
-                try {
-                  await api.lockGeography(worldId);
-                  await refreshGeo();
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Lock geography
-            </button>
+            {design && (
+              <button
+                type="button"
+                disabled={busy || scenes.length < 1}
+                onClick={async () => {
+                  if (!confirm("Lock geography? You will not be able to delete scenes."))
+                    return;
+                  setBusy(true);
+                  try {
+                    await api.lockGeography(worldId);
+                    await refreshGeo();
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Lock geography
+              </button>
+            )}
           </div>
         </>
       )}

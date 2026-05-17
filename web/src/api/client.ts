@@ -187,6 +187,16 @@ export const api = {
   patchWorld: (id: string, body: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   listScenes: (worldId: string) => request<Scene[]>(`/worlds/${worldId}/scenes`),
+  listCharacters: (worldId: string) =>
+    request<
+      Array<{
+        characterId: string;
+        displayName: string;
+        definition?: CharacterDefinition;
+        muted?: boolean;
+        disabled?: boolean;
+      }>
+    >(`/worlds/${worldId}/characters`),
   getScene: (worldId: string, sceneId: string) =>
     request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`),
   listMessages: (worldId: string, sceneId: string) =>

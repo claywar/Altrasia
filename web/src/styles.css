@@ -363,6 +363,22 @@ select {
   border-bottom: 1px solid var(--border);
 }
 
+.scene-geo-rename {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.scene-geo-rename input {
+  flex: 1;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
 .launcher-hint {
   font-size: 13px;
   color: var(--muted);
