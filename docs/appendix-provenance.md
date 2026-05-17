@@ -4,12 +4,20 @@
 
 This appendix maps WorldEngine concepts to the SillyTavern fork from which they were extracted. **Implementers** may use it for migration; the main specification intentionally avoids ST-specific paths.
 
+## MemPalace / mempalace (GitHub) — not in scope
+
+**[MemPalace/mempalace](https://github.com/mempalace/mempalace)** (the Python open-source project: Wings/Rooms/Closets/Drawers, ChromaDB, coding-session mining, MCP tools) is **not** a WorldEngine dependency, design source, or implementation target.
+
+WorldEngine **Memory** ([02-memory.md](02-memory.md)) is a separate subsystem: flat **locus keys**, **mind/world pools**, **witnessed diary**, and **mandatory recall** for narrative roleplay. Do not conflate it with MemPalace branding or hierarchy.
+
+The SillyTavern extension also named `mempalace` (below) is **migration provenance only** — not the MemPalace GitHub product.
+
 ## Extension and module map
 
 | WorldEngine doc | ST source (relative to SillyTavern root) |
 |-----------------|------------------------------------------|
 | 01-world-model | `public/scripts/extensions/chat-participant-roster/`, `group-chats.js`, `src/util/chat-roster-build.js` |
-| 02-memory-palace | `public/scripts/extensions/mempalace/index.js`, `recall-bundle.js`, `settings.html`, `manifest.json` |
+| 02-memory | `public/scripts/extensions/mempalace/index.js`, `recall-bundle.js`, `settings.html`, `manifest.json` (ST extension; not MemPalace GitHub) |
 | 03-locations-and-presence | `location-presence.js`, `location-persist.js`, `location-drawer.js`, `location-create-popup.js`, `scene-framing.js`, `world-activity.js`, `narrative-presence.js`, `tools.js` |
 | 04-communication | `communication-scopes.js`, `communication-compose.js`, `communication-mirror.js`, `COMMUNICATION_SCOPES.md`, `roster-hooks-register.js` |
 | 05-tool-calling | `public/scripts/tool-calling.js`, `public/script.js` (invoke loop), `public/scripts/openai.js` |
@@ -44,7 +52,7 @@ This appendix maps WorldEngine concepts to the SillyTavern fork from which they 
 | World loci in `chat_metadata.mempalace_world` | `mempalace/index.js` | World pool per `sceneId` |
 | Fixture mirror keys `location:{id}:*` | `location-presence.js` `syncMempalaceLocationFixtures` | MP-2 |
 | Mandatory recall blocking filter | `mempalace/recall-bundle.js` | MP-5, MP-9 (default **on** in v1; ST default off) |
-| Witnessed diary + group fan-out | `mempalace/index.js` `tryAppendDiarySegment`, `getDiaryTargetAvatars` | MP-6, MP-17, MP-20 ([02-memory-palace.md](02-memory-palace.md) §1.3–1.4) |
+| Witnessed diary + group fan-out | `mempalace/index.js` `tryAppendDiarySegment`, `getDiaryTargetAvatars` | MP-6, MP-17, MP-20 ([02-memory.md](02-memory.md) §1.3–1.4) |
 | One approval apply on filesystem approve | `architect-filesystem/service.js` | [07-approvals.md](07-approvals.md) |
 | Web plugin external to repo | `plugins/web-tools` on server | [06-web-tools.md](06-web-tools.md) |
 
@@ -69,7 +77,7 @@ From ST `config.yaml` at extraction time:
 
 - SillyTavern preset/instruct templates
 - Character card PNG V2 format
-- Expressions, Stable Diffusion, vectors (noted as conflict in 02 only)
+- Expressions, Stable Diffusion, vectors (noted as conflict in [02-memory.md](02-memory.md) §7)
 - Core ST slash command framework (only domain-specific commands referenced)
 
 ## Document version

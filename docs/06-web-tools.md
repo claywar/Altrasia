@@ -98,7 +98,7 @@ Server routes (examples) proxy third-party search APIs and fetch URLs:
 
 ## 5. Automatic memory lookup
 
-Agents SHOULD use **memory tools** ([02-memory-palace.md](02-memory-palace.md)) for endogenous facts before web search:
+Agents SHOULD use **memory tools** ([02-memory.md](02-memory.md)) for endogenous facts before web search:
 
 1. `memory_search` / `diary_search` on mind/world pools
 2. Then `webtools_invoke` if external fact needed
@@ -128,4 +128,4 @@ Mandatory recall blocking enforces step 1 before other tools when enabled.
 
 - [05-tool-calling.md](05-tool-calling.md)
 - [07-approvals.md](07-approvals.md)
-- [02-memory-palace.md](02-memory-palace.md)
+- [02-memory.md](02-memory.md)

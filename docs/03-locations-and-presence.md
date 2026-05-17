@@ -158,7 +158,7 @@ flowchart TB
   JL -->|hydrate on load| GS
 ```
 
-- **Flush active:** When `sceneId === activeSceneId`, copy CPR block to runtime and trigger memory palace fixture sync.
+- **Flush active:** When `sceneId === activeSceneId`, copy CPR block to runtime and trigger memory fixture sync.
 - **Persist all scenes:** Debounced write headers to each scene's durable store.
 - **Hydrate on load:** Read all scene headers into canonical store.
 
@@ -180,6 +180,6 @@ When enabled, privileged **observer** characters receive a digest listing all sc
 ## Related documents
 
 - [01-world-model.md](01-world-model.md) — world/scene entities
-- [02-memory-palace.md](02-memory-palace.md) — fixture mirror keys
+- [02-memory.md](02-memory.md) — fixture mirror keys
 - [04-communication.md](04-communication.md) — audience = present at scene
 - [05-tool-calling.md](05-tool-calling.md) — scene tools

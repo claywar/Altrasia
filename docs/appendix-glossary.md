@@ -13,7 +13,7 @@
 | **Aggregate fixture** | Harvestable scene object with limited picks / depletion |
 | **Fixture** | Persistent object belonging to a scene, not a character's inventory |
 | **Inventory** | Items worn, held, or contained by a character (world-scoped) |
-| **Locus** | Named key in the memory palace holding string facts |
+| **Locus** | Named key in memory holding string facts |
 | **Mandatory recall** | Authoritative pre-generation memory block (diary + loci) |
 | **Mind pool** | Private memory loci per character |
 | **Observer** | Control-surface character: digest, Studio meta-chat, narrator/deus ex modes |

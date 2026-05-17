@@ -30,7 +30,7 @@ This document specifies **how characters learn** (diary, loci, reflection) and *
 | MP-15 | `stripReasoning(content)` before every durable write. |
 | MP-16 | `memory_store` strips and rejects empty/reasoning-only values. |
 | MP-17 | Diary snippet lines use per-message `outputText` (all speakers in the window), not raw model payload or assistant-only text. |
-| MP-20 | Group fan-out: same diary segment appended to every present cast member at capture scene ([02-memory-palace.md](02-memory-palace.md) §1.4). |
+| MP-20 | Group fan-out: same diary segment appended to every present cast member at capture scene ([02-memory.md](02-memory.md) §1.4). |
 | MP-18 | Mandatory recall and embed index read output-stored text only. |
 | MP-19 | Tool results in transcript may retain structure; values to `memory_store` are stripped. |
 
@@ -66,9 +66,11 @@ Reference profile: [config/models/qwen3.6-35b-a3b.yaml](../config/models/qwen3.6
 | Scene transcript | Optional debug field only |
 | Mandatory recall inject | No |
 
-## 5. Embeddings (Phase 4)
+## 5. Embeddings (v1 schema, Sprint 1–2 index)
 
-Semantic search assists `memory_search` / `diary_search`; does not replace diary + mandatory recall ([02-memory-palace.md](02-memory-palace.md) §7). Vectors keyed per MP-1 / INF-10.
+`EmbeddingRecord` MUST exist in SQLite migration 001 ([11-data-model.md](11-data-model.md) §3.13). Debounced re-embed on write via GpuResourceQueue (INF-13) SHOULD start in Sprint 1–2.
+
+Semantic search **assists** `memory_search` / `diary_search` (hybrid with FTS); does **not** replace diary + mandatory recall ([02-memory.md](02-memory.md) §7). Vectors keyed per MP-1 / INF-10. MEM-ACC-1 applies.
 
 ## 6. Reflection (AO-8, optional)
 
@@ -89,7 +91,7 @@ Reflection uses GpuResourceQueue like any chat call.
 
 ## Related documents
 
-- [02-memory-palace.md](02-memory-palace.md)
+- [02-memory.md](02-memory.md)
 - [00-inference-runtime.md](00-inference-runtime.md)
 - [10-prompt-injection.md](10-prompt-injection.md)
 - [17-acceptance-criteria.md](17-acceptance-criteria.md)

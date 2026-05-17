@@ -89,14 +89,14 @@ On process start, implementations SHOULD run a **lease reaper**: clear stale `Gp
 | kind | Target | v1 |
 |------|--------|-----|
 | `chat` | Primary port | Yes |
-| `embed` | Embedding port | Optional (Phase 4) |
+| `embed` | Embedding port | Yes (Sprint 1–2; debounced, low priority) |
 | `image` | ComfyUI | Future ([19-comfyui-media.md](19-comfyui-media.md)) |
 
 ## 4. Primary model (generation)
 
 | ID | Requirement |
 |----|-------------|
-| INF-6 | Substring `memory_search` / `diary_search` MAY run without GPU; semantic path enqueues embed. |
+| INF-6 | FTS `memory_search` / `diary_search` MUST run without GPU; semantic rerank MAY enqueue embed when index rows exist. |
 | INF-7 | Mandatory recall assembly is CPU-only until generation; blocking memory-tool rounds use the queue like any chat completion. |
 
 ### 4.1 Streaming (STR-*)
@@ -113,9 +113,9 @@ On process start, implementations SHOULD run a **lease reaper**: clear stale `Gp
 | ID | Requirement |
 |----|-------------|
 | INF-8 | Separate `embedding.baseUrl` and model; different port from primary. |
-| INF-9 | Embeddings are retrieval helpers only—never replace diary/mandatory recall ([02-memory-palace.md](02-memory-palace.md) §7). |
+| INF-9 | Embeddings are retrieval helpers only—never replace diary/mandatory recall ([02-memory.md](02-memory.md) §7). |
 | INF-10 | MP-1: mind vectors by `characterId`; world by `sceneId`; diary by `characterId`. |
-| INF-11 | Hybrid search: substring default; semantic via queued embed. |
+| INF-11 | Hybrid search: FTS default; semantic rerank top-k via queued embed when `EmbeddingRecord` exists. |
 | INF-12 | Optional lore index—semantic via queue; inject below mandatory recall. |
 | INF-13 | Re-embed on write: debounced batches, low priority, never preempt lease. |
 | INF-14 | On world open, optional index hydrate batch; UI "indexing…". |

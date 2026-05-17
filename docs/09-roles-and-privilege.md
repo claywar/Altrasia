@@ -124,7 +124,7 @@ Idle/reactive NPC selection MUST exclude:
 
 ## 9. Universal memory discipline
 
-All roles that generate—including Observer—MUST follow MP-8–MP-19 ([02-memory-palace.md](02-memory-palace.md), [16-learning.md](16-learning.md)):
+All roles that generate—including Observer—MUST follow MP-8–MP-19 ([02-memory.md](02-memory.md), [16-learning.md](16-learning.md)):
 
 - Mandatory recall default on
 - Blocking mode default on (memory tools first)
@@ -145,7 +145,7 @@ All roles that generate—including Observer—MUST follow MP-8–MP-19 ([02-mem
 ## Related documents
 
 - [03-locations-and-presence.md](03-locations-and-presence.md)
-- [02-memory-palace.md](02-memory-palace.md)
+- [02-memory.md](02-memory.md)
 - [04-communication.md](04-communication.md)
 - [14-web-ui.md](14-web-ui.md)
 - [16-learning.md](16-learning.md)

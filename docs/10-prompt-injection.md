@@ -9,14 +9,14 @@ From highest authority (typical) to lowest for factual grounding:
 | Order | Layer | Class | Source |
 |-------|-------|-------|--------|
 | 1 | System / developer instructions | system | Character card, world rules |
-| 2 | **Mandatory recall** | system | [02-memory-palace.md](02-memory-palace.md) |
-| 3 | **Recall protocol** | system or in-prompt | Memory palace indexes + tool budget |
+| 2 | **Mandatory recall** | system | [02-memory.md](02-memory.md) |
+| 3 | **Recall protocol** | system or in-prompt | Memory indexes + tool budget |
 | 4 | **Scene framing** | in-prompt | [03-locations-and-presence.md](03-locations-and-presence.md) |
 | 5 | Observer digest | in-prompt | [09-roles-and-privilege.md](09-roles-and-privilege.md) |
 | 6 | Transcript | user/assistant | Scene messages (perception filtered) |
 | 7 | World info / lorebooks | variable | Optional; avoid contradicting mandatory recall |
 
-**Requirement (PI-1):** Before each generation, strip prior copies of the same inject marker (e.g. `[ Memory palace — mandatory recall ]`) to prevent duplication on regenerate/swipe.
+**Requirement (PI-1):** Before each generation, strip prior copies of the same inject marker (e.g. `[ Memory — mandatory recall ]`) to prevent duplication on regenerate/swipe.
 
 ## 2. Mandatory recall placement
 
@@ -85,7 +85,7 @@ Phone mirrors and whispers omitted for non-participants.
 
 ## 8. Blocking mode interaction
 
-When mandatory recall blocking active ([02-memory-palace.md](02-memory-palace.md)):
+When mandatory recall blocking active ([02-memory.md](02-memory.md)):
 
 - Tool registration filter runs **after** prompt assembly
 - Only `memory_*` tools until first memory invocation
@@ -102,6 +102,6 @@ When mandatory recall blocking active ([02-memory-palace.md](02-memory-palace.md
 
 ## Related documents
 
-- [02-memory-palace.md](02-memory-palace.md)
+- [02-memory.md](02-memory.md)
 - [03-locations-and-presence.md](03-locations-and-presence.md)
 - [04-communication.md](04-communication.md)

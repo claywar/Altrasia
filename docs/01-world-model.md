@@ -40,7 +40,7 @@ A **character** is an agent (typically LLM-driven) with:
 
 - A stable `characterId` and display name.
 - A **definition** (persona, instructions, model binding)—implementation-specific.
-- **Global** per-character state: mind loci, diary segments (see [02-memory-palace.md](02-memory-palace.md)).
+- **Global** per-character state: mind loci, diary segments (see [02-memory.md](02-memory.md)).
 - **World-scoped** inventory (worn, held, containers) while a member of a world.
 
 Membership in a world does not imply presence in any scene.
@@ -103,7 +103,7 @@ The persona SHOULD follow the same rule when `persona_auto_join_on_scene_switch`
 
 1. **Canonical scene state** SHOULD live in a world-level store synchronized to scene headers on change.
 2. When the operator views Scene S, active scene metadata MUST reflect S's header after hydration.
-3. Writes to fixtures or presence on the **active** scene MUST flush to world memory loci when fixture sync is enabled (see [02-memory-palace.md](02-memory-palace.md)).
+3. Writes to fixtures or presence on the **active** scene MUST flush to world memory loci when fixture sync is enabled (see [02-memory.md](02-memory.md)).
 4. Inactive scenes persist via their own headers; hydration on world load MUST merge all scene headers into the canonical store.
 
 ### 3.3 Events
@@ -118,7 +118,7 @@ Implementations SHOULD emit events for:
 
 ## 4. Solo mode
 
-When only one implicit scene exists (no multi-scene world), the system MAY expose a **solo scene** with default name (e.g. "Scene") and the same metadata shape as multi-scene worlds. Solo mode MUST NOT disable memory palace or tool features unless explicitly configured.
+When only one implicit scene exists (no multi-scene world), the system MAY expose a **solo scene** with default name (e.g. "Scene") and the same metadata shape as multi-scene worlds. Solo mode MUST NOT disable memory or tool features unless explicitly configured.
 
 ## 5. World without active UI session
 
@@ -141,6 +141,6 @@ Separating **world**, **scene**, and **character** allows persistent geography (
 
 ## Related documents
 
-- [02-memory-palace.md](02-memory-palace.md) — memory pools and diary
+- [02-memory.md](02-memory.md) — memory pools and diary
 - [03-locations-and-presence.md](03-locations-and-presence.md) — presence operations and fixtures
 - [09-roles-and-privilege.md](09-roles-and-privilege.md) — operator and admin roles

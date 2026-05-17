@@ -119,7 +119,7 @@ v1.1: `/worlds/{worldId}/channels`, phone send; `PATCH .../channels/{id}/endpoin
 | GET | `/characters/{characterId}/diary` | Diary segments |
 | PATCH | `/characters/{characterId}/loci/{key}` | Operator overwrite (optional) |
 
-Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-memory-palace.md](02-memory-palace.md)).
+Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-memory.md](02-memory.md)).
 
 ## 10. Approvals
 

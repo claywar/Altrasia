@@ -140,7 +140,7 @@ Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`.
 | `text` | TEXT | outputText only |
 | `sourceSceneId` | TEXT | |
 | `messageIdsJson` | TEXT | Provenance |
-| `dedupeKey` | TEXT UNIQUE | |
+| `dedupeKey` | TEXT | Unique per `characterId` (see §4.2) |
 | `kind` | TEXT NULL | |
 | `createdAt` | TEXT ISO | |
 
@@ -197,18 +197,73 @@ Reserved for v1.1 phone; MAY be empty table with schema:
 
 Per [07-approvals.md](07-approvals.md); unified pending store with `approvalId`, `worldId`, `toolName`, `paramsJson`, `state`, etc.
 
-### 3.13 EmbeddingRecord (Phase 4)
+### 3.13 EmbeddingRecord (v1 schema)
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `recordId` | TEXT PK | |
 | `sourceType` | TEXT | `locus` \| `diary` \| `lore` |
 | `sourceId` | TEXT | |
-| `ownerScope` | TEXT | MP-1 isolation key |
-| `vectorBlob` | BLOB | |
-| `textHash` | TEXT | |
+| `ownerScope` | TEXT | MP-1 isolation key (`characterId` or `sceneId`) |
+| `vectorBlob` | BLOB | Embedding bytes |
+| `textHash` | TEXT | Invalidate on source text change |
 
-## 4. Events
+Table MUST exist in **migration 001** (MAY be empty until embed jobs run). Re-embed on write per [00-inference-runtime.md](00-inference-runtime.md) INF-13. Semantic search assists tools only ([02-memory.md](02-memory.md) §7).
+
+## 4. Indexes and full-text search (migration 001)
+
+| ID | Requirement |
+|----|-------------|
+| DM-5 | Migration 001 MUST create composite B-tree indexes on hot paths (below). |
+| DM-6 | Migration 001 MUST create SQLite **FTS5** virtual tables (or equivalent) for `memory_search` / `diary_search` ([02-memory.md](02-memory.md) MEM-PERF-1). |
+| DM-7 | FTS and embed queries MUST scope by `ownerId` / `characterId` / `ownerScope` — no cross-pool leakage (MP-1, MEM-ACC-1). |
+
+### 4.1 B-tree indexes (normative)
+
+```sql
+CREATE INDEX idx_locus_pool_owner ON Locus(pool, ownerId);
+CREATE INDEX idx_locus_pool_owner_key ON Locus(pool, ownerId, locusKey);
+CREATE INDEX idx_diary_character_time ON DiarySegment(characterId, createdAt DESC);
+CREATE UNIQUE INDEX idx_diary_dedupe ON DiarySegment(characterId, dedupeKey);
+CREATE INDEX idx_message_scene_time ON Message(sceneId, createdAt);
+CREATE INDEX idx_embedding_scope ON EmbeddingRecord(ownerScope, sourceType);
+```
+
+### 4.2 Diary dedupe
+
+`dedupeKey` MUST be unique per `(characterId, dedupeKey)` so fan-out (MP-20) does not collide across characters.
+
+### 4.3 FTS5 (illustrative)
+
+Implementations MAY use external-content FTS5 tables synced on write to `Locus` and `DiarySegment`:
+
+- **Locus FTS:** `locusKey`, `value` — filter `pool` + `ownerId` before or within query.
+- **Diary FTS:** `text` — filter `characterId`; rank newest-first for `diary_search`.
+
+Full table scans on `Locus` / `DiarySegment` for tool search are **forbidden** (MEM-PERF-1).
+
+### 4.4 Vector search (v1)
+
+- **Default:** In-process cosine top-k over `EmbeddingRecord.vectorBlob` for modest N (&lt;20k rows per scope).
+- **Scale-out:** Optional LanceDB sidecar if p95 semantic search &gt;100ms or N &gt;50k — keyed by `ownerScope`. Not MemPalace ChromaDB.
+
+## 5. PersistencePort (`packages/persistence`)
+
+| ID | Requirement |
+|----|-------------|
+| DM-8 | All durable reads/writes go through a **`PersistencePort`** interface in `packages/persistence`. |
+| DM-9 | v1 implementation: **SQLite** via `better-sqlite3` or `libsql` (single file per operator, DM-1). |
+| DM-10 | Port exposes: loci CRUD, diary append/query, FTS search, mandatory-recall assembly inputs, embed record upsert — no scattered SQL in orchestrator/memory packages. |
+
+Suggested layout:
+
+```
+packages/persistence/
+  src/port.ts          # PersistencePort types
+  src/sqlite/          # migration 001, FTS sync, indexes
+```
+
+## 6. Events
 
 Implementations SHOULD emit events with monotonic per-world `eventSeq`:
 
@@ -225,7 +280,7 @@ Implementations SHOULD emit events with monotonic per-world `eventSeq`:
 | `signal.created` | `signalId`, `targetSceneId` |
 | `queue.updated` | `busy`, `depth`, `currentJob` |
 
-## 5. Requirements summary
+## 7. Requirements summary
 
 | ID | Requirement |
 |----|-------------|
@@ -233,9 +288,18 @@ Implementations SHOULD emit events with monotonic per-world `eventSeq`:
 | DM-2 | Asset paths external to row blobs |
 | DM-3 | No parallel JSON transcript source of truth |
 | DM-4 | World package backup format |
+| DM-5 | Composite indexes in migration 001 |
+| DM-6 | FTS5 for tool search |
+| DM-7 | Scoped FTS/embed queries (MP-1) |
+| DM-8 | PersistencePort abstraction |
+| DM-9 | SQLite implementation v1 |
+| DM-10 | No scattered SQL outside persistence package |
 
 ## Related documents
 
 - [01-world-model.md](01-world-model.md)
+- [02-memory.md](02-memory.md)
+- [00-inference-runtime.md](00-inference-runtime.md)
 - [12-api-sketch.md](12-api-sketch.md)
+- [17-acceptance-criteria.md](17-acceptance-criteria.md)
 - [21-cross-scene-awareness.md](21-cross-scene-awareness.md)

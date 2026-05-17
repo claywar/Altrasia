@@ -87,7 +87,7 @@ Web UI **world wizard** (Phase 3):
 ### MUST ship
 
 - Spatial golden path
-- Memory palace + mandatory recall + blocking
+- Memory subsystem + mandatory recall + blocking
 - GpuResourceQueue + streaming UI
 - Observer Studio meta-chat + Narrate
 - Cross-scene tracking (CC-1–CC-7)

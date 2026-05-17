@@ -1,6 +1,8 @@
-# 02 — Memory Palace
+# 02 — Memory
 
-The **Memory Palace** is WorldEngine's structured memory layer: method-of-loci **facts**, **pools** with strict privacy, an episodic **diary**, and prompt-time **recall** so characters answer consistently without leaking private knowledge.
+WorldEngine **Memory** is the structured memory subsystem: **loci** (semantic facts), **pools** with strict privacy, an episodic **diary**, and prompt-time **recall** so characters answer consistently without leaking private knowledge.
+
+> **Not MemPalace (GitHub).** This subsystem is WorldEngine Memory. It does **not** embed, depend on, or implement the [MemPalace/mempalace](https://github.com/mempalace/mempalace) open-source project (Wings/Rooms/Closets/Drawers, ChromaDB, coding-session mining). Requirement IDs use the **`MP-*`** prefix (memory requirement).
 
 ## 1. Concepts
 
@@ -112,7 +114,7 @@ The recall protocol MUST include:
 
 - Identity line: which character is speaking.
 - Mind vs world definitions.
-- Indexes of mind loci keys (and optional value previews up to `locusPreviewMaxChars`; 0 = keys only).
+- Indexes of mind loci keys (and optional value previews up to `locusPreviewMaxChars`; **0 = keys only**, default SHOULD be 0 at scale).
 - Indexes of world loci for the active scene.
 - Optional injected **diary tail** (budgeted) in a fenced block.
 
@@ -122,14 +124,35 @@ The recall protocol MUST include:
 
 Content (assembled in order, subject to char budget):
 
-1. **Diary tail** (~45% of budget cap, also capped by `diaryPreGenerationMaxChars`).
-2. **Mind loci index** + up to 8 mind hits from substring search over recent transcript lines.
-3. **World loci index** for active scene.
+1. **Diary tail** (~45% of budget cap, also capped by `diaryPreGenerationMaxChars`) — **newest** segments first, stable ordering (MEM-ACC-2).
+2. **Mind loci index** + up to 8 mind hits from **indexed** search over recent transcript lines for the **generating character only**.
+3. **World loci index** for **active `sceneId` only**.
 4. **Architect block** (optional): for diary admins, tails of other **present** characters' diaries (bounded per character).
 
 Header MUST state that the character MUST treat diary and loci as **authoritative** unless new in-scene evidence contradicts them.
 
-### 3.1 Blocking mode
+### 3.1 Per-generation scope (MEM-PERF-4)
+
+| Rule | Level |
+|------|-------|
+| Mandatory recall assembled **only** for the generating `characterId` | MUST |
+| Mind loci and diary queries filtered by that `characterId` | MUST |
+| World loci filtered by active `sceneId` only | MUST |
+| MUST NOT load or scan all cast memories on every turn | MUST |
+
+### 3.2 Assembly cache (MEM-PERF-3)
+
+Implementations SHOULD cache assembled mandatory recall blocks:
+
+| Field | Value |
+|-------|-------|
+| Cache key | `(characterId, sceneId, transcriptTailHash, configVersion)` |
+| Invalidate on | Diary append, locus write, fixture sync, memory config change for that character/scene |
+| Cold start (MP-11) | Rebuild from SQLite; cache optional |
+
+**MEM-PERF-3:** P95 mandatory recall assembly on **cache miss** MUST be **&lt;100ms** excluding GPU (reference fixture in [17-acceptance-criteria.md](17-acceptance-criteria.md) §8).
+
+### 3.3 Blocking mode
 
 When **mandatory recall blocking** is enabled:
 
@@ -139,7 +162,7 @@ When **mandatory recall blocking** is enabled:
 
 Rationale: forces the model to ground in memory before web or filesystem tools.
 
-### 3.2 Placement
+### 3.4 Placement
 
 | API style | Placement |
 |-----------|-----------|
@@ -153,6 +176,8 @@ Configurable limits:
 - `mandatoryRecallMaxChars` (e.g. 500–100000, default ~12000)
 - `mandatoryRecallEnabled` (default on in roleplay presets)
 
+Assembled block MUST NOT exceed `mandatoryRecallMaxChars` (MEM-ACC-5).
+
 ## 4. Memory tools
 
 When tool calling is supported, the following tools SHOULD exist:
@@ -161,15 +186,18 @@ When tool calling is supported, the following tools SHOULD exist:
 |------|--------|
 | `memory_store` | Append fact at locus; `pool`: mind \| world |
 | `memory_read` | Read one locus |
-| `memory_search` | Substring search; `pool`: mind \| world \| both |
+| `memory_search` | Full-text search; `pool`: mind \| world \| both |
 | `diary_read` | Paginated segments for self |
 | `diary_search` | Newest-first search in self diary |
 | `diary_read_other` | Read another character's diary (admin allowlist only) |
 
-**Search semantics:**
+**Search semantics (v1):**
 
-- Case-insensitive substring on keys and values.
+- **MEM-PERF-1:** Tool search MUST use an indexed full-text path (SQLite FTS5 or equivalent). Full table scans on `Locus` / `DiarySegment` are forbidden.
+- **MEM-PERF-2:** P95 `memory_search` / `diary_search` latency MUST be **&lt;50ms** on the reference scale fixture ([17-acceptance-criteria.md](17-acceptance-criteria.md) §8).
+- **Hybrid (v1, when embed index exists):** FTS ranks candidates first; semantic rerank of top-k when `EmbeddingRecord` rows exist ([00-inference-runtime.md](00-inference-runtime.md) INF-11). Substring/FTS remains the fallback when no embed row exists.
 - Results truncated (e.g. 200 chars per hit) in tool output.
+- **MEM-ACC-1:** Hybrid search MUST NOT return mind-pool rows for a different `characterId` (MP-1).
 
 **Store validation:**
 
@@ -205,6 +233,8 @@ Sync SHOULD run when the active scene's metadata is flushed.
 | World loci | `sceneId` |
 | Settings | Operator / world config |
 
+Persistence: SQLite per [11-data-model.md](11-data-model.md). Implement via `PersistencePort` in `packages/persistence` (indexes + FTS5 in migration 001).
+
 ### 6.2 Legacy migration
 
 If a flat `loci` map existed without pool split, on load the implementation SHOULD:
@@ -216,7 +246,18 @@ If a flat `loci` map existed without pool split, on load the implementation SHOU
 
 If the platform also injects **vector-retrieved** chat chunks as episodic memory, operators SHOULD disable overlapping injection. **Diary + mandatory recall** are the canonical episodic path; duplicate RAG risks contradiction and token waste.
 
-## 8. Requirements summary
+Embeddings assist **tool search** only; they MUST NOT replace diary tails or mandatory recall injection (INF-9).
+
+## 8. External memory systems (out of scope)
+
+WorldEngine MUST NOT depend at runtime on:
+
+- [MemPalace/mempalace](https://github.com/mempalace/mempalace) (GitHub)
+- Mem0, Zep, Letta, or similar agent-memory SaaS as the primary memory backend
+
+Optional post-v1 **reflection** jobs MAY propose `memory_store` mind loci with operator approval ([16-learning.md](16-learning.md) §6).
+
+## 9. Requirements summary
 
 | ID | Requirement |
 |----|-------------|
@@ -228,6 +269,15 @@ If the platform also injects **vector-retrieved** chat chunks as episodic memory
 | MP-6 | Diary capture dedupes; snippets are witnessed perceivable scene dialogue (output-only), not assistant monologue-only. |
 | MP-7 | `diary_read_other` requires diary admin allowlist. |
 | MP-20 | On capture at scene S, fan-out the same segment to every present cast `characterId` (§1.4). |
+| MEM-PERF-1 | Indexed FTS for tool search; no full table scans. |
+| MEM-PERF-2 | P95 tool search &lt;50ms on reference fixture. |
+| MEM-PERF-3 | P95 mandatory recall assembly (cache miss) &lt;100ms. |
+| MEM-PERF-4 | Recall scoped to generating character + active scene only. |
+| MEM-ACC-1 | Hybrid search respects MP-1. |
+| MEM-ACC-2 | Diary tail = newest segments within budget, stable order. |
+| MEM-ACC-3 | `memory_store` append-only unless operator overwrite API. |
+| MEM-ACC-4 | Golden-path restart continuity ([17-acceptance-criteria.md](17-acceptance-criteria.md)). |
+| MEM-ACC-5 | Assembled mandatory recall ≤ `mandatoryRecallMaxChars`. |
 
 Extended requirements **MP-8–MP-19** (universal memory discipline, output-only storage, `stripReasoning`) are defined in [16-learning.md](16-learning.md).
 
@@ -236,4 +286,6 @@ Extended requirements **MP-8–MP-19** (universal memory discipline, output-only
 - [03-locations-and-presence.md](03-locations-and-presence.md) — fixtures and scene metadata
 - [05-tool-calling.md](05-tool-calling.md) — tool invoke loop
 - [10-prompt-injection.md](10-prompt-injection.md) — placement of recall blocks
+- [11-data-model.md](11-data-model.md) — SQLite schema, indexes, FTS5
 - [16-learning.md](16-learning.md) — MP-8–MP-19, stripReasoning
+- [17-acceptance-criteria.md](17-acceptance-criteria.md) — performance benchmarks

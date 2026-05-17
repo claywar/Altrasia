@@ -25,14 +25,15 @@ Primary LLM: **Qwen3.6-35B-A3B** via local llama.cpp router (`config/models/qwen
 
 ### Sprint 1 — inference + memory spike (recommended first build)
 
-Goal: de-risk GPU queue, tool loop, and memory palace before Web UI.
+Goal: de-risk GPU queue, tool loop, and memory subsystem before Web UI.
 
-1. **SQLite** schema per [docs/11-data-model.md](docs/11-data-model.md)
-2. **GpuResourceQueue** + lease reaper per [docs/00-inference-runtime.md](docs/00-inference-runtime.md)
-3. **llama.cpp adapter** (OpenAI-compatible) with profile `qwen3.6-35b-a3b`
-4. Tool registry + invoke loop per [docs/05-tool-calling.md](docs/05-tool-calling.md)
-5. `stripReasoning` + mandatory recall + blocking per [docs/16-learning.md](docs/16-learning.md)
-6. Single scene, one NPC, CLI or `POST /api/v1/worlds/{id}/generate`
+1. **SQLite** migration 001 (indexes + FTS5 + `EmbeddingRecord`) per [docs/11-data-model.md](docs/11-data-model.md) and [packages/persistence](packages/persistence/README.md)
+2. **Memory** subsystem (loci, diary, mandatory recall, FTS search) per [docs/02-memory.md](docs/02-memory.md)
+3. **GpuResourceQueue** + lease reaper per [docs/00-inference-runtime.md](docs/00-inference-runtime.md)
+4. **llama.cpp adapter** (OpenAI-compatible) with profile `qwen3.6-35b-a3b`
+5. Tool registry + invoke loop per [docs/05-tool-calling.md](docs/05-tool-calling.md)
+6. `stripReasoning` + mandatory recall + blocking per [docs/16-learning.md](docs/16-learning.md)
+7. Single scene, one NPC, CLI or `POST /api/v1/worlds/{id}/generate`
 
 Suggested monorepo layout:
 

@@ -114,7 +114,7 @@ SHOULD be rare and documented per tool.
 
 ### 7.1 Memory tools
 
-See [02-memory-palace.md](02-memory-palace.md). No approval queue.
+See [02-memory.md](02-memory.md). No approval queue.
 
 ### 7.2 Scene tools
 
@@ -165,4 +165,4 @@ Some providers support forwarding **reasoning** tokens with tool calls. Implemen
 
 - [06-web-tools.md](06-web-tools.md)
 - [07-approvals.md](07-approvals.md)
-- [02-memory-palace.md](02-memory-palace.md)
+- [02-memory.md](02-memory.md)

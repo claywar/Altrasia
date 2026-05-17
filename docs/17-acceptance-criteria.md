@@ -50,6 +50,18 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | MP-20b | After restart, Bob mandatory recall includes Alice's public line from diary without full transcript |
 | MP-14–MP-18 | stripReasoning fixtures: think tags not in diary/loci |
 | MP-16 | memory_store with reasoning-only rejected |
+| MEM-ACC-1 | 10k randomized hybrid searches: zero Bob mind-pool hits when querying as Alice |
+| MEM-ACC-2 | Mandatory recall diary tail ordering matches newest `createdAt` within budget |
+| MEM-ACC-5 | Assembled mandatory recall char length ≤ `mandatoryRecallMaxChars` |
+
+### Memory performance (v1 gate)
+
+| ID | Test |
+|----|------|
+| MEM-PERF-1 | Tool search uses FTS path (no full scan — assert via query plan or mock counter) |
+| MEM-PERF-2 | On reference scale fixture: p95 `memory_search` / `diary_search` &lt;50ms |
+| MEM-PERF-3 | On reference scale fixture: p95 mandatory recall assembly (cache miss) &lt;100ms |
+| MEM-PERF-4 | Recall assembly SQL/API calls scoped to single `characterId` + active `sceneId` only |
 
 ### Observer and roles
 
@@ -116,7 +128,22 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 | MAP-7 | Map regen fixture diff surfaces conflict |
 | IMG-1, IMG-8 | ComfyUI via queue; yields to Observer Direct |
 
-## 7. stripReasoning fixtures
+## 7. Reference scale fixture (memory performance)
+
+CI MUST include a synthetic dataset at approximately:
+
+| Dimension | Size |
+|-----------|------|
+| Characters | 24 |
+| Diary segments (total) | 12,000 |
+| Mind loci per character | ~200 keys, ~2MB aggregate text |
+| World loci per scene | ~100 keys |
+
+Path: `tests/fixtures/memory-scale/` (seed script + SQLite snapshot or generator).
+
+Performance tests (MEM-PERF-2, MEM-PERF-3) run against this fixture on every CI integration job. Leakage tests (MEM-ACC-1) run 10k randomized queries.
+
+## 8. stripReasoning fixtures
 
 Maintain `tests/fixtures/strip-reasoning/` with:
 
@@ -126,6 +153,8 @@ Maintain `tests/fixtures/strip-reasoning/` with:
 
 ## Related documents
 
+- [02-memory.md](02-memory.md)
+- [11-data-model.md](11-data-model.md)
 - [20-product-principles.md](20-product-principles.md)
 - [00-inference-runtime.md](00-inference-runtime.md)
 - [16-learning.md](16-learning.md)

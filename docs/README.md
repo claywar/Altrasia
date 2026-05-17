@@ -20,7 +20,7 @@ This specification describes *what* the system MUST do. Implementation uses SQLi
 |---|----------|--------|
 | 0 | [00-inference-runtime.md](00-inference-runtime.md) | GpuResourceQueue, streaming, model profiles, embeddings |
 | 1 | [01-world-model.md](01-world-model.md) | Worlds, scenes, characters, persona, persistence |
-| 2 | [02-memory-palace.md](02-memory-palace.md) | Loci, pools, diary, recall, mandatory recall |
+| 2 | [02-memory.md](02-memory.md) | Loci, pools, diary, recall, mandatory recall |
 | 3 | [03-locations-and-presence.md](03-locations-and-presence.md) | Presence, fixtures, inventory, scene framing |
 | 4 | [04-communication.md](04-communication.md) | Scopes, narrator, phone (v1.1), perception |
 | 5 | [05-tool-calling.md](05-tool-calling.md) | Registry, invoke loop, tool categories |
@@ -57,7 +57,7 @@ flowchart TB
   subgraph core [WorldEngine Core]
     AO[Agent orchestrator]
     IQ[GpuResourceQueue]
-    Mem[Memory palace]
+    Mem[Memory]
     Perc[canPerceive]
   end
 
@@ -88,7 +88,7 @@ flowchart TB
 
 - Web UI operator console with token streaming
 - GpuResourceQueue and reference model Qwen3.6-35B-A3B
-- Memory palace, mandatory recall, output-only durable storage
+- Memory subsystem, mandatory recall, output-only durable storage
 - Observer Studio (meta channel) and narrator mode
 - Public, whisper, DM; cross-scene exits and signals
 
