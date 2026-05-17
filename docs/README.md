@@ -53,6 +53,8 @@ This specification describes *what* the system MUST do. Normative specs are `00`
 | — | [guides/first-run-experience.md](guides/first-run-experience.md) | Target first session (non-normative) |
 | — | [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) | ASCII wireframes for Web UI (non-normative) |
 | — | [guides/reference-images/](guides/reference-images/README.md) | Map layout reference images for UI + LLM generation targets |
+| — | [REQUIREMENTS-INDEX.md](REQUIREMENTS-INDEX.md) | Requirement ID → defining document |
+| — | [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md) | Sprint 1/2 → golden path → fixtures |
 
 ## Architecture overview
 
@@ -104,6 +106,17 @@ flowchart TB
 - Demo world fixture `demo-spatial-v1` for first session ([tests/fixtures/demo-world/README.md](../tests/fixtures/demo-world/README.md))
 - Output quality CI gate OQ-1, OQ-3 ([17-acceptance-criteria.md](17-acceptance-criteria.md) §2b)
 - Character authoring **spec + API** ([24-character-authoring.md](24-character-authoring.md)); UI tests Phase 3
+- **Structured mini-map** — read-only `SpatialGraphMiniMap` from `GET spatial-graph` (exits + layout hints); [14-web-ui.md](14-web-ui.md) §21.1, [12-api-sketch.md](12-api-sketch.md) §6
+
+### Map terminology (avoid mis-scoping)
+
+| Term | v1 | Later |
+|------|----|-------|
+| **Structured mini-map** | Yes — schematic graph from exits; no LLM layout | [14-web-ui.md](14-web-ui.md) §21.1 |
+| **Location maps** (Phase 6) | No — `WorldMapCanvas`, floor plans, MapDraft UI | [18-location-maps.md](18-location-maps.md), [25-map-authoring.md](25-map-authoring.md) |
+| **MapDraft** | No — LLM layout + operator ack | Phase 6 ([25-map-authoring.md](25-map-authoring.md)) |
+
+v1.1 adds footprint shapes and building envelopes on the same mini-map ([14-web-ui.md](14-web-ui.md) §21.2–§21.3); that is still not Phase 6 site/stack authoring.
 
 ### v1.1 (Phase 2.5)
 
@@ -117,7 +130,7 @@ flowchart TB
 - SillyTavern-compatible UI, preset matrix, or character card PNG format
 - Phone play and global heartbeat (**v1.1** — above)
 - World package import/export (**v1.1**)
-- Image generation, location maps (**future** — [18](18-location-maps.md), [19](19-comfyui-media.md))
+- Image generation; **Phase 6 location maps** and MapDraft (**not** the v1 structured mini-map — see table above) ([18](18-location-maps.md), [25](25-map-authoring.md), [19](19-comfyui-media.md))
 - Vector RAG as primary episodic memory (diary is canonical)
 - Multi-tenant accounts
 - Required plugins ([15-plugin-platform.md](15-plugin-platform.md))

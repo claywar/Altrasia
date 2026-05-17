@@ -51,3 +51,9 @@
 | **World pool** | Shared memory loci for a scene's objective facts |
 | **WorldEngine** | This specification's target platform name |
 | **Model profile** | Config bundle per LLM (e.g. `qwen3.6-35b-a3b`) — router id, stripReasoning tags |
+| **Spatial graph** | Server-computed scene/exit layout for navigation and mini-map (`GET spatial-graph`, CC-1) |
+| **Structured mini-map** | v1 read-only UI panel rendering the spatial graph ([14-web-ui.md](14-web-ui.md) §21.1) |
+| **Location map** | Phase 6 large-scale `WorldMapCanvas`, per-scene floor plans, multi-level stack ([18-location-maps.md](18-location-maps.md)) |
+| **MapDraft** | In-progress LLM-proposed layout JSON until operator commit ([25-map-authoring.md](25-map-authoring.md)) |
+| **Geography lock** | End of casual scene deletion; worlds still grow in-map (`layoutDesignMode: false`, MAP-AUTH-LOCK-*) |
+| **layoutDesignMode** | World flag: true until Lock geography or first play ([25-map-authoring.md](25-map-authoring.md)) |

@@ -56,6 +56,8 @@ When the API returns separate reasoning fields:
 
 **v1 release:** OQ-1 and OQ-3 are blocking CI gates ([17-acceptance-criteria.md](17-acceptance-criteria.md) §2b). Fixtures: `tests/fixtures/output-quality/`.
 
+**Not v1 CI blockers:** **OQ-2** (sampling knobs in profile YAML — review at profile change, not a separate test). **OQ-4** (anti-loop inject strip — same PI-1 pattern as mandatory recall; enable when anti-loop is on). See [REQUIREMENTS-INDEX.md](REQUIREMENTS-INDEX.md).
+
 ## Related documents
 
 - [00-inference-runtime.md](00-inference-runtime.md)

@@ -6,11 +6,15 @@ Normative reference world for v1 spatial golden path and first-session onboardin
 
 `demo-spatial-v1`
 
+## Seed spec (design phase)
+
+Machine-readable world definition: [`demo-spatial-v1.json`](demo-spatial-v1.json). Implementations SHOULD load this file in seed scripts and API fixture loaders.
+
 ## Load paths (implementation)
 
 | Method | Description |
 |--------|-------------|
-| Seed script | `scripts/seed-demo-world.ts` (or equivalent) writes into operator SQLite |
+| Seed script | `scripts/seed-demo-world.ts` reads `demo-spatial-v1.json` → operator SQLite |
 | Snapshot | `demo-spatial-v1.sqlite` in this directory (optional checked-in snapshot) |
 | API | `POST /api/v1/worlds` with body `{ "fixtureId": "demo-spatial-v1" }` |
 

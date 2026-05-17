@@ -80,7 +80,7 @@ Implementations SHOULD store in-progress drafts separately from `Character`:
 
 ## 6. API
 
-See [12-api-sketch.md](12-api-sketch.md) §15.
+See [12-api-sketch.md](12-api-sketch.md) §14.
 
 | Method | Path | Description |
 |--------|------|-------------|

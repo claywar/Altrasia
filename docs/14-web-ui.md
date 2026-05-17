@@ -8,6 +8,34 @@ Component names in [§19](#19-component-inventory-spec-vocabulary) are **spec vo
 
 **Design system:** tokens, scope colors, typography, and visual vocabulary — [Appendix A](#appendix-a--design-system-non-normative). **Accessibility:** [Appendix B](#appendix-b--accessibility-normative-when-web-ui-exists).
 
+## 0. v1 implementation subset (Sprint 2)
+
+Build **only** these sections for the v1 tag; other `UI-*` rows are later phases ([ROADMAP.md](ROADMAP.md), [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md)).
+
+| Area | Spec sections | Blocking tests ([17-acceptance-criteria.md](17-acceptance-criteria.md)) |
+|------|---------------|---------------------------------------------------------------------------|
+| Shell, compose, scene switch | §1–§4, §6–§9 | UI-1–UI-5, UI-LAY-6, UI-2, UI-SET-* |
+| Observer Studio | §5 | OBS-2, meta channel isolation |
+| Rich transcript | §14–§15 | UI-R1–R3, UI-R5–R6, UI-TRN-1, UI-REG-1 |
+| Worlds launcher | §16 | UI-WLD-1 |
+| Locations / knock | §20, Signals in §2 | UI-S4, CC-11a–d |
+| Structured mini-map | §21.1 only | UI-MAP-ACC1–4 |
+| API binding | §24 | STR-*, queue strip |
+
+**Defer to v1.1:** §11 heartbeat UI, §21.2–§21.3 shapes/envelopes (UI-MAP-ACC5–8).
+
+**Defer to Phase 3+:** §12 character authoring, §13 in-world work, §17 ComfyUI, §21.4–§21.5 MapDraft / WorldMapCanvas.
+
+### Wireframe → UI mapping (non-normative)
+
+| Wireframe | UI / behavior |
+|-----------|----------------|
+| WF-1–WF-8 | Shell, transcript, compose, Places/People ([guides/web-ui-wireframes.md](guides/web-ui-wireframes.md)) |
+| WF-9 | Demo load (UI-WLD-1) |
+| WF-10–WF-13 | Observer Studio, memory inspector, queue |
+| WF-14–WF-15 | Phase 6 world map / level stack — **not v1** |
+| WF-16 | Map preview panel — Phase 6 ([25-map-authoring.md](25-map-authoring.md)) |
+
 ## 1. Design principles (UI-*)
 
 | ID | Principle |

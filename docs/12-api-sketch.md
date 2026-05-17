@@ -345,7 +345,7 @@ Subscribe: `WS /api/v1/worlds/{worldId}/events`
 
 Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then apply events where `eventSeq > lastSeen`.
 
-## 15. Character authoring (v1 API sketch, Phase 3 UI)
+## 14. Character authoring (v1 API sketch, Phase 3 UI)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -354,21 +354,21 @@ Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then ap
 | POST | `/characters` | `{ "draftId", "definitionJson?" }` — approve and create |
 | DELETE | `/characters/draft/{draftId}` | Discard draft |
 
-## 16. Operator settings (v1.1 heartbeat)
+## 15. Operator settings (v1.1 heartbeat)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/operator/settings` | Includes `heartbeat.enabled`, `heartbeat.intervalSeconds`, `lastHeartbeatAt` |
 | PATCH | `/operator/settings` | Update global heartbeat ([08-real-world-capabilities.md](08-real-world-capabilities.md) HB-3) |
 
-## 17. World package (v1.1)
+## 16. World package (v1.1)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/worlds/{worldId}/package/export` | Zip: DB slice + `assets/` (DM-4) |
 | POST | `/worlds/import` | Multipart package upload |
 
-## 18. Requirements summary
+## 17. Requirements summary
 
 | ID | Requirement |
 |----|-------------|

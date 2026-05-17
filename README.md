@@ -16,7 +16,7 @@ Product principles, personas, and milestones: [docs/20-product-principles.md](do
 
 | | |
 |--|--|
-| **Design specifications** | Complete (normative docs `00`–`24`) |
+| **Design specifications** | Complete (normative docs `00`–`25`) |
 | **Implementation** | **Not started** — no runnable app, API, or bundled demo database in this repo |
 | **Shipped** | **Nothing** — golden path in [docs/17-acceptance-criteria.md](docs/17-acceptance-criteria.md) is the future v1 gate |
 
@@ -38,9 +38,9 @@ Scope sequencing—not a retreat from the persistent-world vision. Detail: [docs
 |----------|------------|
 | Stakeholders / PM | [docs/ROADMAP.md](docs/ROADMAP.md), [docs/20-product-principles.md](docs/20-product-principles.md) |
 | Future operators | [docs/guides/first-run-experience.md](docs/guides/first-run-experience.md) |
-| Implementers | [docs/README.md](docs/README.md) — reading order, architecture, v1 scope |
+| Implementers | [docs/README.md](docs/README.md), [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
 
-All normative specifications live under [`docs/`](docs/README.md). Extended topics: inference runtime (`00`), data model (`11`), API sketch (`12`), orchestration (`13`), Web UI (`14`), acceptance (`17`), output quality (`22`), in-world work (`23`), character authoring (`24`).
+All normative specifications live under [`docs/`](docs/README.md). Extended topics: inference runtime (`00`), data model (`11`), API sketch (`12`), orchestration (`13`), Web UI (`14`), acceptance (`17`), output quality (`22`), in-world work (`23`), character authoring (`24`), map authoring (`25`). Requirement IDs: [docs/REQUIREMENTS-INDEX.md](docs/REQUIREMENTS-INDEX.md).
 
 Concepts were extracted from a prior SillyTavern deployment and reframed greenfield. Lineage (implementers): [`docs/appendix-provenance.md`](docs/appendix-provenance.md).
 

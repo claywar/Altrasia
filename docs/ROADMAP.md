@@ -1,6 +1,6 @@
 # WorldEngine Roadmap
 
-Single-page view of milestones, repository status, and what ships when. Normative behavior remains in numbered specs `00`–`24`.
+Single-page view of milestones, repository status, and what ships when. Normative behavior remains in numbered specs `00`–`25`.
 
 ## Repository status
 

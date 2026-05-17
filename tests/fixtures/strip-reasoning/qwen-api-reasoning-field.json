@@ -1,0 +1,10 @@
+{
+  "profileId": "qwen3.6-35b-a3b",
+  "description": "Router returns reasoning in a separate API field (MP-14, stripApiFields)",
+  "rawModelOutput": {
+    "content": "Bob sets down the ladle. \"Soup's almost ready.\"",
+    "reasoning_content": "Bob weighs whether to mention the missing salt."
+  },
+  "expectedOutputText": "Bob sets down the ladle. \"Soup's almost ready.\"",
+  "mustNotContain": ["missing salt", "reasoning_content"]
+}

@@ -1,0 +1,88 @@
+{
+  "fixtureId": "demo-spatial-v1",
+  "description": "Normative seed for v1 spatial golden path and GP-SETUP. Load into SQLite via seed script or POST /api/v1/worlds.",
+  "world": {
+    "name": "Demo Spatial World",
+    "defaultModelProfile": "qwen3.6-35b-a3b",
+    "activeSceneId": "scene-hall",
+    "configJson": {
+      "agentContinueEnabled": true,
+      "maxContinueDepth": 2
+    }
+  },
+  "scenes": [
+    {
+      "sceneId": "scene-hall",
+      "locationName": "Hall",
+      "locationDescription": "A wide hall with an oak door to the kitchen.",
+      "present": ["__persona__", "char-alice"],
+      "fixturesJson": {},
+      "exitsJson": [
+        {
+          "exitId": "hall-kitchen-door",
+          "label": "Door to kitchen",
+          "targetSceneId": "scene-kitchen",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N"
+        }
+      ],
+      "roundRobinIndex": 0
+    },
+    {
+      "sceneId": "scene-kitchen",
+      "locationName": "Kitchen",
+      "locationDescription": "A modest kitchen with a door back to the hall.",
+      "present": ["char-bob"],
+      "fixturesJson": {},
+      "exitsJson": [
+        {
+          "exitId": "kitchen-hall-door",
+          "label": "Door to hall",
+          "targetSceneId": "scene-hall",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S"
+        }
+      ],
+      "roundRobinIndex": 0
+    }
+  ],
+  "characters": [
+    {
+      "characterId": "char-alice",
+      "displayName": "Alice",
+      "speechWeight": 0.6,
+      "definitionJson": {
+        "persona": "Alice is curious and direct.",
+        "instructions": "Stay in character. Respond to the persona in public lines."
+      }
+    },
+    {
+      "characterId": "char-bob",
+      "displayName": "Bob",
+      "speechWeight": 0.4,
+      "definitionJson": {
+        "persona": "Bob is practical and dry.",
+        "instructions": "Stay in character. Respond to the persona in public lines."
+      }
+    },
+    {
+      "characterId": "observer",
+      "displayName": "Observer",
+      "definitionJson": {
+        "role": "observer",
+        "instructions": "Studio control surface; meta channel only."
+      }
+    }
+  ],
+  "spatialGraphHints": {
+    "note": "Optional mapPosition for mini-map; server may compute layout from exits alone.",
+    "nodes": [
+      { "sceneId": "scene-hall", "mapPosition": { "x": 45, "y": 50 } },
+      { "sceneId": "scene-kitchen", "mapPosition": { "x": 55, "y": 35 } }
+    ]
+  }
+}

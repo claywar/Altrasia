@@ -14,7 +14,7 @@ Reference model profile: `qwen3.6-35b-a3b` / router id `Qwen3.6-35B-A3B`.
 
 ### GP-SETUP (optional helper)
 
-Golden path steps MAY start from fixture `demo-spatial-v1` ([tests/fixtures/demo-world/README.md](../tests/fixtures/demo-world/README.md)) instead of manual world construction. Not a separate release blocker if manual setup is documented.
+Golden path steps MAY start from fixture `demo-spatial-v1` ([tests/fixtures/demo-world/demo-spatial-v1.json](../tests/fixtures/demo-world/demo-spatial-v1.json)) instead of manual world construction. Not a separate release blocker if manual setup is documented.
 
 ## 2. Spatial golden path (v1 release)
 
@@ -36,7 +36,7 @@ Golden path steps MAY start from fixture `demo-spatial-v1` ([tests/fixtures/demo
 | OQ-1 | Roleplay model profile includes quality addendum when enabled |
 | OQ-3 | Reasoning blocks absent from next-turn visible transcript after strip |
 
-Fixtures: `tests/fixtures/output-quality/` (see §9). Integration CI MUST run OQ-1 prompt assertion with mock LLM; OQ-3 MAY share strip-reasoning fixtures.
+Fixtures: `tests/fixtures/output-quality/` (see §10). Integration CI MUST run OQ-1 prompt assertion with mock LLM; OQ-3 MAY share `tests/fixtures/strip-reasoning/`.
 
 ## 3. Requirement matrix
 
@@ -204,7 +204,7 @@ CI MUST include a synthetic dataset at approximately:
 | Mind loci per character | ~200 keys, ~2MB aggregate text |
 | World loci per scene | ~100 keys |
 
-Path: `tests/fixtures/memory-scale/` (seed script + SQLite snapshot or generator).
+Path: `tests/fixtures/memory-scale/` ([generator-spec.json](../tests/fixtures/memory-scale/generator-spec.json) + seed script; optional SQLite snapshot).
 
 Performance tests (MEM-PERF-2, MEM-PERF-3) run against this fixture on every CI integration job. Leakage tests (MEM-ACC-1) run 10k randomized queries.
 
