@@ -37,7 +37,7 @@ Optional: **Settings** → **Server** → enable **Server heartbeat** for NPC id
 
 **World package:** Settings → **World** → **Export world package** (`.zip`); import via **Import package** or `POST /api/v1/worlds/import`.
 
-**Settings categories:** **World** (policy, activity status, package, briefing), **Scenes & layout** (geography, map layout), **Cast** (list, AI character draft), **Operations** (commissions), **Server** (heartbeat, plugins). **Play UI:** debate panel (right sidebar), world **Map** overlay, approvals banner. **Observer Studio:** digest with signals, commissions, debates, approvals.
+**Settings categories:** **World** (policy, activity status, package, briefing), **Scenes & layout** (geography, map layout), **Cast** (list, AI character draft), **Operations** (commissions), **Server** (heartbeat, plugins). **Play UI:** debate panel (right sidebar), tactical **Map** console (Top bar **Map**, scene chip, or **M** — pan/zoom, layers, click rooms to travel), approvals banner. **Observer Studio:** digest with signals, commissions, debates, approvals.
 
 ## 3. Real inference (optional)
 

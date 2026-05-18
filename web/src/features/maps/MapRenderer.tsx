@@ -34,13 +34,24 @@ export type MapRendererProps = {
   showEnvelopes?: boolean;
   showSiteUnderlay?: boolean;
   showScaleBar?: boolean;
+  showEdges?: boolean;
+  showLabels?: boolean;
   viewportRect?: { x: number; y: number; w: number; h: number };
   viewFit?: ViewFitMode;
   enablePan?: boolean;
+  interactive?: boolean;
   architectureStyle?: "diagram" | "blueprint" | "minimal";
   /** Persona on another floor — mark structure shell, do not draw that room on plan. */
   offPlanActive?: MapNode;
   showZoneBands?: boolean;
+  fogInactiveStructures?: boolean;
+  selectedSceneId?: string | null;
+  selectedExitId?: string | null;
+  onNodeSelect?: (sceneId: string) => void;
+  onEdgeSelect?: (exitId: string) => void;
+  onEdgeHover?: (exitId: string | null) => void;
+  onStructureSelect?: (structureId: string) => void;
+  worldMap?: SpatialGraph["worldMap"];
 };
 
 function toMapGraph(graph: SpatialGraph): MapGraph {
@@ -62,6 +73,17 @@ export function MapRenderer({
   architectureStyle: styleProp,
   offPlanActive,
   showZoneBands = true,
+  showEdges = true,
+  showLabels = true,
+  interactive = false,
+  fogInactiveStructures = false,
+  selectedSceneId = null,
+  selectedExitId = null,
+  onNodeSelect,
+  onEdgeSelect,
+  onEdgeHover,
+  onStructureSelect,
+  worldMap,
 }: MapRendererProps) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
@@ -80,8 +102,8 @@ export function MapRenderer({
   );
 
   const structLabels = useMemo(
-    () => (mg && showEnvelopes ? structureLabels(mg.structures ?? [], mg.nodes) : []),
-    [mg, showEnvelopes]
+    () => (mg && showEnvelopes && showLabels ? structureLabels(mg.structures ?? [], mg.nodes) : []),
+    [mg, showEnvelopes, showLabels]
   );
 
   const zoneBadges = useMemo(
@@ -142,7 +164,13 @@ export function MapRenderer({
     if (st.containsActiveScene || st.structureId === activeStructId) {
       return tokens.structureFillActive;
     }
+    if (fogInactiveStructures) return tokens.structureFillOther;
     return tokens.structureFillOther;
+  };
+
+  const structureOpacity = (st: MapStructure) => {
+    if (!fogInactiveStructures) return 1;
+    return st.containsActiveScene || st.structureId === activeStructId ? 1 : 0.35;
   };
 
   return (
@@ -167,7 +195,14 @@ export function MapRenderer({
           </filter>
         </defs>
 
-        {showSiteUnderlay && <SiteUnderlay viewBox={viewBox} idPrefix="map-site" />}
+        {showSiteUnderlay && (
+          <SiteUnderlay
+            viewBox={viewBox}
+            idPrefix="map-site"
+            worldMap={worldMap}
+            structures={mg.structures}
+          />
+        )}
 
         <g transform={panTransform}>
           {/* 0. Zone bands (floor / ward rails) */}
@@ -198,16 +233,29 @@ export function MapRenderer({
             (mg.structures ?? []).map((st) => {
               if (!tokens.showStructureFill) return null;
               const fill = structureFill(st);
+              const opacity = structureOpacity(st);
+              const envPath = getEnvelopePath(st.structureId, graph.nodes as MapNode[], st.boundary);
               return (
-                <SmoothEnvelope
-                  key={`fill-${st.structureId}`}
-                  structureId={st.structureId}
-                  nodes={nodes}
-                  boundary={st.boundary}
-                  fill={fill}
-                  stroke="none"
-                  doubleWall={false}
-                />
+                <g key={`fill-${st.structureId}`} opacity={opacity}>
+                  <SmoothEnvelope
+                    structureId={st.structureId}
+                    nodes={nodes}
+                    boundary={st.boundary}
+                    fill={fill}
+                    stroke="none"
+                    doubleWall={false}
+                  />
+                  {interactive && onStructureSelect && envPath && (
+                    <path
+                      d={envPath.pathD}
+                      fill="transparent"
+                      stroke="none"
+                      className="map-structure-hit"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => onStructureSelect(st.structureId)}
+                    />
+                  )}
+                </g>
               );
             })}
 
@@ -217,7 +265,8 @@ export function MapRenderer({
           ))}
 
           {/* 3. Edges */}
-          {edges.map((e) => {
+          {showEdges &&
+            edges.map((e) => {
             const a = nodeById.get(e.sourceSceneId);
             const b = nodeById.get(e.targetSceneId);
             if (!a?.layout || !b?.layout) return null;
@@ -234,7 +283,8 @@ export function MapRenderer({
               crossesStructure: e.crossesStructure,
               interiorOnly,
             });
-            const highlighted = highlightedExitId === e.exitId;
+            const highlighted =
+              highlightedExitId === e.exitId || selectedExitId === e.exitId;
             const steps = e.travelSteps ?? 1;
             const badgePos = steps >= 3 ? placeBadge(routed.labelPoint) : null;
             const showDoor =
@@ -243,8 +293,55 @@ export function MapRenderer({
             const pathIdx = Math.min(1, routed.points.length - 2);
             const angle = pathAngleAtPoint(routed.points, pathIdx);
 
+            const edgeLabel = `${e.label}${steps > 1 ? `, ${steps} steps` : ""}`;
+
             return (
-              <g key={e.exitId} className={`map-edge${highlighted ? " map-edge--hi" : ""}`}>
+              <g
+                key={e.exitId}
+                className={`map-edge${highlighted ? " map-edge--hi" : ""}${interactive ? " map-edge--interactive" : ""}`}
+                role={interactive ? "button" : undefined}
+                tabIndex={interactive ? 0 : undefined}
+                aria-label={interactive ? edgeLabel : undefined}
+                onClick={
+                  interactive && onEdgeSelect
+                    ? (ev) => {
+                        ev.stopPropagation();
+                        onEdgeSelect(e.exitId);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  interactive && onEdgeSelect
+                    ? (ev) => {
+                        if (ev.key === "Enter" || ev.key === " ") {
+                          ev.preventDefault();
+                          onEdgeSelect(e.exitId);
+                        }
+                      }
+                    : undefined
+                }
+                onMouseEnter={
+                  interactive && onEdgeHover ? () => onEdgeHover(e.exitId) : undefined
+                }
+                onMouseLeave={
+                  interactive && onEdgeHover ? () => onEdgeHover(null) : undefined
+                }
+                onFocus={
+                  interactive && onEdgeHover ? () => onEdgeHover(e.exitId) : undefined
+                }
+                onBlur={
+                  interactive && onEdgeHover ? () => onEdgeHover(null) : undefined
+                }
+              >
+                {interactive && (
+                  <path
+                    d={routed.pathD}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth={4}
+                    style={{ cursor: "pointer", pointerEvents: "stroke" }}
+                  />
+                )}
                 <path
                   d={routed.pathD}
                   fill="none"
@@ -257,6 +354,7 @@ export function MapRenderer({
                       ? `url(#${arrowMarkerId(highlighted)})`
                       : undefined
                   }
+                  style={interactive ? { pointerEvents: "none" } : undefined}
                 />
                 {badgePos && (
                   <g className="map-edge-badge">
@@ -428,13 +526,54 @@ export function MapRenderer({
             const fp = nodeFootprint(n);
             const isDimmed = dimmed.get(n.sceneId);
             const active = n.isActive;
+            const selected = selectedSceneId === n.sceneId;
+            const hitR = Math.max(fp.w, fp.h) * 0.55 + 2;
             return (
-              <g key={n.sceneId} filter={active ? "url(#map-active-glow)" : undefined}>
+              <g
+                key={n.sceneId}
+                filter={active || selected ? "url(#map-active-glow)" : undefined}
+                className={`map-node${selected ? " map-node--selected" : ""}${interactive ? " map-node--interactive" : ""}`}
+                role={interactive ? "button" : undefined}
+                tabIndex={interactive ? 0 : undefined}
+                aria-label={
+                  interactive
+                    ? `${n.locationName}${active ? ", current location" : ""}`
+                    : undefined
+                }
+                onClick={
+                  interactive && onNodeSelect
+                    ? (ev) => {
+                        ev.stopPropagation();
+                        onNodeSelect(n.sceneId);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  interactive && onNodeSelect
+                    ? (ev) => {
+                        if (ev.key === "Enter" || ev.key === " ") {
+                          ev.preventDefault();
+                          onNodeSelect(n.sceneId);
+                        }
+                      }
+                    : undefined
+                }
+              >
+                {interactive && (
+                  <circle
+                    cx={fp.cx}
+                    cy={fp.cy}
+                    r={hitR}
+                    fill="transparent"
+                    style={{ cursor: "pointer" }}
+                  />
+                )}
                 <MapNodeShape
                   fp={fp}
-                  active={active}
+                  active={active || selected}
                   dimmed={isDimmed}
-                  label={n.locationName}
+                  ghost={n.ghost}
+                  label={showLabels ? n.locationName : ""}
                   tokens={tokens}
                 />
                 <title>{n.locationName}</title>

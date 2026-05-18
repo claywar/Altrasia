@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from altrasia.map_layout_invariants import check_invariants
+
 BRIEF_MIN_CHARS = 12
 
 
@@ -115,7 +117,32 @@ def validate_layout(
         if key in layout:
             errors.append(f"forbidden field: {key}")
 
-    return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
+    if scope == "site":
+        wm = layout.get("worldMap") or {}
+        placements = wm.get("structurePlacements") or []
+        known = {p.get("structureId") for p in placements if p.get("structureId")}
+        if len(known) < 2:
+            errors.append("site scope requires worldMap.structurePlacements with >= 2 structures")
+        for item in scene_items:
+            scene_id = item.get("sceneId")
+            sid = item.get("structureId")
+            if not sid and scene_id in scenes_db:
+                sid = _hints(scenes_db[scene_id]).get("structureId") or scenes_db[scene_id].get(
+                    "structureId"
+                )
+            if sid and sid in structs_db and sid not in known:
+                warnings.append(f"scene {scene_id} structure {sid} has no site placement")
+
+    base = {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
+    inv = check_invariants(layout, store, world_id)
+    merged_errors = errors + inv["errors"]
+    merged_warnings = warnings + inv["warnings"]
+    return {
+        "valid": len(merged_errors) == 0,
+        "errors": merged_errors,
+        "warnings": merged_warnings,
+        "invariants": inv,
+    }
 
 
 def strip_unknown_keys(layout: dict[str, Any]) -> dict[str, Any]:

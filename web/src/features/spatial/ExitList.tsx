@@ -38,6 +38,8 @@ export function ExitList({ exits, highlightedExitId, onTravel, onKnock, onExitHo
             className={`exit-card${highlightedExitId === ex.exitId ? " exit-card--highlight" : ""}`}
             onMouseEnter={() => onExitHover(ex.exitId)}
             onMouseLeave={() => onExitHover(null)}
+            onFocus={() => onExitHover(ex.exitId)}
+            onBlur={() => onExitHover(null)}
           >
             <button type="button" className="exit-card__main" onClick={() => onTravel(ex.targetSceneId)}>
               {ex.direction && (

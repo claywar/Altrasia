@@ -69,9 +69,20 @@ export type LayoutDraft = {
   worldId: string;
   operatorBrief: string;
   scope: string;
-  proposed: { nodes?: Array<{ sceneId: string; mapPosition: { x: number; y: number } }> } | null;
+  proposed: {
+    nodes?: Array<{ sceneId: string; mapPosition: { x: number; y: number } }>;
+    scenes?: Array<Record<string, unknown>>;
+    structures?: Array<Record<string, unknown>>;
+    worldMap?: SpatialGraph["worldMap"];
+    referenceDiagramId?: string;
+  } | null;
   status: string;
   errorMessage?: string | null;
+  validation?: {
+    valid?: boolean;
+    errors?: string[];
+    warnings?: string[];
+  };
 };
 
 export type Message = {
@@ -234,10 +245,14 @@ export type SpatialGraph = {
     locationName: string;
     isActive: boolean;
     layout: { x: number; y: number };
+    planPosition?: { x: number; y: number };
+    locationDescription?: string;
     presentCount: number;
     mapShape?: string;
     structureId?: string;
     levelIndex?: number;
+    levelLabel?: string;
+    mapLevel?: number;
     mapZone?: string;
     mapSize?: { w?: number; h?: number };
     exitAnchor?: string;
@@ -254,6 +269,15 @@ export type SpatialGraph = {
     doorState?: string;
     crossesStructure?: boolean;
   }>;
+  verticalEdges?: Array<{
+    exitId: string;
+    sourceSceneId: string;
+    targetSceneId: string;
+    kind?: string;
+    sourceLevel?: number;
+    targetLevel?: number;
+    structureId?: string;
+  }>;
   structures?: Array<{
     structureId: string;
     displayName: string;
@@ -266,8 +290,22 @@ export type SpatialGraph = {
       y?: number;
       w?: number;
       h?: number;
+      cx?: number;
+      cy?: number;
+      r?: number;
     } | null;
   }>;
+  worldMap?: {
+    schemaVersion?: number;
+    architectureStyle?: string;
+    structurePlacements?: Array<{
+      structureId: string;
+      origin: { x: number; y: number };
+    }>;
+    siteUnderlayUrl?: string;
+  } | null;
+  siteLayoutApplied?: boolean;
+  layoutStatus?: "complete" | "partial" | "missing";
   layout?: { coordinateSpace?: string; algorithm?: string; architectureStyle?: string };
 };
 

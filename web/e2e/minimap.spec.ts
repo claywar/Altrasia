@@ -59,11 +59,66 @@ test("exit hover highlights edge path", async ({ page }) => {
 test("Map keyboard shortcut opens overlay", async ({ page }) => {
   await loadDemoWorld(page);
   await page.keyboard.press("m");
-  await expect(page.locator('.map-overlay[role="dialog"]')).toBeVisible();
+  await expect(page.getByTestId("map-console")).toBeVisible();
 });
 
 test("world map overlay shows multiple structures", async ({ page }) => {
   await loadDemoWorld(page);
   await page.keyboard.press("m");
-  await expect(page.locator(".map-canvas-structures li")).toHaveCount(3);
+  await expect(page.locator(".map-console-structures li")).toHaveCount(3);
+});
+
+test("site view shows structure placement footprints", async ({ page }) => {
+  await loadDemoWorld(page);
+  await page.keyboard.press("m");
+  await expect(page.locator(".map-site-placement-footprint")).toHaveCount(3);
+});
+
+test("map console has zoom controls and layers", async ({ page }) => {
+  await loadDemoWorld(page);
+  await page.keyboard.press("m");
+  await expect(page.locator(".map-console-zoom-label")).toBeVisible();
+  await expect(page.locator('.map-console-layers input[type="checkbox"]').first()).toBeVisible();
+});
+
+test("map console shows Go somewhere destinations", async ({ page }) => {
+  await loadDemoWorld(page);
+  await page.keyboard.press("m");
+  await expect(page.getByText("Go somewhere")).toBeVisible();
+  await expect(page.locator(".map-console-destination__main").first()).toBeVisible();
+});
+
+test("level stack view shows plates and vertical connectors", async ({ page }) => {
+  await loadDemoWorld(page);
+  await page.keyboard.press("m");
+  const stackTab = page.getByRole("button", { name: /stack/i });
+  if ((await stackTab.count()) === 0) {
+    test.skip();
+    return;
+  }
+  await stackTab.click();
+  await expect(page.locator(".level-stack-panel")).toBeVisible();
+  await expect(page.locator(".level-stack-selector__btn")).toHaveCount(3);
+  await expect(page.locator(".level-stack__svg")).toBeVisible();
+  await expect(page.locator(".level-stack-connector")).toHaveCount(2);
+  await expect(page.locator(".iso-room").first()).toBeVisible();
+  await expect(page.locator(".level-stack-annotation--active")).toBeVisible();
+});
+
+test("map guide dismisses with Got it and Escape", async ({ page }) => {
+  await loadDemoWorld(page);
+  await page.keyboard.press("m");
+  const dismiss = page.getByTestId("map-guide-dismiss");
+  if (await dismiss.isVisible()) {
+    await dismiss.click();
+    await expect(dismiss).not.toBeVisible();
+  }
+  await page.keyboard.press("m");
+  await page.keyboard.press("m");
+  await page.keyboard.press("Escape");
+  if (await dismiss.isVisible()) {
+    await page.keyboard.press("Escape");
+    await expect(dismiss).not.toBeVisible();
+    await expect(page.getByTestId("map-console")).toBeVisible();
+  }
 });

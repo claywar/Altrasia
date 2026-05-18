@@ -1,3 +1,5 @@
+import { readPlanPosition } from "./diagramModel";
+import { applySiteLayout } from "./worldSiteLayout";
 import type { MapEdge, MapGraph, MapNode } from "./types";
 
 export type MapViewMode = "site" | "structure" | "floor" | "stack";
@@ -122,9 +124,29 @@ export function prepareGraphForView(
 
   if (mode === "structure" && focusStructureId) {
     const focusLevel = options?.selectedLevel ?? personaLevel;
-    const nodes = filterNodesForLevel(graph.nodes, (sid) =>
+    const primary = filterNodesForLevel(graph.nodes, (sid) =>
       sid === focusStructureId ? focusLevel : siteStructureLevel(sid)
     );
+    const levels = levelsForStructure(graph.nodes, focusStructureId);
+    const ghostNodes: MapNode[] =
+      levels.length > 1
+        ? graph.nodes
+            .filter(
+              (n) =>
+                n.structureId === focusStructureId &&
+                nodeLevelIndex(n) !== focusLevel
+            )
+            .map((n) => {
+              const c = readPlanPosition(n);
+              return {
+                ...n,
+                layout: { x: c.x, y: c.y },
+                isActive: false,
+                ghost: true,
+              };
+            })
+        : [];
+    const nodes = [...primary, ...ghostNodes];
     const offPlanActive =
       active &&
       active.structureId === focusStructureId &&
@@ -151,12 +173,14 @@ export function prepareGraphForView(
       ? active
       : undefined;
 
+  const siteGraph = applySiteLayout({
+    ...graph,
+    nodes,
+    edges: filterEdges(nodes, graph.edges as MapEdge[]),
+  });
+
   return {
-    graph: {
-      ...graph,
-      nodes,
-      edges: filterEdges(nodes, graph.edges as MapEdge[]),
-    },
+    graph: siteGraph,
     focusStructureId,
     focusLevel: SITE_DISPLAY_LEVEL,
     offPlanActive,

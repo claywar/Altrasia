@@ -62,6 +62,16 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 - Elsewhere roster still shows Alice in Hall with scene label (CC-3)
 - Bob visible in Kitchen transcript context
 
+### 4b. World map navigation
+
+**Operator action:** Press **M** or click **Map** / the scene header map chip. In the tactical map console, click **Kitchen** in the inspector and choose **Go** (or click the path between rooms).
+
+**Expected:**
+
+- Full-screen map opens with layers rail, viewport, and inspector
+- Zoom (+/−), pan (drag or arrow keys), view modes (Site / Structure / Floor / Stack)
+- Travel updates active scene; mini-map and exit list stay in sync
+
 ### 5. Knock on exit
 
 **Operator action:** Use **Knock on [exit]** from Hall toward Kitchen (or reverse).

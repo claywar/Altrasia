@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "scope": "mini",
+  "referenceDiagramId": "mini_envelope",
+  "nodes": [
+    { "sceneId": "scene-hall", "mapPosition": { "x": 45, "y": 50 } },
+    { "sceneId": "scene-kitchen", "mapPosition": { "x": 55, "y": 35 } }
+  ]
+}

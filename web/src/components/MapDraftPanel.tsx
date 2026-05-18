@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { api, type LayoutDraft, type SpatialGraph } from "../api/client";
-import { MapRenderer } from "../features/maps/MapRenderer";
+import { LayoutDraftPreview } from "../features/maps/LayoutDraftPreview";
 import { SettingsBlock } from "./settings/SettingsBlock";
 
 type Props = {
@@ -12,33 +12,6 @@ type Props = {
 
 type Tab = "visual" | "json";
 
-function draftToGraph(
-  proposed: LayoutDraft["proposed"],
-  base: SpatialGraph | null | undefined
-): SpatialGraph | null {
-  if (!proposed?.nodes?.length && !base) return base ?? null;
-  const nodes = (proposed?.nodes ?? []).map((n) => {
-    const existing = base?.nodes.find((x) => x.sceneId === n.sceneId);
-    return {
-      sceneId: n.sceneId,
-      locationName: existing?.locationName ?? n.sceneId,
-      isActive: existing?.isActive ?? false,
-      layout: n.mapPosition ?? { x: 50, y: 50 },
-      presentCount: existing?.presentCount ?? 0,
-      structureId: existing?.structureId,
-      mapZone: existing?.mapZone,
-      mapShape: existing?.mapShape,
-    };
-  });
-  return {
-    activeSceneId: base?.activeSceneId ?? "",
-    nodes,
-    edges: base?.edges ?? [],
-    structures: base?.structures,
-    layout: base?.layout,
-  };
-}
-
 export function MapDraftPanel({ worldId, graph, onCommitted, embedded }: Props) {
   const [brief, setBrief] = useState("");
   const [scope, setScope] = useState("mini");
@@ -49,11 +22,6 @@ export function MapDraftPanel({ worldId, graph, onCommitted, embedded }: Props) 
   const [jsonText, setJsonText] = useState("");
   const [repairText, setRepairText] = useState("");
   const [cascadeOffer, setCascadeOffer] = useState<string | null>(null);
-
-  const previewGraph = useMemo(
-    () => draftToGraph(draft?.proposed ?? null, graph),
-    [draft?.proposed, graph]
-  );
 
   const syncJsonFromDraft = useCallback((d: LayoutDraft | null) => {
     if (d?.proposed) setJsonText(JSON.stringify(d.proposed, null, 2));
@@ -68,6 +36,7 @@ export function MapDraftPanel({ worldId, graph, onCommitted, embedded }: Props) 
             <option value="mini">Mini</option>
             <option value="site">Site</option>
             <option value="stack">Stack</option>
+            <option value="floor">Floor</option>
           </select>
         </label>
       </div>
@@ -105,7 +74,12 @@ export function MapDraftPanel({ worldId, graph, onCommitted, embedded }: Props) 
           <>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || draft.validation?.valid === false}
+              title={
+                draft.validation?.valid === false
+                  ? "Fix validation errors before commit"
+                  : undefined
+              }
               onClick={async () => {
                 setBusy(true);
                 setError(null);
@@ -182,9 +156,24 @@ export function MapDraftPanel({ worldId, graph, onCommitted, embedded }: Props) 
             </button>
           </div>
 
-          {tab === "visual" && previewGraph && (
-            <MapRenderer graph={previewGraph} className="map-draft-preview-map" />
+          {tab === "visual" && (
+            <LayoutDraftPreview scope={scope} draft={draft} baseGraph={graph ?? null} />
           )}
+
+          {draft.validation?.errors?.length ? (
+            <ul className="map-draft-validation map-draft-validation--errors">
+              {draft.validation.errors.map((msg) => (
+                <li key={msg}>{msg}</li>
+              ))}
+            </ul>
+          ) : null}
+          {draft.validation?.warnings?.length ? (
+            <ul className="map-draft-validation map-draft-validation--warnings">
+              {draft.validation.warnings.map((msg) => (
+                <li key={msg}>{msg}</li>
+              ))}
+            </ul>
+          ) : null}
 
           {tab === "json" && (
             <>

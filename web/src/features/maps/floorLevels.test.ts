@@ -82,10 +82,16 @@ describe("floorLevels", () => {
     expect(personaOffSitePlan(upperActive)).toBe(true);
   });
 
-  it("does not use ghost footprints", () => {
+  it("site view does not add ghost footprints", () => {
     const prep = prepareGraphForView(graph, "site");
-    expect("ghostNodes" in prep).toBe(false);
+    expect(prep.graph.nodes.some((n) => n.ghost)).toBe(false);
     expect(prep.focusLevel).toBe(SITE_DISPLAY_LEVEL);
+  });
+
+  it("structure view adds ghost footprints for other floors", () => {
+    const prep = prepareGraphForView(graph, "structure", { selectedLevel: 0 });
+    expect(prep.graph.nodes.some((n) => n.ghost && n.sceneId === "gallery")).toBe(true);
+    expect(prep.graph.nodes.some((n) => !n.ghost && n.sceneId === "hall")).toBe(true);
   });
 
   it("floor view isolates selected level", () => {
@@ -97,5 +103,37 @@ describe("floorLevels", () => {
     expect(isVerticalEdge({ ...graph.edges[0], kind: "stairs" })).toBe(true);
     expect(levelsForStructure(graph.nodes, "manor")).toEqual([0, 1]);
     expect(stackPlatesForStructure(graph, "manor")).toHaveLength(2);
+  });
+});
+
+describe("manor three-level stack", () => {
+  const cellar: MapNode = {
+    sceneId: "cellar",
+    locationName: "Cellar",
+    isActive: false,
+    layout: { x: 49, y: 45 },
+    presentCount: 0,
+    structureId: "manor",
+    levelIndex: -1,
+  };
+
+  const manorGraph: MapGraph = {
+    ...graph,
+    nodes: [...graph.nodes, cellar],
+    edges: [
+      ...graph.edges,
+      {
+        exitId: "ladder",
+        sourceSceneId: "hall",
+        targetSceneId: "cellar",
+        label: "Ladder down",
+        kind: "ladder",
+      },
+    ],
+  };
+
+  it("builds three stack plates for manor", () => {
+    expect(levelsForStructure(manorGraph.nodes, "manor")).toEqual([-1, 0, 1]);
+    expect(stackPlatesForStructure(manorGraph, "manor")).toHaveLength(3);
   });
 });

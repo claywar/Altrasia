@@ -389,6 +389,7 @@ export default function App() {
         onSwitchScene={switchScene}
         onTravelExit={movePersonaToExit}
         onKnock={knock}
+        onGraphRefresh={() => refresh(world)}
         toolsPhone={
           world && scene && roster ? (
             <PhonePanel

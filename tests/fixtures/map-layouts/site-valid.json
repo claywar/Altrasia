@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "scope": "site",
+  "referenceDiagramId": "site_overlay",
+  "worldMap": {
+    "structurePlacements": [
+      { "structureId": "manor", "origin": { "x": 48, "y": 38 } },
+      { "structureId": "keep", "origin": { "x": 77, "y": 53 } }
+    ]
+  },
+  "nodes": [
+    { "sceneId": "scene-hall", "structureId": "manor", "mapPosition": { "x": 45, "y": 50 } },
+    { "sceneId": "scene-keep-yard", "structureId": "keep", "mapPosition": { "x": 84, "y": 50 } }
+  ]
+}

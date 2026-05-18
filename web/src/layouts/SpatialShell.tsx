@@ -56,6 +56,7 @@ type Props = {
   onSwitchScene: (sceneId: string) => void;
   onTravelExit: (targetSceneId: string) => void;
   onKnock: (targetSceneId: string) => void;
+  onGraphRefresh?: () => void;
   toolsPhone: ReactNode;
   toolsDebate: ReactNode;
 };
@@ -85,6 +86,7 @@ export function SpatialShell({
   onSwitchScene,
   onTravelExit,
   onKnock,
+  onGraphRefresh,
   toolsPhone,
   toolsDebate,
 }: Props) {
@@ -109,7 +111,18 @@ export function SpatialShell({
       />
       <ApprovalsBanner worldId={world.worldId} />
       {mapOpen && (
-        <WorldMapOverlay graph={graph} onClose={onMapClose} onEnhanceLayout={onEnhanceLayout} />
+        <WorldMapOverlay
+          graph={graph}
+          worldId={world.worldId}
+          onClose={onMapClose}
+          onEnhanceLayout={onEnhanceLayout}
+          onSwitchScene={onSwitchScene}
+          onTravel={onTravelExit}
+          onKnock={onKnock}
+          highlightedExitId={highlightedExitId}
+          onExitHover={setHighlightedExitId}
+          onGraphRefresh={onGraphRefresh}
+        />
       )}
       {signalToast}
       <div className={`spatial-layout${rightRailOpen ? "" : " spatial-layout--rail-collapsed"}`}>
@@ -122,6 +135,7 @@ export function SpatialShell({
             onKnock={onKnock}
             onExitHover={setHighlightedExitId}
             onEnhanceLayout={onEnhanceLayout}
+            onOpenFullMap={onMapOpen}
           />
         </aside>
         <main className="spatial-layout__center" data-testid="center-column">
@@ -161,6 +175,11 @@ export function SpatialShell({
         }}
         onKnock={onKnock}
         onExitHover={setHighlightedExitId}
+        onMapOpen={() => {
+          setSpatialOpen(false);
+          onMapOpen();
+        }}
+        onOpenFullMap={onMapOpen}
       />
     </div>
   );

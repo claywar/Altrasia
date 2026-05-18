@@ -33,6 +33,11 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
         }
         if hints.get("mapPosition"):
             node["mapPositionAuthor"] = hints["mapPosition"]
+        plan_pos = hints.get("planPosition") or hints.get("mapPosition") or layout
+        if plan_pos:
+            node["planPosition"] = plan_pos
+        if scene.get("locationDescription"):
+            node["locationDescription"] = scene["locationDescription"]
         for key in (
             "structureId",
             "mapZone",
@@ -90,17 +95,73 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
     if arch_style not in ("diagram", "blueprint", "minimal"):
         arch_style = "diagram"
 
+    world_map = None
+    if world.get("worldMapJson"):
+        world_map = json.loads(world["worldMapJson"])
+
+    vertical_kinds = {"stairs", "ladder", "elevator", "shaft"}
+    vertical_edges: list[dict[str, Any]] = []
+    node_by_id = {n["sceneId"]: n for n in nodes}
+    for edge in edges:
+        kind = (edge.get("kind") or "").lower()
+        if kind not in vertical_kinds:
+            continue
+        src = node_by_id.get(edge["sourceSceneId"])
+        tgt = node_by_id.get(edge["targetSceneId"])
+        if not src or not tgt:
+            continue
+        src_lvl = src.get("levelIndex") if src.get("levelIndex") is not None else src.get("mapLevel", 0)
+        tgt_lvl = tgt.get("levelIndex") if tgt.get("levelIndex") is not None else tgt.get("mapLevel", 0)
+        if src_lvl == tgt_lvl:
+            continue
+        vertical_edges.append(
+            {
+                "exitId": edge["exitId"],
+                "sourceSceneId": edge["sourceSceneId"],
+                "targetSceneId": edge["targetSceneId"],
+                "kind": edge.get("kind"),
+                "sourceLevel": src_lvl,
+                "targetLevel": tgt_lvl,
+                "structureId": src.get("structureId") or tgt.get("structureId"),
+            }
+        )
+
+    layout_status = _layout_status(nodes)
+
     return {
         "activeSceneId": active,
         "nodes": nodes,
         "structures": struct_out,
         "edges": edges,
+        "verticalEdges": vertical_edges,
+        "worldMap": world_map,
+        "siteLayoutApplied": bool(world_map and world_map.get("structurePlacements")),
+        "layoutStatus": layout_status,
         "layout": {
             "coordinateSpace": "normalized-0-100",
             "algorithm": "layered-bfs-v1",
             "architectureStyle": arch_style,
         },
     }
+
+
+def _layout_status(nodes: list[dict]) -> str:
+    if len(nodes) < 2:
+        return "missing"
+    authored = sum(1 for n in nodes if n.get("mapPositionAuthor"))
+    if authored >= max(2, len(nodes) - 1):
+        return "complete"
+    if authored >= 1:
+        return "partial"
+    default_only = all(
+        n.get("layout", {}).get("x") == 30 + (i * 40) % 60
+        and n.get("layout", {}).get("y") == 30 + (i * 25) % 50
+        for i, n in enumerate(nodes)
+        if not n.get("mapPositionAuthor")
+    )
+    if default_only and authored == 0:
+        return "missing"
+    return "partial"
 
 
 def _auto_position(scene_id: str, scenes: list[dict]) -> dict[str, float]:

@@ -12,6 +12,8 @@ type Props = {
   onTravel: (targetSceneId: string) => void;
   onKnock: (targetSceneId: string) => void;
   onExitHover: (exitId: string | null) => void;
+  onMapOpen?: () => void;
+  onOpenFullMap?: () => void;
 };
 
 export function SpatialDrawer({
@@ -23,10 +25,17 @@ export function SpatialDrawer({
   onTravel,
   onKnock,
   onExitHover,
+  onMapOpen,
+  onOpenFullMap,
 }: Props) {
   return (
     <Drawer open={open} onClose={onClose} testId="spatial-drawer">
       <div id="spatial-drawer" className="spatial-drawer__content">
+        {onMapOpen && (
+          <button type="button" className="spatial-drawer__map-open" onClick={onMapOpen}>
+            Open full world map
+          </button>
+        )}
         <SpatialPanel
           graph={graph}
           exits={exits}
@@ -34,6 +43,7 @@ export function SpatialDrawer({
           onTravel={onTravel}
           onKnock={onKnock}
           onExitHover={onExitHover}
+          onOpenFullMap={onOpenFullMap ?? onMapOpen}
         />
       </div>
     </Drawer>

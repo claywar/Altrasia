@@ -8,6 +8,7 @@ from typing import Any
 
 from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.map_apply import apply_layout_json
+from altrasia.map_layout_invariants import check_invariants
 from altrasia.map_layout_validator import check_readiness, strip_unknown_keys, validate_layout
 from altrasia.persistence.sqlite_store import SqlitePersistence
 from altrasia.services import AppServices
@@ -18,8 +19,10 @@ MAP_DRAFT_SYSTEM = (
     "You are a map layout assistant for Altrasia. Respond with ONLY a JSON object (no markdown). "
     "schemaVersion: 1. Include scope, nodes or scenes (sceneId, mapPosition {x,y} 0-100), "
     "optional structures (structureId, displayName, boundary with vertices), edges (exitId, "
-    "sourceSceneId, targetSceneId, travelSteps, direction, exitAnchor). "
+    "sourceSceneId, targetSceneId, kind, travelSteps, direction, exitAnchor). "
     "referenceDiagramId: mini_envelope | mini_shapes | site_overlay | level_stack. "
+    "scope site: MUST include worldMap.structurePlacements (>=2 structures). "
+    "scope stack: scenes MUST include mapLevel/levelIndex and planPosition {x,y} aligned for vertical exits. "
     "No reasoning fields."
 )
 
@@ -139,12 +142,10 @@ async def create_layout_draft(
         proposed = await svc.gpu_queue.run(draft_id, "map_layout_draft", _run)
         proposed = strip_unknown_keys(proposed)
         validation = validate_layout(proposed, svc.store, world_id)
-        if not validation["valid"]:
-            proposed["_validationErrors"] = validation["errors"]
         svc.store.update_layout_draft(
             draft_id,
             proposedJson=json.dumps(proposed),
-            status="ready" if validation["valid"] else "ready",
+            status="ready",
             updatedAt=ISO(),
         )
     except Exception as exc:
@@ -156,7 +157,8 @@ async def create_layout_draft(
         )
         raise
     row = svc.store.get_layout_draft(draft_id)
-    return _serialize_draft(row)  # type: ignore[arg-type]
+    validation = validate_layout(proposed, svc.store, world_id)
+    return _serialize_draft(row, validation=validation)  # type: ignore[arg-type]
 
 
 async def repair_layout_draft(
@@ -227,14 +229,17 @@ def get_layout_draft(svc: AppServices, draft_id: str) -> dict[str, Any] | None:
     return _serialize_draft(row) if row else None
 
 
-def _serialize_draft(row: dict[str, Any]) -> dict[str, Any]:
+def _serialize_draft(
+    row: dict[str, Any],
+    validation: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     proposed = None
     if row.get("proposedJson"):
         try:
             proposed = json.loads(row["proposedJson"])
         except json.JSONDecodeError:
             proposed = None
-    return {
+    out: dict[str, Any] = {
         "layoutDraftId": row["layoutDraftId"],
         "worldId": row["worldId"],
         "operatorBrief": row["operatorBrief"],
@@ -246,6 +251,9 @@ def _serialize_draft(row: dict[str, Any]) -> dict[str, Any]:
         "createdAt": row["createdAt"],
         "updatedAt": row["updatedAt"],
     }
+    if validation is not None:
+        out["validation"] = validation
+    return out
 
 
 def commit_layout_draft(svc: AppServices, draft_id: str) -> dict[str, Any]:
@@ -261,7 +269,11 @@ def commit_layout_draft(svc: AppServices, draft_id: str) -> dict[str, Any]:
     validation = validate_layout(proposed, svc.store, row["worldId"])
     if not validation["valid"]:
         raise ValueError(json.dumps({"validationErrors": validation["errors"]}))
+    inv = check_invariants(proposed, svc.store, row["worldId"])
+    if not inv["valid"]:
+        raise ValueError(json.dumps({"invariantErrors": inv["errors"]}))
     result = apply_layout_json(svc.store, row["worldId"], proposed)
+    build_spatial_graph(svc.store, row["worldId"])
     svc.store.update_layout_draft(draft_id, status="committed", updatedAt=ISO())
     return {
         "layoutDraftId": draft_id,

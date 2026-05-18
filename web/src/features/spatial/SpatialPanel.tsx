@@ -1,4 +1,5 @@
 import type { SpatialGraph } from "../../api/client";
+import { MapMiniMapChrome } from "../../components/MapMiniMapChrome";
 import { MiniMap } from "../../components/MiniMap";
 import { MapPanelHeader } from "../maps/MapChrome";
 import { ExitList, type ExitItem } from "./ExitList";
@@ -11,6 +12,7 @@ type Props = {
   onKnock: (targetSceneId: string) => void;
   onExitHover: (exitId: string | null) => void;
   onEnhanceLayout?: () => void;
+  onOpenFullMap?: () => void;
 };
 
 /** Mini-map + exits — used in the persistent left column and the mobile drawer. */
@@ -22,6 +24,7 @@ export function SpatialPanel({
   onKnock,
   onExitHover,
   onEnhanceLayout,
+  onOpenFullMap,
 }: Props) {
   const activeNode = graph?.nodes.find((n) => n.isActive);
   const structure = graph?.structures?.find(
@@ -30,7 +33,10 @@ export function SpatialPanel({
   const hasLayout =
     graph &&
     graph.nodes.length >= 2 &&
-    graph.nodes.some((n) => n.layout && (n.layout.x !== 50 || n.layout.y !== 50));
+    (graph.layoutStatus === "complete" ||
+      graph.layoutStatus === "partial" ||
+      (!graph.layoutStatus &&
+        graph.nodes.some((n) => n.layout && (n.layout.x !== 50 || n.layout.y !== 50))));
 
   return (
     <div className="spatial-panel spatial-panel--framed" data-testid="spatial-panel">
@@ -40,7 +46,10 @@ export function SpatialPanel({
         sceneName={activeNode?.locationName}
       />
       {hasLayout ? (
-        <MiniMap graph={graph} highlightedExitId={highlightedExitId} enablePan viewFit="full" />
+        <>
+          <MiniMap graph={graph} highlightedExitId={highlightedExitId} enablePan viewFit="full" />
+          <MapMiniMapChrome graph={graph} onOpenFullMap={onOpenFullMap} />
+        </>
       ) : (
         <div className="minimap minimap--empty">
           <p>Layout incomplete</p>

@@ -6,6 +6,7 @@ export type MapNode = SpatialGraph["nodes"][number] & {
   mapLevel?: number;
   levelLabel?: string;
   dimmed?: boolean;
+  ghost?: boolean;
 };
 
 export type MapEdge = SpatialGraph["edges"][number] & {
@@ -34,6 +35,7 @@ export type MapGraph = Omit<SpatialGraph, "nodes" | "edges" | "structures"> & {
   nodes: MapNode[];
   edges: MapEdge[];
   structures?: MapStructure[];
+  siteLayoutApplied?: boolean;
 };
 
 export type Footprint = {

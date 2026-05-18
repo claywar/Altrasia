@@ -9,6 +9,15 @@ from altrasia.persistence.sqlite_store import SqlitePersistence
 ISO = lambda: datetime.now(timezone.utc).isoformat()
 
 
+def _normalize_position(pos: dict[str, Any]) -> dict[str, float]:
+    if "planX" in pos or "planY" in pos:
+        return {
+            "x": float(pos.get("planX", pos.get("x", 50))),
+            "y": float(pos.get("planY", pos.get("y", 50))),
+        }
+    return {"x": float(pos.get("x", 50)), "y": float(pos.get("y", 50))}
+
+
 def apply_layout_json(store: SqlitePersistence, world_id: str, layout: dict[str, Any]) -> dict[str, Any]:
     """Apply validated layout to scenes, structures, exits, worldMapJson."""
     scenes_db = {s["sceneId"]: s for s in store.list_scenes(world_id)}
@@ -25,11 +34,11 @@ def apply_layout_json(store: SqlitePersistence, world_id: str, layout: dict[str,
         scene = scenes_db[sid]
         hints = SqlitePersistence.json_loads(scene.get("layoutHintsJson"), {})
         pos = item.get("layout") or item.get("mapPosition")
+        plan = item.get("planPosition")
+        if plan:
+            hints["planPosition"] = _normalize_position(plan)
         if pos:
-            hints["mapPosition"] = {
-                "x": float(pos.get("x", 50)),
-                "y": float(pos.get("y", 50)),
-            }
+            hints["mapPosition"] = _normalize_position(pos)
         for key in (
             "structureId",
             "mapZone",
@@ -39,7 +48,6 @@ def apply_layout_json(store: SqlitePersistence, world_id: str, layout: dict[str,
             "mapLevel",
             "levelLabel",
             "exitAnchor",
-            "planPosition",
         ):
             if item.get(key) is not None:
                 hints[key] = item[key]
