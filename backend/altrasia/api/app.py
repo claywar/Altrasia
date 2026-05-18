@@ -239,6 +239,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def list_worlds(svc: AppServices = Depends(get_services)) -> list[dict]:
         out = []
         for w in svc.store.list_worlds():
+            if not svc.store.list_scenes(w["worldId"]):
+                continue
             row = dict(w)
             row["paused"] = w["worldId"] in svc.paused_worlds
             out.append(row)
@@ -920,7 +922,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         art = get_scene_artifact(svc.store, world_id, scene_id)
         return {"artifact": art}
 
-    @app.get("/api/v1/worlds/{world_id}/channels", dependencies=[Depends(verify_auth)])
     def _channel_payload(ch: dict) -> dict:
         return {
             "channelId": ch["channelId"],

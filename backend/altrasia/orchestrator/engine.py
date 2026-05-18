@@ -606,6 +606,17 @@ class Orchestrator:
             trigger_message_id=signal_id,
         )
 
+    def _persona_message_job(self, world_id: str, message_id: str) -> dict[str, Any] | None:
+        row = self.svc.store.conn.execute(
+            """SELECT jobId, status FROM GenerationJob
+               WHERE worldId = ? AND triggerMessageId = ? AND trigger = 'persona_message'
+               LIMIT 1""",
+            (world_id, message_id),
+        ).fetchone()
+        if not row:
+            return None
+        return {"jobId": row[0], "status": row[1]}
+
     async def on_persona_message(
         self, world_id: str, scene_id: str, message_id: str, text: str
     ) -> dict | None:
@@ -613,21 +624,32 @@ class Orchestrator:
         lock_geography_on_first_play(self.svc.store, world_id)
         if world_id in self.svc.paused_worlds:
             return None
+        existing = self._persona_message_job(world_id, message_id)
+        if existing:
+            return existing
         if scene_id in self._scene_chain_active:
             return None
-        cid, rationale = await self.pick_reactive_character_async(
-            world_id, scene_id, text, trigger_message_id=message_id
-        )
-        if not cid:
-            return None
-        job = await self.enqueue_generation(
-            world_id=world_id,
-            scene_id=scene_id,
-            character_id=cid,
-            trigger="persona_message",
-            trigger_message_id=message_id,
-        )
-        self.svc.store.update_job(
-            job["jobId"], selectionRationaleJson=json.dumps(rationale)
-        )
-        return job
+        self._scene_chain_active.add(scene_id)
+        job: dict[str, Any] | None = None
+        try:
+            cid, rationale = await self.pick_reactive_character_async(
+                world_id, scene_id, text, trigger_message_id=message_id
+            )
+            if not cid:
+                return None
+            job = await self.enqueue_generation(
+                world_id=world_id,
+                scene_id=scene_id,
+                character_id=cid,
+                trigger="persona_message",
+                trigger_message_id=message_id,
+            )
+            if not job:
+                return None
+            self.svc.store.update_job(
+                job["jobId"], selectionRationaleJson=json.dumps(rationale)
+            )
+            return job
+        finally:
+            if job is None:
+                self._scene_chain_active.discard(scene_id)

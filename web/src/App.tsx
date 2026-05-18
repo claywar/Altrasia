@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownBody } from "./components/MarkdownBody";
 import { GpuQueueStrip } from "./components/GpuQueueStrip";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -68,6 +68,7 @@ export default function App() {
   const [savedWorlds, setSavedWorlds] = useState<World[]>([]);
   const [phoneChannelId, setPhoneChannelId] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
+  const sendInFlight = useRef(false);
 
   useEffect(() => {
     if (!world) {
@@ -140,7 +141,8 @@ export default function App() {
   };
 
   const send = async () => {
-    if (!world || !scene || !text.trim()) return;
+    if (!world || !scene || !text.trim() || loading || sendInFlight.current) return;
+    sendInFlight.current = true;
     setLoading(true);
     try {
       const participants =
@@ -171,6 +173,7 @@ export default function App() {
         });
       }
     } finally {
+      sendInFlight.current = false;
       setLoading(false);
     }
   };

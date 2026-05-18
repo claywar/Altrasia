@@ -32,6 +32,28 @@ def test_load_fixture_world(client: TestClient) -> None:
     assert len(r2.json()["nodes"]) == 2
 
 
+def test_persona_line_one_reactive_reply(client: TestClient) -> None:
+    """AO-20: one operator public line → one assistant message (not two)."""
+    import time
+
+    r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
+    world_id = r.json()["worldId"]
+    hall = "scene-hall"
+    client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
+        json={"text": "Hello", "scope": "public"},
+    )
+    deadline = time.time() + 8.0
+    while time.time() < deadline:
+        q = client.get(f"/api/v1/worlds/{world_id}/queue").json()
+        if not q.get("busy") and q.get("depth", 0) == 0:
+            break
+        time.sleep(0.05)
+    msgs = client.get(f"/api/v1/worlds/{world_id}/scenes/{hall}/messages").json()
+    assistants = [m for m in msgs if m["role"] == "assistant"]
+    assert len(assistants) == 1
+
+
 def test_knock_no_generation(client: TestClient) -> None:
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     world_id = r.json()["worldId"]
