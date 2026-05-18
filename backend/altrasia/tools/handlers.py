@@ -18,12 +18,25 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
         )
 
     async def memory_store(params: dict, ctx: ToolContext) -> Any:
-        return mem.memory_store(
+        out = mem.memory_store(
             pool="mind",
             owner_id=ctx.character_id,
             locus_key=params["locusKey"],
             value=params["value"],
         )
+        from altrasia.evidence import record_evidence
+
+        kind = "commission" if ctx.commission_id else "dialogue"
+        record_evidence(
+            services.store,
+            locus_key=params["locusKey"],
+            pool="mind",
+            owner_id=ctx.character_id,
+            source_kind=kind,
+            source_ref=params["locusKey"],
+            commission_id=ctx.commission_id,
+        )
+        return out
 
     async def diary_search(params: dict, ctx: ToolContext) -> Any:
         return mem.diary_search(
@@ -53,6 +66,51 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
         if not rows:
             return {"found": False}
         return {"locusKey": rows[0][0], "value": rows[0][1]}
+
+    async def webtools_invoke(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.approvals import (
+            create_approval,
+            mark_approval_applied,
+            world_tool_policy,
+        )
+
+        query = (params.get("query") or params.get("url") or "").strip()
+        policy = world_tool_policy(services.store, ctx.world_id)
+        if policy["requireWebToolApproval"]:
+            approval = create_approval(
+                services.store,
+                world_id=ctx.world_id,
+                tool_name="webtools_invoke",
+                params=params,
+                state="pending",
+            )
+            services.event_bus.emit(
+                services.store,
+                ctx.world_id,
+                "approval.updated",
+                {"approvalId": approval["approvalId"], "state": "pending"},
+            )
+            return {
+                "ok": False,
+                "approvalRequired": True,
+                "approvalId": approval["approvalId"],
+                "message": "Operator must approve this web fetch before results are available.",
+            }
+        summary = (
+            f"[mock web] No live fetch in dev. Treat as placeholder fact for: {query[:200]}"
+            if query
+            else "[mock web] supply query or url"
+        )
+        if policy["auditWebTools"]:
+            approval = create_approval(
+                services.store,
+                world_id=ctx.world_id,
+                tool_name="webtools_invoke",
+                params=params,
+                state="approved",
+            )
+            mark_approval_applied(services.store, approval["approvalId"])
+        return {"ok": True, "query": query, "summary": summary}
 
     async def scene_update_fixture(params: dict, ctx: ToolContext) -> Any:
         scene = services.store.get_scene(ctx.scene_id)
@@ -125,6 +183,20 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["query"],
             },
             handler=diary_search,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="webtools_invoke",
+            description="Search or fetch external facts (approval-gated in production).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "url": {"type": "string"},
+                },
+            },
+            handler=webtools_invoke,
         )
     )
     registry.register(

@@ -29,7 +29,7 @@ def test_commission_crud(tmp_path: Path) -> None:
     )
     assert created.status_code == 200
     body = created.json()
-    assert body["status"] == "queued"
+    assert body["status"] == "blocked"  # COM-6: Alice starts in Hall, not Kitchen
     assert body["deliverablePolicy"] == "mind"
     cid = body["commissionId"]
 

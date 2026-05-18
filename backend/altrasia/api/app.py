@@ -21,7 +21,22 @@ from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.perception.scope import can_perceive
 from altrasia.fixtures.loader import load_fixture_by_id
 from altrasia.services import AppServices
+from altrasia.commission_notify import refresh_commissions
+from altrasia.commission_runner import start_commission as run_start_commission
 from altrasia.commissions import create_commission, list_commissions, patch_commission
+from altrasia.debate_activity import (
+    advance_debate_phase,
+    advance_debate_speaker,
+    clear_debate,
+    parse_activity,
+    start_debate,
+)
+from altrasia.debate_runner import enqueue_debate_turn
+from altrasia.approvals import list_approvals, resolve_approval
+from altrasia.briefing import set_briefing_fixture
+from altrasia.commons import list_commons, set_commons
+from altrasia.world_config import get_world_config, merge_world_policy
+from altrasia.map_authoring import commit_layout_draft, create_layout_draft, get_layout_draft
 from altrasia.character_authoring import (
     approve_character_draft,
     create_character_draft,
@@ -141,6 +156,39 @@ class CreateCommissionBody(BaseModel):
     targetSceneId: str
     brief: str
     deliverablePolicy: str = "mind"
+    allowedTools: list[str] | None = None
+
+
+class LayoutDraftCreateBody(BaseModel):
+    brief: str
+    scope: str = "mini"
+
+
+class DebateStartBody(BaseModel):
+    speakingOrder: list[str]
+    phase: str = "opening"
+
+
+class WorldPolicyPatch(BaseModel):
+    requireWebToolApproval: bool | None = None
+    auditWebTools: bool | None = None
+    pauseCommissionsDuringPersonaDialogue: bool | None = None
+    citeProvenanceInPrompt: bool | None = None
+    commonsAccessIds: list[str] | None = None
+
+
+class CommonsBody(BaseModel):
+    key: str
+    text: str
+
+
+class ForceCompleteBody(BaseModel):
+    reason: str
+
+
+class BriefingBody(BaseModel):
+    fixtureKey: str = "board"
+    text: str
 
 
 class PatchCommissionBody(BaseModel):
@@ -243,7 +291,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(404, "world not found")
         out = dict(w)
         out["paused"] = world_id in svc.paused_worlds
+        try:
+            out["policy"] = json.loads(w.get("configJson") or "{}")
+        except json.JSONDecodeError:
+            out["policy"] = {}
         return out
+
+    @app.get("/api/v1/worlds/{world_id}/policy", dependencies=[Depends(verify_auth)])
+    def get_world_policy(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        return get_world_config(svc.store, world_id)
+
+    @app.patch("/api/v1/worlds/{world_id}/policy", dependencies=[Depends(verify_auth)])
+    def patch_world_policy(
+        world_id: str, body: WorldPolicyPatch, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        policy = body.model_dump(exclude_none=True)
+        cfg = merge_world_policy(svc.store, world_id, policy)
+        _emit(svc, world_id, "world.updated", {"policy": cfg})
+        return cfg
 
     @app.patch("/api/v1/worlds/{world_id}", dependencies=[Depends(verify_auth)])
     def patch_world(
@@ -377,6 +446,91 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _emit(svc, world_id, "scene.changed", {"sceneId": scene_id})
         return svc.store.get_scene(scene_id)  # type: ignore[return-value]
 
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/debate",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_debate_start(
+        world_id: str,
+        scene_id: str,
+        body: DebateStartBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        try:
+            activity = start_debate(
+                svc.store, scene_id, speaking_order=body.speakingOrder, phase=body.phase
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id, "debate": "started"})
+        job = await enqueue_debate_turn(svc, scene_id)
+        return {"activity": activity, "generationJob": job}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/debate/advance-speaker",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_debate_advance_speaker(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        try:
+            activity = advance_debate_speaker(svc.store, scene_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id})
+        job = await enqueue_debate_turn(svc, scene_id)
+        return {"activity": activity, "generationJob": job}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/debate/advance-phase",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_debate_advance_phase(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        try:
+            activity = advance_debate_phase(svc.store, scene_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id})
+        job = await enqueue_debate_turn(svc, scene_id)
+        return {"activity": activity, "generationJob": job}
+
+    @app.delete(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/debate",
+        dependencies=[Depends(verify_auth)],
+    )
+    def delete_debate(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        clear_debate(svc.store, scene_id)
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id, "debate": "cleared"})
+        return {"sceneId": scene_id, "activity": None}
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/debate",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_debate(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        return {"activity": parse_activity(sc)}
+
     @app.get(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",
         dependencies=[Depends(verify_auth)],
@@ -430,6 +584,53 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {"locusKey": row[0], "value": row[1], "updatedAt": row[2]}
             for row in cur.fetchall()
         ]
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/evidence",
+        dependencies=[Depends(verify_auth)],
+    )
+    def character_evidence(
+        world_id: str,
+        character_id: str,
+        locusKey: str | None = None,
+        svc: AppServices = Depends(get_services),
+    ) -> list[dict]:
+        if locusKey:
+            rows = svc.store.list_evidence_for_locus("mind", character_id, locusKey)
+        else:
+            cur = svc.store.conn.execute(
+                """SELECT * FROM EvidenceRecord WHERE pool = 'mind' AND ownerId = ?
+                   ORDER BY retrievedAt DESC LIMIT 40""",
+                (character_id,),
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+        return rows
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/briefing",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_briefing(
+        world_id: str,
+        scene_id: str,
+        body: BriefingBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        try:
+            out = set_briefing_fixture(
+                svc.store,
+                svc.memory,
+                scene_id=scene_id,
+                fixture_key=body.fixtureKey,
+                text=body.text,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id, "briefing": body.fixtureKey})
+        return out
 
     @app.post(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",
@@ -532,6 +733,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         pending = svc.store.list_signals(world_id, status="pending")
         channels = svc.phone.list_active(world_id)
+        from altrasia.commissions import list_commissions
+
+        commissions = [
+            c
+            for c in list_commissions(svc.store, world_id)
+            if c["status"] not in ("done", "failed")
+        ]
+        from altrasia.debate_activity import parse_activity
+
+        debates = []
+        for s in svc.store.list_scenes(world_id):
+            act = parse_activity(s)
+            if act:
+                debates.append(
+                    {
+                        "sceneId": s["sceneId"],
+                        "locationName": s.get("locationName", ""),
+                        "phase": act.get("phase"),
+                        "speakingOrder": act.get("speakingOrder", []),
+                    }
+                )
+        pending_approvals = list_approvals(svc.store, world_id, state="pending")
         return {
             "worldId": world_id,
             "worldName": world.get("name"),
@@ -540,9 +763,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "scenes": scenes_out,
             "pendingSignals": pending,
             "activeChannels": channels,
+            "commissions": commissions,
+            "debates": debates,
+            "pendingApprovals": pending_approvals,
             "summary": (
                 f"{len(pending)} pending signal(s); "
-                f"{len(channels)} active phone channel(s)"
+                f"{len(channels)} active phone channel(s); "
+                f"{len(commissions)} open commission(s); "
+                f"{len(debates)} active debate(s); "
+                f"{len(pending_approvals)} pending approval(s)"
             ),
         }
 
@@ -591,7 +820,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/presence/join",
         dependencies=[Depends(verify_auth)],
     )
-    def presence_join(
+    async def presence_join(
         world_id: str, scene_id: str, body: PresenceBody, svc: AppServices = Depends(get_services)
     ) -> dict:
         svc.presence.join(scene_id, body.characterId)
@@ -601,13 +830,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "presence.changed",
             {"sceneId": scene_id, "characterId": body.characterId, "action": "join"},
         )
+        await refresh_commissions(svc, world_id)
         return {"ok": True}
 
     @app.post(
         "/api/v1/worlds/{world_id}/presence/summon",
         dependencies=[Depends(verify_auth)],
     )
-    def presence_summon(
+    async def presence_summon(
         world_id: str, body: SummonBody, svc: AppServices = Depends(get_services)
     ) -> dict:
         for cid in body.characterIds:
@@ -618,16 +848,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "presence.changed",
                 {"sceneId": body.targetSceneId, "characterId": cid, "action": "summon"},
             )
+        await refresh_commissions(svc, world_id)
         return {"ok": True, "targetSceneId": body.targetSceneId}
 
     @app.post(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/presence/leave",
         dependencies=[Depends(verify_auth)],
     )
-    def presence_leave(
+    async def presence_leave(
         world_id: str, scene_id: str, body: PresenceBody, svc: AppServices = Depends(get_services)
     ) -> dict:
         svc.presence.leave(scene_id, body.characterId)
+        await refresh_commissions(svc, world_id)
         return {"ok": True}
 
     @app.get("/api/v1/worlds/{world_id}/roster", dependencies=[Depends(verify_auth)])
@@ -935,6 +1167,55 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
 
+    @app.post(
+        "/api/v1/worlds/{world_id}/layout-drafts",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_layout_draft(
+        world_id: str,
+        body: LayoutDraftCreateBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        if not body.brief.strip():
+            raise HTTPException(400, "brief is required")
+        try:
+            return await create_layout_draft(
+                svc, world_id, body.brief.strip(), scope=body.scope
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(500, str(exc)) from exc
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/layout-drafts/{draft_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_layout_draft_route(
+        world_id: str, draft_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        row = get_layout_draft(svc, draft_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "draft not found")
+        return row
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/layout-drafts/{draft_id}/commit",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_layout_draft_commit(
+        world_id: str, draft_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        row = get_layout_draft(svc, draft_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "draft not found")
+        try:
+            result = commit_layout_draft(svc, draft_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "scene.changed", {"layoutDraftId": draft_id})
+        return result
+
     @app.get(
         "/api/v1/worlds/{world_id}/commissions",
         dependencies=[Depends(verify_auth)],
@@ -948,7 +1229,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         "/api/v1/worlds/{world_id}/commissions",
         dependencies=[Depends(verify_auth)],
     )
-    def post_commission(
+    async def post_commission(
         world_id: str, body: CreateCommissionBody, svc: AppServices = Depends(get_services)
     ) -> dict:
         try:
@@ -959,11 +1240,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 target_scene_id=body.targetSceneId,
                 brief=body.brief.strip(),
                 deliverable_policy=body.deliverablePolicy,
+                allowed_tools=body.allowedTools,
             )
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
-        _emit(svc, world_id, "commission.updated", {"commissionId": com["commissionId"]})
+        commission_id = com["commissionId"]
+        await refresh_commissions(svc, world_id)
+        for row in list_commissions(svc.store, world_id):
+            if row["commissionId"] == commission_id:
+                return row
         return com
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/commissions/{commission_id}/start",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_commission_start(
+        world_id: str, commission_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        row = svc.store.get_commission(commission_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "commission not found")
+        try:
+            return await run_start_commission(svc, commission_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(503, str(exc)) from exc
 
     @app.patch(
         "/api/v1/worlds/{world_id}/commissions/{commission_id}",
@@ -990,6 +1293,57 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(400, str(exc)) from exc
         _emit(svc, world_id, "commission.updated", {"commissionId": commission_id})
         return com
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/commissions/{commission_id}/force-complete",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_commission_force_complete(
+        world_id: str,
+        commission_id: str,
+        body: ForceCompleteBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        row = svc.store.get_commission(commission_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "commission not found")
+        reason = body.reason.strip()
+        if not reason:
+            raise HTTPException(400, "reason required")
+        try:
+            com = patch_commission(
+                svc.store,
+                commission_id,
+                status="done",
+                force_complete_reason=reason,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "commission.updated", {"commissionId": commission_id})
+        return com
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/commons",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_world_commons(world_id: str, svc: AppServices = Depends(get_services)) -> list[dict]:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        return list_commons(svc.store, world_id)
+
+    @app.put(
+        "/api/v1/worlds/{world_id}/commons",
+        dependencies=[Depends(verify_auth)],
+    )
+    def put_world_commons(
+        world_id: str, body: CommonsBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        try:
+            return set_commons(svc.memory, svc.store, world_id, key=body.key, text=body.text)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.post(
         "/api/v1/worlds/{world_id}/members",
@@ -1022,6 +1376,53 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 hb["intervalSeconds"] = body.heartbeat.intervalSeconds
             updates["heartbeat"] = hb
         return svc.operator_settings.patch(updates).to_api()
+
+    @app.get("/api/v1/worlds/{world_id}/approvals", dependencies=[Depends(verify_auth)])
+    def get_approvals(
+        world_id: str,
+        state: str | None = "pending",
+        svc: AppServices = Depends(get_services),
+    ) -> list[dict]:
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        return list_approvals(svc.store, world_id, state=state)
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/approvals/{approval_id}/approve",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_approval_approve(
+        world_id: str, approval_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        row = svc.store.get_approval(approval_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "approval not found")
+        try:
+            out = resolve_approval(svc.store, approval_id, approve=True)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        from altrasia.approvals import mark_approval_applied
+
+        mark_approval_applied(svc.store, approval_id)
+        _emit(svc, world_id, "approval.updated", {"approvalId": approval_id, "state": "applied"})
+        return out
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/approvals/{approval_id}/deny",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_approval_deny(
+        world_id: str, approval_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        row = svc.store.get_approval(approval_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "approval not found")
+        try:
+            out = resolve_approval(svc.store, approval_id, approve=False)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "approval.updated", {"approvalId": approval_id, "state": "denied"})
+        return out
 
     @app.post("/api/v1/worlds/{world_id}/pause", dependencies=[Depends(verify_auth)])
     def pause_world(world_id: str, svc: AppServices = Depends(get_services)) -> dict:

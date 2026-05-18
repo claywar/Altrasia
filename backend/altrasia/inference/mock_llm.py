@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 _tool_snapshots: list[list[str]] = []
@@ -49,6 +50,92 @@ async def mock_chat_completion(
                 }
             ]
         }
+    if tools and "commission errand" in system_text.lower():
+        names = [t["function"]["name"] for t in tools]
+        has_web_result = any(m.get("role") == "tool" for m in messages)
+        if "memory_store" in names and has_web_result:
+            key = "commission:mock:summary"
+            m = re.search(r'key "([^"]+)"', system_text)
+            if m:
+                key = m.group(1)
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "call_mem",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "memory_store",
+                                        "arguments": json.dumps(
+                                            {
+                                                "locusKey": key,
+                                                "value": "Mock commission findings from research.",
+                                            }
+                                        ),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
+        if "webtools_invoke" in names:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "call_web",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "webtools_invoke",
+                                        "arguments": json.dumps(
+                                            {"query": "commission research context"}
+                                        ),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
+        if "memory_store" in names:
+            key = "commission:mock:summary"
+            m = re.search(r'key "([^"]+)"', system_text)
+            if m:
+                key = m.group(1)
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "call_mem",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "memory_store",
+                                        "arguments": json.dumps(
+                                            {
+                                                "locusKey": key,
+                                                "value": "Mock commission findings from research.",
+                                            }
+                                        ),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
     if tools and ("remember" in lower or "capital" in lower):
         return {
             "choices": [

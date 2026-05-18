@@ -41,9 +41,13 @@ class MemoryService:
         *,
         character_id: str,
         scene_id: str,
+        world_id: str | None = None,
         max_chars: int = 4000,
     ) -> str:
-        """MP-8, MP-11: assemble diary tail + mind loci for prompt."""
+        """MP-8, MP-11, MP-22: assemble diary tail + mind/world/commons loci for prompt."""
+        from altrasia.commons import character_has_commons_access
+        from altrasia.world_config import get_world_config
+
         parts: list[str] = []
         diary = self.store.list_diary(character_id, limit=12)
         if diary:
@@ -66,6 +70,18 @@ class MemoryService:
             parts.append("## Scene world pool")
             for row in world:
                 parts.append(f"- {row[0]}: {row[1]}")
+        if world_id:
+            cfg = get_world_config(self.store, world_id)
+            if character_has_commons_access(cfg, character_id):
+                commons = self.store.conn.execute(
+                    """SELECT locusKey, value FROM Locus
+                       WHERE pool = 'commons' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 12""",
+                    (world_id,),
+                ).fetchall()
+                if commons:
+                    parts.append("## Institutional records (commons)")
+                    for row in commons:
+                        parts.append(f"- {row[0]}: {row[1]}")
         text = "\n".join(parts)
         return text[:max_chars]
 

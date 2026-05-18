@@ -13,6 +13,7 @@ class ToolContext:
     scene_id: str
     character_id: str
     services: Any
+    commission_id: str | None = None
 
 
 @dataclass

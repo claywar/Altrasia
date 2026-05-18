@@ -14,6 +14,7 @@ export function CommissionsPanel({ worldId, scenes }: Props) {
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useWebTools, setUseWebTools] = useState(false);
 
   const load = () => api.listCommissions(worldId).then(setItems).catch(() => setItems([]));
 
@@ -39,7 +40,8 @@ export function CommissionsPanel({ worldId, scenes }: Props) {
     <section className="settings-section">
       <h3>Commissions (schema)</h3>
       <p className="settings-muted">
-        Assign in-world errands. Runtime automation is Phase 4+; create and track status here.
+        Assign errands; assignee must be at the target scene (COM-6). Start work or summon them
+        there first.
       </p>
       <ul className="scene-geo-list commissions-list">
         {items.map((c) => (
@@ -49,7 +51,33 @@ export function CommissionsPanel({ worldId, scenes }: Props) {
               <span className={`commission-status status-${c.status}`}>{c.status}</span>
             </div>
             <p className="commission-brief">{c.brief}</p>
-            {c.status !== "done" && c.status !== "failed" && (
+            {c.status === "queued" && (
+              <button
+                type="button"
+                className="people-secondary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    await api.startCommission(worldId, c.commissionId);
+                    await load();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Start failed");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Start work
+              </button>
+            )}
+            {c.status === "blocked" && (
+              <span className="settings-muted" style={{ fontSize: 11 }}>
+                Waiting for assignee at scene
+              </span>
+            )}
+            {(c.status === "queued" || c.status === "blocked" || c.status === "running") && (
               <button
                 type="button"
                 className="people-secondary"
@@ -99,6 +127,14 @@ export function CommissionsPanel({ worldId, scenes }: Props) {
         </select>
       </label>
       <label className="settings-row">
+        <input
+          type="checkbox"
+          checked={useWebTools}
+          onChange={(e) => setUseWebTools(e.target.checked)}
+        />
+        Allow web research (mock <code>webtools_invoke</code>)
+      </label>
+      <label className="settings-row">
         Brief
         <textarea
           className="char-draft-brief"
@@ -119,6 +155,9 @@ export function CommissionsPanel({ worldId, scenes }: Props) {
               assigneeCharacterId: assignee,
               targetSceneId: targetScene,
               brief: brief.trim(),
+              allowedTools: useWebTools
+                ? ["webtools_invoke", "memory_store", "memory_search", "memory_read"]
+                : undefined,
             });
             setBrief("");
             await load();

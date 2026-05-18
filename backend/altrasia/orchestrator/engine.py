@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
@@ -14,6 +15,8 @@ from altrasia.tools.registry import ToolContext
 from altrasia.world_geography import lock_geography_on_first_play
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
+
+log = logging.getLogger(__name__)
 
 
 class Orchestrator:
@@ -73,6 +76,29 @@ class Orchestrator:
     def _filter_tools(self, all_tools: list[dict], allowed: set[str]) -> list[dict]:
         return [t for t in all_tools if t["function"]["name"] in allowed]
 
+    def _tools_for_job(
+        self, job: dict[str, Any], all_tools: list[dict], memory_only: set[str]
+    ) -> list[dict]:
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+        except json.JSONDecodeError:
+            rationale = {}
+        com_id = rationale.get("commissionId")
+        if com_id and str(job.get("trigger", "")).startswith("commission"):
+            from altrasia.commissions import parse_allowed_tools
+
+            row = self.svc.store.get_commission(com_id)
+            allowed = parse_allowed_tools(row)
+            if allowed is not None:
+                allowed = set(allowed) | memory_only
+                return self._filter_tools(all_tools, allowed)
+        cast_tools = {
+            t["function"]["name"]
+            for t in all_tools
+            if not t["function"]["name"].startswith("scene_")
+        }
+        return self._filter_tools(all_tools, cast_tools)
+
     def pick_reactive_character(
         self, world_id: str, scene_id: str, trigger_text: str
     ) -> tuple[str | None, dict]:
@@ -82,6 +108,17 @@ class Orchestrator:
         cast = [c for c in present if c not in (PERSONA_ID,)]
         if not cast:
             return None, {}
+        from altrasia.debate_activity import debate_current_speaker, parse_activity
+
+        activity = parse_activity(scene)
+        if activity and activity.get("kind") == "debate":
+            speaker = debate_current_speaker(activity)
+            if speaker and speaker in cast:
+                return speaker, {
+                    "pick": "debate",
+                    "phase": activity.get("phase"),
+                    "characterId": speaker,
+                }
         chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
         lower = trigger_text.lower()
 
@@ -123,14 +160,22 @@ class Orchestrator:
         trigger_message_id: str | None = None,
         observer_mode: str | None = None,
         idle_source: str | None = None,
+        commission_id: str | None = None,
     ) -> dict[str, Any] | None:
         if world_id in self.svc.paused_worlds:
             return None
         job_id = str(uuid.uuid4())
         rationale_obj: dict[str, Any] = {"pick": trigger, "characterId": character_id}
+        if commission_id:
+            rationale_obj["commissionId"] = commission_id
         if idle_source:
             rationale_obj["idle_source"] = idle_source
         rationale = json.dumps(rationale_obj)
+        priority = 10 - continue_depth
+        if trigger == "commission_tick":
+            priority = 7
+        elif trigger == "commission_started":
+            priority = 8
         self.svc.store.insert_job(
             {
                 "jobId": job_id,
@@ -138,7 +183,7 @@ class Orchestrator:
                 "characterId": character_id,
                 "sceneId": scene_id,
                 "trigger": trigger,
-                "priority": 10 - continue_depth,
+                "priority": priority,
                 "observerMode": observer_mode,
                 "status": "queued",
                 "continueDepth": continue_depth,
@@ -242,6 +287,7 @@ class Orchestrator:
         recall = self.svc.memory.build_mandatory_recall(
             character_id=job["characterId"],
             scene_id=job["sceneId"],
+            world_id=job["worldId"],
             max_chars=max_recall,
         )
         scene = self.svc.store.get_scene(job["sceneId"])
@@ -254,12 +300,51 @@ class Orchestrator:
         )
         if addendum:
             system += f"\n\n{addendum}"
+        if cfg.get("citeProvenanceInPrompt"):
+            prov = self.svc.store.conn.execute(
+                """SELECT locusKey, sourceKind, sourceRef FROM EvidenceRecord
+                   WHERE pool = 'mind' AND ownerId = ? ORDER BY retrievedAt DESC LIMIT 8""",
+                (job["characterId"],),
+            ).fetchall()
+            if prov:
+                system += "\n\n## Source provenance (cite when using these facts)"
+                for row in prov:
+                    system += f"\n- {row[0]} ({row[1]}: {row[2][:120]})"
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+        except json.JSONDecodeError:
+            rationale = {}
+        com_id = rationale.get("commissionId")
+        if com_id and str(job.get("trigger", "")).startswith("commission"):
+            com_row = self.svc.store.get_commission(com_id)
+            if com_row:
+                summary_key = f"{com_row.get('deliverableLocusPrefix', '')}summary"
+                system += (
+                    f"\n\nCommission errand — operator brief:\n{com_row['brief']}\n"
+                    f"When finished, call memory_store on your mind pool with key "
+                    f'"{summary_key}" containing your findings.'
+                )
+        if str(job.get("trigger", "")) == "debate_turn":
+            from altrasia.debate_activity import parse_activity
+
+            activity = parse_activity(scene)
+            if activity:
+                phase = activity.get("phase", "opening")
+                system += (
+                    f"\n\nDebate phase: {phase}. Give a concise in-character public argument. "
+                    "Stay within the debate; do not invent new locations."
+                )
+                if phase == "synthesis":
+                    system += (
+                        "\nSynthesize positions for all debaters; your line is the public summary."
+                    )
         messages = [{"role": "system", "content": system}]
         for m in self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-12:]:
             role = "assistant" if m["role"] == "assistant" else "user"
             messages.append({"role": role, "content": m["outputText"]})
         all_tools = self.svc.tools.list_openai_tools()
         memory_only = self._memory_tool_names()
+        job_tools = self._tools_for_job(job, all_tools, memory_only)
         blocking = self._mandatory_recall_blocking(job["worldId"])
         memory_gate_open = False
         ctx = ToolContext(
@@ -267,13 +352,14 @@ class Orchestrator:
             scene_id=job["sceneId"],
             character_id=job["characterId"],
             services=self.svc,
+            commission_id=com_id,
         )
         depth = 0
         while depth < 5:
             if depth == 0 and blocking and not memory_gate_open:
-                tools_payload = self._filter_tools(all_tools, memory_only)
+                tools_payload = self._filter_tools(job_tools, memory_only)
             else:
-                tools_payload = all_tools if depth == 0 else None
+                tools_payload = job_tools if depth == 0 else None
             resp = await self.svc.llm.chat(messages, tools_payload)
             msg = resp["choices"][0]["message"]
             tool_calls = msg.get("tool_calls")
@@ -312,13 +398,96 @@ class Orchestrator:
             message_ids=[m["messageId"] for m in recent],
         )
 
+        if str(job.get("trigger", "")).startswith("commission"):
+            try:
+                rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+            except json.JSONDecodeError:
+                rationale = {}
+            com_id = rationale.get("commissionId")
+            if com_id:
+                from altrasia.commissions import (
+                    commission_deliverable_keys,
+                    complete_commission_with_output,
+                    mind_deliverable_exists,
+                    patch_commission,
+                )
+
+                com_row = self.svc.store.get_commission(com_id)
+                finished = False
+                try:
+                    if com_row and mind_deliverable_exists(self.svc.store, com_row):
+                        keys = commission_deliverable_keys(
+                            self.svc.store, self.svc.memory, com_row
+                        )
+                        patch_commission(
+                            self.svc.store,
+                            com_id,
+                            status="done",
+                            deliverable_locus_keys=keys,
+                        )
+                        finished = True
+                    elif job.get("trigger") == "commission_tick":
+                        pass
+                    else:
+                        complete_commission_with_output(
+                            self.svc.store, self.svc.memory, com_id, text
+                        )
+                        finished = True
+                    if finished:
+                        self._emit(
+                            job["worldId"],
+                            "commission.updated",
+                            {"commissionId": com_id, "status": "done"},
+                        )
+                except Exception as exc:
+                    if job.get("trigger") != "commission_tick":
+                        self.svc.store.update_commission(
+                            com_id, status="failed", updatedAt=ISO()
+                        )
+                        log.warning("commission finalize failed %s: %s", com_id, exc)
+
+        if job.get("trigger") == "debate_turn":
+            from altrasia.debate_activity import (
+                clear_debate,
+                finalize_debate_synthesis,
+                parse_activity,
+            )
+
+            scene_row = self.svc.store.get_scene(job["sceneId"])
+            activity = parse_activity(scene_row) if scene_row else None
+            if activity:
+                if activity.get("phase") == "synthesis":
+                    finalize_debate_synthesis(
+                        self.svc.memory, job["sceneId"], activity, text
+                    )
+                    clear_debate(self.svc.store, job["sceneId"])
+                    self._emit(
+                        job["worldId"],
+                        "scene.changed",
+                        {"sceneId": job["sceneId"], "debate": "ended"},
+                    )
+                else:
+                    self._emit(
+                        job["worldId"],
+                        "scene.changed",
+                        {"sceneId": job["sceneId"], "debate": "turn_done"},
+                    )
+
         depth = int(job.get("continueDepth") or 0)
         max_depth = self._max_continue_depth(job["worldId"])
         # AO-19: reactive (depth 0) → one agent_continue (depth 1) when another cast present
+        scene_for_continue = self.svc.store.get_scene(job["sceneId"])
+        from altrasia.debate_activity import parse_activity as _parse_act
+
+        debate_active = bool(
+            scene_for_continue and _parse_act(scene_for_continue)
+            and _parse_act(scene_for_continue).get("kind") == "debate"
+        )
         if (
             depth == 0
             and job["trigger"] == "persona_message"
             and depth + 1 <= max_depth
+            and not debate_active
         ):
             nxt = self._pick_continue_character(
                 job["worldId"], job["sceneId"], job["characterId"]

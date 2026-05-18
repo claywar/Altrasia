@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api/client";
+import { api, type EvidenceRecord } from "../api/client";
 
 type Props = {
   worldId: string;
@@ -11,17 +11,26 @@ type Props = {
 export function MemoryInspector({ worldId, characterId, displayName, onClose }: Props) {
   const [mind, setMind] = useState<Array<{ locusKey: string; value: string }>>([]);
   const [diary, setDiary] = useState<Array<{ text: string; createdAt: string }>>([]);
+  const [evidence, setEvidence] = useState<EvidenceRecord[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.characterMind(worldId, characterId), api.characterDiary(worldId, characterId)])
-      .then(([m, d]) => {
+    Promise.all([
+      api.characterMind(worldId, characterId),
+      api.characterDiary(worldId, characterId),
+      api.characterEvidence(worldId, characterId),
+    ])
+      .then(([m, d, ev]) => {
         setMind(m);
         setDiary(d);
+        setEvidence(ev);
       })
       .finally(() => setLoading(false));
   }, [worldId, characterId]);
+
+  const evidenceFor = (key: string) => evidence.filter((e) => e.locusKey === key);
 
   return (
     <div className="memory-inspector" role="dialog" aria-label={`Memory — ${displayName}`}>
@@ -39,12 +48,36 @@ export function MemoryInspector({ worldId, characterId, displayName, onClose }: 
             <h3>Mind loci</h3>
             {mind.length === 0 && <p className="memory-muted">No mind loci.</p>}
             <ul className="memory-list">
-              {mind.map((row) => (
-                <li key={row.locusKey}>
-                  <strong>{row.locusKey}</strong>
-                  <p>{row.value}</p>
-                </li>
-              ))}
+              {mind.map((row) => {
+                const ev = evidenceFor(row.locusKey);
+                return (
+                  <li key={row.locusKey}>
+                    <strong>{row.locusKey}</strong>
+                    {ev.length > 0 && (
+                      <button
+                        type="button"
+                        className="memory-evidence-toggle"
+                        onClick={() =>
+                          setExpanded(expanded === row.locusKey ? null : row.locusKey)
+                        }
+                      >
+                        {ev.length} source{ev.length === 1 ? "" : "s"}
+                      </button>
+                    )}
+                    <p>{row.value}</p>
+                    {expanded === row.locusKey && ev.length > 0 && (
+                      <ul className="memory-evidence-list">
+                        {ev.map((e) => (
+                          <li key={e.evidenceId}>
+                            <span className="memory-evidence-kind">{e.sourceKind}</span>
+                            <span className="memory-muted"> {e.sourceRef}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
           <section>

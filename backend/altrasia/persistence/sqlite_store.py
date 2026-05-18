@@ -134,6 +134,30 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE CharacterDraft SET {cols} WHERE draftId = ?", vals)
         self.conn.commit()
 
+    def insert_layout_draft(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO LayoutDraft (layoutDraftId, worldId, operatorBrief, scope,
+               proposedJson, status, errorMessage, revision, createdAt, updatedAt)
+               VALUES (:layoutDraftId, :worldId, :operatorBrief, :scope,
+               :proposedJson, :status, :errorMessage, :revision, :createdAt, :updatedAt)""",
+            row,
+        )
+        self.conn.commit()
+
+    def get_layout_draft(self, draft_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            "SELECT * FROM LayoutDraft WHERE layoutDraftId = ?", (draft_id,)
+        )
+        return self._row(cur.fetchone())
+
+    def update_layout_draft(self, draft_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [draft_id]
+        self.conn.execute(f"UPDATE LayoutDraft SET {cols} WHERE layoutDraftId = ?", vals)
+        self.conn.commit()
+
     def add_world_member(self, world_id: str, character_id: str, **kw: Any) -> None:
         self.conn.execute(
             """INSERT OR IGNORE INTO WorldMember (worldId, characterId, muted, disabled, sceneRole)
@@ -396,6 +420,71 @@ class SqlitePersistence:
         vals = list(fields.values()) + [commission_id]
         self.conn.execute(f"UPDATE Commission SET {cols} WHERE commissionId = ?", vals)
         self.conn.commit()
+
+    def insert_approval(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO Approval (approvalId, worldId, toolName, paramsJson, state, createdAt)
+               VALUES (:approvalId, :worldId, :toolName, :paramsJson, :state, :createdAt)""",
+            row,
+        )
+        self.conn.commit()
+
+    def get_approval(self, approval_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            "SELECT * FROM Approval WHERE approvalId = ?", (approval_id,)
+        )
+        return self._row(cur.fetchone())
+
+    def list_approvals(
+        self, world_id: str | None = None, *, state: str | None = None
+    ) -> list[dict[str, Any]]:
+        if world_id and state:
+            cur = self.conn.execute(
+                """SELECT * FROM Approval WHERE worldId = ? AND state = ?
+                   ORDER BY createdAt DESC""",
+                (world_id, state),
+            )
+        elif world_id:
+            cur = self.conn.execute(
+                "SELECT * FROM Approval WHERE worldId = ? ORDER BY createdAt DESC",
+                (world_id,),
+            )
+        elif state:
+            cur = self.conn.execute(
+                "SELECT * FROM Approval WHERE state = ? ORDER BY createdAt DESC",
+                (state,),
+            )
+        else:
+            cur = self.conn.execute("SELECT * FROM Approval ORDER BY createdAt DESC")
+        return self._rows(cur.fetchall())
+
+    def update_approval(self, approval_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [approval_id]
+        self.conn.execute(f"UPDATE Approval SET {cols} WHERE approvalId = ?", vals)
+        self.conn.commit()
+
+    def insert_evidence(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO EvidenceRecord (evidenceId, locusKey, pool, ownerId,
+               sourceKind, sourceRef, retrievedAt, commissionId)
+               VALUES (:evidenceId, :locusKey, :pool, :ownerId, :sourceKind,
+               :sourceRef, :retrievedAt, :commissionId)""",
+            row,
+        )
+        self.conn.commit()
+
+    def list_evidence_for_locus(
+        self, pool: str, owner_id: str, locus_key: str
+    ) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """SELECT * FROM EvidenceRecord WHERE pool = ? AND ownerId = ? AND locusKey = ?
+               ORDER BY retrievedAt DESC""",
+            (pool, owner_id, locus_key),
+        )
+        return self._rows(cur.fetchall())
 
     @staticmethod
     def json_loads(raw: str | None, default: Any = None) -> Any:

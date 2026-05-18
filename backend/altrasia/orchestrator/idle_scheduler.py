@@ -89,6 +89,12 @@ class IdleScheduler:
         return False
 
     async def _tick_world(self, world_id: str, *, idle_source: str) -> None:
+        from altrasia.commission_runner import tick_commissions
+        from altrasia.debate_runner import tick_debate_scenes
+
+        await tick_commissions(self.svc, world_id)
+        if await tick_debate_scenes(self.svc, world_id):
+            return
         orch = self.svc.orchestrator
         if self.svc.gpu_queue.busy:
             return
@@ -119,6 +125,13 @@ class IdleScheduler:
             return
 
     def _pick_idle_character(self, scene: dict, cast: list[str]) -> str | None:
+        from altrasia.debate_activity import debate_current_speaker, parse_activity
+
+        activity = parse_activity(scene)
+        if activity and activity.get("kind") == "debate":
+            speaker = debate_current_speaker(activity)
+            if speaker and speaker in cast:
+                return speaker
         idx = int(scene.get("roundRobinIndex") or 0)
         ordered = sorted(cast)
         if not ordered:

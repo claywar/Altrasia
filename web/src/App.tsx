@@ -20,6 +20,9 @@ import { PeopleRail } from "./components/PeopleRail";
 import { SignalsRail } from "./components/SignalsRail";
 import { ObserverDigest } from "./components/ObserverDigest";
 import { CharacterDraftPanel } from "./components/CharacterDraftPanel";
+import { DebatePanel } from "./components/DebatePanel";
+import { ApprovalsBanner } from "./components/ApprovalsBanner";
+import { WorldMapOverlay } from "./components/WorldMapOverlay";
 import type { ObserverDigest as ObserverDigestData } from "./api/client";
 
 function parseScope(metaJson: string): string {
@@ -64,6 +67,7 @@ export default function App() {
   const [worldPaused, setWorldPaused] = useState(false);
   const [savedWorlds, setSavedWorlds] = useState<World[]>([]);
   const [phoneChannelId, setPhoneChannelId] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   useEffect(() => {
     if (!world) {
@@ -210,7 +214,8 @@ export default function App() {
         payload.event === "commission.updated" ||
         payload.event === "signal.created" ||
         payload.event === "signal.updated" ||
-        payload.event.startsWith("channel.")
+        payload.event.startsWith("channel.") ||
+        payload.event === "approval.updated"
       ) {
         refresh(world);
       }
@@ -256,9 +261,10 @@ export default function App() {
           Demo: Hall + Kitchen · Architect: add scenes in Settings, then lock geography
         </p>
         <ol className="launcher-steps">
-          <li>Public line in Hall → NPC reply</li>
-          <li>Whisper one character · switch to Kitchen</li>
-          <li>Knock on exit · Observer Studio for tweaks</li>
+          <li>Load demo → public line in Hall (Alice replies)</li>
+          <li>Whisper Alice · switch to Kitchen · knock on exit</li>
+          <li>Observer Studio · Settings: commissions, MapDraft, debate</li>
+          <li>Pause/Resume in top bar · export world package</li>
         </ol>
         {savedWorlds.length > 0 && (
           <div className="launcher-saved">
@@ -304,6 +310,25 @@ export default function App() {
               : undefined
           }
         />
+        <button
+          type="button"
+          className={worldPaused ? "top-bar-pause active" : "top-bar-pause"}
+          title={worldPaused ? "Resume world activity" : "Pause world activity"}
+          onClick={async () => {
+            if (!world) return;
+            if (worldPaused) await api.resumeWorld(world.worldId);
+            else await api.pauseWorld(world.worldId);
+            const w2 = await api.getWorld(world.worldId);
+            setWorld(w2);
+            setWorldPaused(!!w2.paused);
+            await refresh(w2);
+          }}
+        >
+          {worldPaused ? "Resume" : "Pause"}
+        </button>
+        <button type="button" onClick={() => setMapOpen(true)}>
+          Map
+        </button>
         <button type="button" onClick={() => setObserverOpen(true)}>
           Observer Studio
         </button>
@@ -312,6 +337,9 @@ export default function App() {
         </button>
         {worldPaused && <span className="paused-badge">Paused</span>}
       </header>
+
+      <ApprovalsBanner worldId={world.worldId} />
+      {mapOpen && <WorldMapOverlay graph={graph} onClose={() => setMapOpen(false)} />}
 
       {pendingForScene.length > 0 && (
         <div className="signal-banner">
@@ -515,6 +543,21 @@ export default function App() {
             />
           )}
           {world && scene && roster && (
+            <DebatePanel
+              worldId={world.worldId}
+              scene={scene}
+              castIds={[
+                ...roster.atLocation.map((c) => c.characterId),
+                ...roster.elsewhere.map((c) => c.characterId),
+              ]}
+              charName={(id) => {
+                const all = [...roster.atLocation, ...roster.elsewhere];
+                return all.find((c) => c.characterId === id)?.displayName ?? id;
+              }}
+              onChanged={() => refresh(world)}
+            />
+          )}
+          {world && scene && roster && (
             <SignalsRail
               worldId={world.worldId}
               activeSceneId={scene.sceneId}
@@ -551,6 +594,7 @@ export default function App() {
           onScenesChanged={async () => {
             if (world) await refresh(world);
           }}
+          activeSceneId={world.activeSceneId}
         />
       )}
 
@@ -572,7 +616,14 @@ export default function App() {
             </button>
           </header>
           <div className="observer-sidebar">
-            <ObserverDigest digest={observerDigest} />
+            <ObserverDigest
+              digest={observerDigest}
+              worldId={world?.worldId}
+              onRefresh={async () => {
+                if (!world) return;
+                setObserverDigest(await api.observerDigest(world.worldId));
+              }}
+            />
             {world && (
               <CharacterDraftPanel
                 variant="observer"

@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** v1 + v1.1 **feature-complete**; Phase 3 + v1.5 commission schema. **43 pytest** + golden path 1–8.
+**Status:** v1 + v1.1 **feature-complete**; Phase 3–6 wedge (commissions, debate, MapDraft, approvals, evidence, briefing, policy UI). **53 pytest** + golden path 1–8.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -28,7 +28,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | UI-M4 | Memory inspector from People | Done |
 | CC-11b | Dismiss knock signal | Done (PATCH signal) |
 | CC-6 / OBS-6 | Observer digest (signals + channels) | Done (`GET .../observer/digest`, Observer Studio UI) |
-| First-run UX pass | guides/first-run-experience.md | API automated (`test_first_run_experience_api`); manual UI walkthrough |
+| First-run UX pass | guides/first-run-experience.md | Done (launcher steps + `test_first_run_experience_api`) |
 
 ### Remaining for v1 tag
 
@@ -50,9 +50,27 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | Architect World (Phase 3) | Scene CRUD + lock geography + launcher | Done (`world_geography.py`, `SceneGeographyPanel`) |
 | MAP-GROW-1/2 | In-map scene growth after lock (connected exits) | Done |
 | GET /characters | World cast list | Done |
-| Commissions (v1.5 schema) | CRUD API + Settings UI (no runtime) | Done (`commissions.py`, `CommissionsPanel`) |
-| Phase 4+ commission runtime | Orchestrator triggers | Spec only |
-| Phase 3+ MapDraft | LLM layout draft | Spec only |
+| Commissions (v1.5 schema) | CRUD API + Settings UI | Done (`commissions.py`, `CommissionsPanel`) |
+| COM-6 / commission_started | Presence gate + start + mind deliverable | Done (`commission_runner.py`) |
+| Phase 4+ commission_tick | Scheduler poll while running | Done (`tick_running_commissions`, idle/heartbeat) |
+| Commission pause | Defer start during persona dialogue at target | Done (`persona_dialogue_active_at_scene`) |
+| UI-C1 | Per-world pause in top bar | Done (`POST .../pause`, top bar Pause/Resume) |
+| OBS-6 commissions | Open errands in Observer digest + Start from digest | Done |
+| Phase 3+ MapDraft | LLM layout draft + commit | Done (`map_authoring.py`, `MapDraftPanel`) |
+| Debate activity | scene.activity DEB-1/2 + UI | Done (`debate_activity.py`, `DebatePanel`) |
+| Commission web tools | allowedTools + mock webtools_invoke | Done |
+| First-run UX pass | guides/first-run-experience.md | Done |
+| MP-21 EvidenceRecord | Provenance on commission / memory_store | Done (`evidence.py`) |
+| APR-1 Approvals | Web tool approval queue + UI banner | Done (`approvals.py`, `ApprovalsBanner`) |
+| UI-MAP-W3 | World map overlay (Phase 6 minimal) | Done (`WorldMapOverlay`) |
+| World policy UI | PATCH `/policy`, Settings toggles | Done (`WorldPolicyPanel`) |
+| Briefing fixtures | Scene board + world pool | Done (`briefing.py`, `BriefingPanel`) |
+| UI-M4 evidence | Provenance in Memory inspector | Done |
+| COM-4 | `world_pool_at_target` / `both` deliverables | Done (`commissions.py`) |
+| COM-ACC-1/3, DEB-ACC-1 | Post-v1 acceptance paths | Done (`test_in_world_acceptance.py`) |
+| POST force-complete | API sketch §10 | Done |
+| MP-22 world commons | Gated recall + PUT/GET API | Done (`commons.py`, `test_commons.py`) |
+| citeProvenanceInPrompt | World policy + prompt inject | Done (`world_config`, `engine.py`) |
 
 ## Sprint 1 — inference + memory spike
 
@@ -89,7 +107,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 
 - [x] Golden path steps 1–8 pass (`tests/test_golden_path.py`)
 - [x] OQ-1, OQ-3 in CI integration layer
-- [ ] Operator can complete [guides/first-run-experience.md](guides/first-run-experience.md) without reading normative specs (manual UX pass)
+- [x] Operator can complete [guides/first-run-experience.md](guides/first-run-experience.md) without reading normative specs (launcher walkthrough + automated API tests)
 
 ## Explicitly not Sprint 2
 

@@ -20,6 +20,28 @@ export type World = {
   name: string;
   activeSceneId: string;
   paused?: boolean;
+  policy?: WorldPolicy;
+};
+
+export type WorldPolicy = {
+  requireWebToolApproval?: boolean;
+  auditWebTools?: boolean;
+  pauseCommissionsDuringPersonaDialogue?: boolean;
+  mandatoryRecallBlocking?: boolean;
+  maxContinueDepth?: number;
+  citeProvenanceInPrompt?: boolean;
+  commonsAccessIds?: string[];
+};
+
+export type EvidenceRecord = {
+  evidenceId: string;
+  locusKey: string;
+  pool: string;
+  ownerId: string;
+  sourceKind: string;
+  sourceRef: string;
+  retrievedAt: string;
+  commissionId?: string | null;
 };
 
 export type Scene = {
@@ -29,6 +51,24 @@ export type Scene = {
   locationDescription: string;
   presentJson: string;
   exitsJson: string;
+  activityJson?: string | null;
+};
+
+export type DebateActivity = {
+  kind: "debate";
+  phase: string;
+  speakingOrder: string[];
+  currentIndex: number;
+};
+
+export type LayoutDraft = {
+  layoutDraftId: string;
+  worldId: string;
+  operatorBrief: string;
+  scope: string;
+  proposed: { nodes?: Array<{ sceneId: string; mapPosition: { x: number; y: number } }> } | null;
+  status: string;
+  errorMessage?: string | null;
 };
 
 export type Message = {
@@ -86,9 +126,20 @@ export type Commission = {
   deliverableLocusPrefix?: string | null;
   deliverableLocusKeys: string[];
   forceCompleteReason?: string | null;
+  allowedTools?: string[];
   createdAt: string;
   updatedAt: string;
 };
+
+export function parseDebateActivity(scene: Scene | null): DebateActivity | null {
+  if (!scene?.activityJson) return null;
+  try {
+    const a = JSON.parse(scene.activityJson) as DebateActivity;
+    return a?.kind === "debate" ? a : null;
+  } catch {
+    return null;
+  }
+}
 
 export type CharacterDraft = {
   draftId: string;
@@ -120,6 +171,23 @@ export type ObserverDigest = {
     status: string;
   }>;
   activeChannels: PhoneChannel[];
+  commissions?: Commission[];
+  debates?: Array<{
+    sceneId: string;
+    locationName: string;
+    phase: string;
+    speakingOrder: string[];
+  }>;
+  pendingApprovals?: Approval[];
+};
+
+export type Approval = {
+  approvalId: string;
+  worldId: string;
+  toolName: string;
+  params: Record<string, unknown>;
+  state: string;
+  createdAt: string;
 };
 
 export type SpatialGraph = {
@@ -192,12 +260,59 @@ export const api = {
       targetSceneId: string;
       brief: string;
       deliverablePolicy?: string;
+      allowedTools?: string[];
     }
   ) =>
     request<Commission>(`/worlds/${worldId}/commissions`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  createLayoutDraft: (worldId: string, body: { brief: string; scope?: string }) =>
+    request<LayoutDraft>(`/worlds/${worldId}/layout-drafts`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  getLayoutDraft: (worldId: string, draftId: string) =>
+    request<LayoutDraft>(`/worlds/${worldId}/layout-drafts/${draftId}`),
+  commitLayoutDraft: (worldId: string, draftId: string) =>
+    request<{ layoutDraftId: string; applied: string[]; conflicts: unknown[] }>(
+      `/worlds/${worldId}/layout-drafts/${draftId}/commit`,
+      { method: "POST" }
+    ),
+  getDebate: (worldId: string, sceneId: string) =>
+    request<{ activity: DebateActivity | null }>(`/worlds/${worldId}/scenes/${sceneId}/debate`),
+  startDebate: (
+    worldId: string,
+    sceneId: string,
+    body: { speakingOrder: string[]; phase?: string }
+  ) =>
+    request<{ activity: DebateActivity; generationJob?: { jobId: string } }>(
+      `/worlds/${worldId}/scenes/${sceneId}/debate`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+  advanceDebateSpeaker: (worldId: string, sceneId: string) =>
+    request<{ activity: DebateActivity; generationJob?: { jobId: string } }>(
+      `/worlds/${worldId}/scenes/${sceneId}/debate/advance-speaker`,
+      { method: "POST" }
+    ),
+  advanceDebatePhase: (worldId: string, sceneId: string) =>
+    request<{ activity: DebateActivity; generationJob?: { jobId: string } }>(
+      `/worlds/${worldId}/scenes/${sceneId}/debate/advance-phase`,
+      { method: "POST" }
+    ),
+  endDebate: (worldId: string, sceneId: string) =>
+    request<{ sceneId: string; activity: null }>(
+      `/worlds/${worldId}/scenes/${sceneId}/debate`,
+      { method: "DELETE" }
+    ),
+  listApprovals: (worldId: string, state = "pending") =>
+    request<Approval[]>(`/worlds/${worldId}/approvals?state=${state}`),
+  approveApproval: (worldId: string, approvalId: string) =>
+    request<Approval>(`/worlds/${worldId}/approvals/${approvalId}/approve`, {
+      method: "POST",
+    }),
+  denyApproval: (worldId: string, approvalId: string) =>
+    request<Approval>(`/worlds/${worldId}/approvals/${approvalId}/deny`, { method: "POST" }),
   patchCommission: (
     worldId: string,
     commissionId: string,
@@ -211,6 +326,11 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  startCommission: (worldId: string, commissionId: string) =>
+    request<{ commissionId: string; generationJob?: { jobId: string } }>(
+      `/worlds/${worldId}/commissions/${commissionId}/start`,
+      { method: "POST" }
+    ),
   exportPackage: async (worldId: string): Promise<Blob> => {
     const r = await fetch(`${BASE}/worlds/${worldId}/package/export`);
     if (!r.ok) throw new Error(r.statusText);
@@ -229,6 +349,27 @@ export const api = {
   getWorld: (id: string) => request<World>(`/worlds/${id}`),
   patchWorld: (id: string, body: Partial<World>) =>
     request<World>(`/worlds/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  getWorldPolicy: (worldId: string) => request<WorldPolicy>(`/worlds/${worldId}/policy`),
+  patchWorldPolicy: (worldId: string, body: Partial<WorldPolicy>) =>
+    request<WorldPolicy>(`/worlds/${worldId}/policy`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  characterEvidence: (worldId: string, characterId: string, locusKey?: string) =>
+    request<EvidenceRecord[]>(
+      `/worlds/${worldId}/characters/${characterId}/evidence${
+        locusKey ? `?locusKey=${encodeURIComponent(locusKey)}` : ""
+      }`
+    ),
+  setBriefing: (
+    worldId: string,
+    sceneId: string,
+    body: { text: string; fixtureKey?: string }
+  ) =>
+    request<{ fixtureKey: string; locusKey: string; sceneId: string }>(
+      `/worlds/${worldId}/scenes/${sceneId}/briefing`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
   listScenes: (worldId: string) => request<Scene[]>(`/worlds/${worldId}/scenes`),
   listCharacters: (worldId: string) =>
     request<

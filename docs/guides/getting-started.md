@@ -35,6 +35,8 @@ Optional: **Settings** → enable **Global heartbeat** for NPC idle when the bro
 
 **World package:** Settings → **Export world package** (`.zip`); import via **Import package** or `POST /api/v1/worlds/import`.
 
+**Phase 3–6 features (Settings):** world policy (web approval, commission defer), briefing board, MapDraft layout, commissions, character draft, scene geography. **Play UI:** debate panel, world **Map** overlay, approvals banner. **Observer Studio:** digest with signals, commissions, debates, approvals.
+
 ## 3. Real inference (optional)
 
 Start llama.cpp with an OpenAI-compatible API, then:

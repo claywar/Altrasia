@@ -17,8 +17,8 @@ Product principles, personas, and milestones: [docs/20-product-principles.md](do
 | | |
 |--|--|
 | **Design specifications** | Complete (normative docs `00`–`25`) |
-| **Implementation** | **v1 + v1.1 feature-complete** — see [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
-| **Shipped** | **Alpha** — golden path 1–8, heartbeat, world package, phone play, observer digest, 34+ pytest |
+| **Implementation** | **v1 + v1.1 + Phase 3–6 wedge** — see [docs/IMPLEMENTATION-CHECKLIST.md](docs/IMPLEMENTATION-CHECKLIST.md) |
+| **Shipped** | **Alpha** — spatial play, commissions, debate, MapDraft, approvals, evidence, 51+ pytest |
 
 Run locally: [docs/guides/getting-started.md](docs/guides/getting-started.md). First-session UX checklist: [docs/guides/first-run-experience.md](docs/guides/first-run-experience.md).
 

@@ -4,6 +4,9 @@ import { CharacterDraftPanel } from "./CharacterDraftPanel";
 import { SceneGeographyPanel } from "./SceneGeographyPanel";
 import { CastListPanel } from "./CastListPanel";
 import { CommissionsPanel } from "./CommissionsPanel";
+import { MapDraftPanel } from "./MapDraftPanel";
+import { WorldPolicyPanel } from "./WorldPolicyPanel";
+import { BriefingPanel } from "./BriefingPanel";
 import type { Scene } from "../api/client";
 
 type Props = {
@@ -16,6 +19,7 @@ type Props = {
   onCastChanged?: () => void;
   scenes?: Scene[];
   onScenesChanged?: () => void;
+  activeSceneId?: string;
 };
 
 export function SettingsPanel({
@@ -28,6 +32,7 @@ export function SettingsPanel({
   onCastChanged,
   scenes = [],
   onScenesChanged,
+  activeSceneId = "",
 }: Props) {
   const [settings, setSettings] = useState<OperatorSettings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -55,6 +60,10 @@ export function SettingsPanel({
             Close
           </button>
         </header>
+        <WorldPolicyPanel worldId={worldId} />
+        {scenes.length > 0 && activeSceneId && (
+          <BriefingPanel worldId={worldId} scenes={scenes} activeSceneId={activeSceneId} />
+        )}
         <section className="settings-section">
           <h3>This world</h3>
           <p className="settings-muted">
@@ -124,6 +133,7 @@ export function SettingsPanel({
         )}
         <CastListPanel worldId={worldId} />
         <CharacterDraftPanel worldId={worldId} onCharacterAdded={() => onCastChanged?.()} />
+        {scenes.length > 0 && <MapDraftPanel worldId={worldId} onCommitted={() => onScenesChanged?.()} />}
         {scenes.length > 0 && <CommissionsPanel worldId={worldId} scenes={scenes} />}
         <section className="settings-section">
           <h3>Global heartbeat (v1.1)</h3>
