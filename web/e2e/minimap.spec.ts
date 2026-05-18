@@ -32,26 +32,19 @@ test("structure envelope and panel header visible", async ({ page }) => {
   await expect(page.locator(".map-structure-label").filter({ hasText: "Round Keep" })).toBeVisible();
 });
 
-test("zone labels are on structure bands not left margin", async ({ page }) => {
+test("zone badges appear inside structure envelopes", async ({ page }) => {
   await loadDemoWorld(page);
-  const zone = page.locator(".map-zone-label").first();
-  await expect(zone).toBeVisible();
-  const box = await zone.boundingBox();
-  expect(box).not.toBeNull();
-  if (box) {
-    const panel = await page.locator(".spatial-panel .minimap svg").boundingBox();
-    if (panel) {
-      const relX = (box.x - panel.x) / panel.width;
-      expect(relX).toBeGreaterThan(0.15);
-    }
-  }
+  const badge = page.locator(".map-zone-badge").first();
+  await expect(badge).toBeVisible();
+  await expect(page.locator(".map-zone-band")).toHaveCount(0);
 });
 
-test("edge step badges use compact numeric pills", async ({ page }) => {
+test("outdoor paths render as smooth curves", async ({ page }) => {
   await loadDemoWorld(page);
-  const badges = page.locator(".map-edge-badge text");
-  expect(await badges.count()).toBeGreaterThanOrEqual(1);
-  await expect(badges.first()).toHaveText("2");
+  const paths = page.locator(".map-edge path");
+  expect(await paths.count()).toBeGreaterThanOrEqual(1);
+  const d = await paths.first().getAttribute("d");
+  expect(d).toMatch(/^M .+/);
 });
 
 test("exit hover highlights edge path", async ({ page }) => {

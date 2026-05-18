@@ -8,15 +8,16 @@
   "config": {
     "agentContinueEnabled": true,
     "maxContinueDepth": 2,
-    "demoMapShowcase": true
+    "demoMapShowcase": true,
+    "architectureStyle": "blueprint"
   },
   "worldMap": {
     "schemaVersion": 1,
-    "architectureStyle": "diagram",
+    "architectureStyle": "blueprint",
     "structurePlacements": [
-      { "structureId": "manor", "origin": { "x": 50, "y": 40 } },
-      { "structureId": "keep", "origin": { "x": 76, "y": 50 } },
-      { "structureId": "bailey", "origin": { "x": 20, "y": 82 } }
+      { "structureId": "manor", "origin": { "x": 48, "y": 38 } },
+      { "structureId": "keep", "origin": { "x": 77, "y": 53 } },
+      { "structureId": "bailey", "origin": { "x": 20, "y": 76 } }
     ]
   },
   "structures": [
@@ -25,13 +26,12 @@
       "displayName": "Manor House",
       "kind": "building",
       "boundary": {
-        "shape": "hull",
-        "vertices": [
-          { "x": 36, "y": 24 },
-          { "x": 64, "y": 24 },
-          { "x": 64, "y": 56 },
-          { "x": 36, "y": 56 }
-        ]
+        "shape": "roundedRect",
+        "x": 30,
+        "y": 24,
+        "w": 36,
+        "h": 34,
+        "cornerRadius": 6
       }
     },
     {
@@ -39,14 +39,10 @@
       "displayName": "Round Keep",
       "kind": "building",
       "boundary": {
-        "shape": "hull",
-        "vertices": [
-          { "x": 68, "y": 44 },
-          { "x": 84, "y": 48 },
-          { "x": 84, "y": 56 },
-          { "x": 68, "y": 60 },
-          { "x": 64, "y": 52 }
-        ]
+        "shape": "circle",
+        "cx": 84,
+        "cy": 50,
+        "r": 10.5
       }
     },
     {
@@ -54,11 +50,12 @@
       "displayName": "Outer Bailey",
       "kind": "outdoor",
       "boundary": {
-        "shape": "rect",
+        "shape": "roundedRect",
         "x": 8,
-        "y": 68,
-        "w": 30,
-        "h": 24
+        "y": 70,
+        "w": 32,
+        "h": 26,
+        "cornerRadius": 6
       }
     }
   ],
@@ -108,8 +105,8 @@
       "structureId": "manor",
       "mapZone": "Ground floor",
       "mapShape": "rect",
-      "mapSize": { "w": 18, "h": 12 },
-      "mapPosition": { "x": 50, "y": 46 },
+      "mapSize": { "w": 13, "h": 9 },
+      "mapPosition": { "x": 49, "y": 45 },
       "present": ["char-alice"],
       "fixtures": {
         "chandelier": { "label": "Brass chandelier", "kind": "fixture" },
@@ -160,8 +157,8 @@
       "structureId": "manor",
       "mapZone": "Ground floor",
       "mapShape": "rect",
-      "mapSize": { "w": 16, "h": 10 },
-      "mapPosition": { "x": 50, "y": 32 },
+      "mapSize": { "w": 11, "h": 7 },
+      "mapPosition": { "x": 49, "y": 30 },
       "present": ["char-bob"],
       "fixtures": {
         "kettle": { "label": "Iron kettle", "kind": "fixture" },
@@ -195,9 +192,9 @@
       "locationDescription": "A narrow storeroom lined with jars and cured goods.",
       "structureId": "manor",
       "mapZone": "Ground floor",
-      "mapShape": "corridor",
-      "mapSize": { "w": 8, "h": 5 },
-      "mapPosition": { "x": 42, "y": 40 },
+      "mapShape": "rect",
+      "mapSize": { "w": 6, "h": 5 },
+      "mapPosition": { "x": 36, "y": 27 },
       "present": [],
       "fixtures": {
         "shelves": { "label": "Oak shelves", "kind": "fixture" }
@@ -221,8 +218,8 @@
       "structureId": "keep",
       "mapZone": "Ground level",
       "mapShape": "circle",
-      "mapSize": { "w": 12, "h": 12 },
-      "mapPosition": { "x": 76, "y": 52 },
+      "mapSize": { "w": 18, "h": 18 },
+      "mapPosition": { "x": 84, "y": 50 },
       "present": ["char-guard"],
       "fixtures": {
         "well": { "label": "Stone well", "kind": "fixture" }
@@ -248,8 +245,8 @@
       "structureId": "bailey",
       "mapZone": "Outer ward",
       "mapShape": "rect",
-      "mapSize": { "w": 16, "h": 10 },
-      "mapPosition": { "x": 22, "y": 80 },
+      "mapSize": { "w": 12, "h": 8 },
+      "mapPosition": { "x": 24, "y": 80 },
       "present": [],
       "fixtures": {
         "wagon": { "label": "Abandoned wagon", "kind": "fixture" }

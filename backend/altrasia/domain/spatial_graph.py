@@ -81,6 +81,11 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
                 "boundary": json.loads(s["boundaryJson"]) if s.get("boundaryJson") else None,
             }
         )
+    config = json.loads(world.get("configJson") or "{}")
+    arch_style = config.get("architectureStyle", "diagram")
+    if arch_style not in ("diagram", "blueprint", "minimal"):
+        arch_style = "diagram"
+
     return {
         "activeSceneId": active,
         "nodes": nodes,
@@ -89,7 +94,7 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
         "layout": {
             "coordinateSpace": "normalized-0-100",
             "algorithm": "layered-bfs-v1",
-            "architectureStyle": "diagram",
+            "architectureStyle": arch_style,
         },
     }
 

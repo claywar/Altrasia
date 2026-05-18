@@ -75,9 +75,15 @@
   --z-overlay: 100;
   --z-map: 110;
   --map-structure-fill: hsl(220 12% 18% / 0.35);
+  --map-structure-active-fill: hsl(210 25% 28% / 0.28);
   --map-outdoor-fill: hsl(220 10% 20% / 0.15);
-  --map-structure-fill: hsl(220 12% 18% / 0.35);
-  --map-outdoor-fill: hsl(220 10% 20% / 0.15);
+  --map-room-fill: hsl(220 14% 22% / 0.22);
+  --map-wall: hsl(220 12% 55% / 0.85);
+  --map-path: hsl(220 10% 50% / 0.7);
+  --map-corridor-fill: hsl(220 14% 24% / 0.35);
+  --map-corridor-stroke: hsl(220 12% 45% / 0.6);
+  --map-grid-subtle: hsl(220 10% 22% / 0.35);
+  --map-trail: hsl(35 20% 28% / 0.45);
   --z-settings: 120;
 
   /* Motion */

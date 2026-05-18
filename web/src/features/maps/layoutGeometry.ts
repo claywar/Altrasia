@@ -97,9 +97,6 @@ export function structureEnvelope(
       : never
     : never
 ): { minX: number; minY: number; maxX: number; maxY: number; vertices?: Point[] } | null {
-  const group = nodes.filter((n) => n.structureId === structureId);
-  if (group.length === 0) return null;
-
   const b = boundary as
     | { shape?: string; vertices?: Point[]; x?: number; y?: number; w?: number; h?: number }
     | null
@@ -118,6 +115,9 @@ export function structureEnvelope(
   if (b?.x != null && b?.w != null && b?.y != null && b?.h != null) {
     return { minX: b.x, minY: b.y, maxX: b.x + b.w, maxY: b.y + b.h };
   }
+
+  const group = nodes.filter((n) => n.structureId === structureId);
+  if (group.length === 0) return null;
 
   const pad = 4;
   const fws = group.map((n) => nodeFootprint(n));

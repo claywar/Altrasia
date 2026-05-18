@@ -21,6 +21,10 @@ export type MapStructure = NonNullable<SpatialGraph["structures"]>[number] & {
     y?: number;
     w?: number;
     h?: number;
+    cx?: number;
+    cy?: number;
+    r?: number;
+    cornerRadius?: number;
   } | null;
 };
 
@@ -40,3 +44,15 @@ export type Footprint = {
 };
 
 export type Point = { x: number; y: number };
+
+export type CorridorSegment = {
+  id: string;
+  cx: number;
+  cy: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  start: Point;
+  end: Point;
+};

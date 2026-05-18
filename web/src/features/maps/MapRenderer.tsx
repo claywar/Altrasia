@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import type { SpatialGraph } from "../../api/client";
-import { MapCompass } from "./MapChrome";
+import { MapCompass, MapScaleBar } from "./MapChrome";
 import { computeViewBox, filterGraphForView, type ViewFitMode } from "./computeViewBox";
+import { computeCorridors } from "./corridorGeometry";
 import { arrowMarkerId, routeEdge } from "./edgeRouting";
 import {
   computeNeighborhoodDim,
@@ -9,11 +10,14 @@ import {
   hasDirectionalEdges,
   hubEdgeIndex,
   nodeFootprint,
-  structureEnvelope,
-  zoneBandsFromNodes,
 } from "./layoutGeometry";
-import { MapNodeShape } from "./mapShapes";
-import type { MapEdge, MapGraph, Point } from "./types";
+import { levelBadgeShort, structureLabels, zoneBadgesFromNodes } from "./labelLayout";
+import { CorridorShape, MapNodeShape } from "./mapShapes";
+import { envelopeDashForKind, resolveArchitectureStyle, styleTokens } from "./mapStyle";
+import { DoorGlyph, GateGlyph, pathAngleAtPoint } from "./pathGlyphs";
+import { SiteUnderlay } from "./SiteUnderlay";
+import { getEnvelopePath, SmoothEnvelope } from "./SmoothEnvelope";
+import type { MapEdge, MapGraph, MapStructure, Point } from "./types";
 
 export type MapRendererProps = {
   graph: SpatialGraph | null;
@@ -22,17 +26,16 @@ export type MapRendererProps = {
   showCompass?: boolean;
   showZones?: boolean;
   showEnvelopes?: boolean;
+  showSiteUnderlay?: boolean;
+  showScaleBar?: boolean;
   viewportRect?: { x: number; y: number; w: number; h: number };
   viewFit?: ViewFitMode;
   enablePan?: boolean;
+  architectureStyle?: "diagram" | "blueprint" | "minimal";
 };
 
 function toMapGraph(graph: SpatialGraph): MapGraph {
   return graph as MapGraph;
-}
-
-function truncateLabel(name: string, max = 14): string {
-  return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }
 
 export function MapRenderer({
@@ -42,9 +45,12 @@ export function MapRenderer({
   showCompass = true,
   showZones = true,
   showEnvelopes = true,
+  showSiteUnderlay = false,
+  showScaleBar = false,
   viewportRect,
   viewFit = "neighborhood",
   enablePan = false,
+  architectureStyle: styleProp,
 }: MapRendererProps) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
@@ -52,6 +58,25 @@ export function MapRenderer({
 
   const mg = useMemo(() => (graph ? filterGraphForView(toMapGraph(graph), viewFit) : null), [graph, viewFit]);
   const viewBox = useMemo(() => (mg ? computeViewBox(mg, viewFit) : { x: 0, y: 0, w: 100, h: 100 }), [mg, viewFit]);
+
+  const archStyle = styleProp ?? resolveArchitectureStyle(graph);
+  const activeStructId = graph?.nodes.find((n) => n.isActive)?.structureId;
+  const tokens = styleTokens(archStyle, Boolean(activeStructId));
+
+  const corridors = useMemo(
+    () => (mg ? computeCorridors(mg.nodes, mg.edges as MapEdge[]) : []),
+    [mg]
+  );
+
+  const structLabels = useMemo(
+    () => (mg && showEnvelopes ? structureLabels(mg.structures ?? [], mg.nodes) : []),
+    [mg, showEnvelopes]
+  );
+
+  const zoneBadges = useMemo(
+    () => (mg && showZones ? zoneBadgesFromNodes(mg.structures ?? [], mg.nodes) : []),
+    [mg, showZones]
+  );
 
   if (!graph || !mg) return <div className={`minimap ${className}`}>No map</div>;
 
@@ -96,10 +121,18 @@ export function MapRenderer({
     return p;
   };
 
+  const structureFill = (st: MapStructure) => {
+    if (!tokens.showStructureFill) return "none";
+    if (st.containsActiveScene || st.structureId === activeStructId) {
+      return tokens.structureFillActive;
+    }
+    return tokens.structureFillOther;
+  };
+
   return (
     <div
       ref={containerRef}
-      className={`minimap ${enablePan ? "minimap--pannable" : ""} ${className}`.trim()}
+      className={`minimap ${enablePan ? "minimap--pannable" : ""} map-style--${archStyle} ${className}`.trim()}
       onPointerDown={enablePan ? onPointerDown : undefined}
       onPointerMove={enablePan ? onPointerMove : undefined}
       onPointerUp={enablePan ? onPointerUp : undefined}
@@ -118,61 +151,31 @@ export function MapRenderer({
           </filter>
         </defs>
 
+        {showSiteUnderlay && <SiteUnderlay viewBox={viewBox} idPrefix="map-site" />}
+
         <g transform={panTransform}>
-          {/* 1. Structure fills */}
+          {/* 1. Structure fills (smooth shells) */}
           {showEnvelopes &&
             (mg.structures ?? []).map((st) => {
-              const env = structureEnvelope(st.structureId, nodes, st.boundary);
-              if (!env) return null;
-              const { minX, minY, maxX, maxY, vertices } = env;
-              const isOutdoor = st.kind === "outdoor";
-              const fill = isOutdoor ? "var(--map-outdoor-fill, rgba(255,255,255,0.04))" : "var(--map-structure-fill, rgba(120,130,150,0.12))";
-              if (vertices && vertices.length >= 3) {
-                return (
-                  <polygon
-                    key={`fill-${st.structureId}`}
-                    points={vertices.map((v) => `${v.x},${v.y}`).join(" ")}
-                    fill={fill}
-                    stroke="none"
-                  />
-                );
-              }
+              if (!tokens.showStructureFill) return null;
+              const fill = structureFill(st);
               return (
-                <rect
+                <SmoothEnvelope
                   key={`fill-${st.structureId}`}
-                  x={minX}
-                  y={minY}
-                  width={maxX - minX}
-                  height={maxY - minY}
+                  structureId={st.structureId}
+                  nodes={nodes}
+                  boundary={st.boundary}
                   fill={fill}
-                  rx={1}
+                  stroke="none"
+                  doubleWall={false}
                 />
               );
             })}
 
-          {/* 2. Zone bands */}
-          {showZones &&
-            zoneBandsFromNodes(nodes).map((band) => (
-              <g key={band.key} className="map-zone">
-                <rect
-                  x={band.minX}
-                  y={band.bandY - 1.5}
-                  width={band.maxX - band.minX}
-                  height={3}
-                  className="map-zone-band"
-                  rx={0.5}
-                />
-                <text
-                  x={(band.minX + band.maxX) / 2}
-                  y={band.bandY}
-                  textAnchor="middle"
-                  fontSize={2}
-                  className="map-zone-label"
-                >
-                  {band.mapZone}
-                </text>
-              </g>
-            ))}
+          {/* 2. Corridor segments (interior) */}
+          {corridors.map((c) => (
+            <CorridorShape key={c.id} x={c.x} y={c.y} w={c.w} h={c.h} tokens={tokens} />
+          ))}
 
           {/* 3. Edges */}
           {edges.map((e) => {
@@ -185,19 +188,36 @@ export function MapRenderer({
             );
             const { index, total } = hubEdgeIndex(edges, e.exitId);
             const offset = total > 1 ? (index - (total - 1) / 2) * 1.8 : 0;
-            const routed = routeEdge(start, end, obstacles, offset);
+            const interiorOnly =
+              Boolean(a.structureId) && a.structureId === b.structureId && !e.crossesStructure;
+            const routed = routeEdge(start, end, obstacles, offset, {
+              corridors,
+              crossesStructure: e.crossesStructure,
+              interiorOnly,
+            });
             const highlighted = highlightedExitId === e.exitId;
             const steps = e.travelSteps ?? 1;
-            const badgePos = steps > 1 ? placeBadge(routed.labelPoint) : null;
+            const badgePos = steps >= 3 ? placeBadge(routed.labelPoint) : null;
+            const showDoor =
+              e.doorState && e.doorState !== "open" && !e.crossesStructure;
+            const showGate = e.crossesStructure;
+            const pathIdx = Math.min(1, routed.points.length - 2);
+            const angle = pathAngleAtPoint(routed.points, pathIdx);
+
             return (
               <g key={e.exitId} className={`map-edge${highlighted ? " map-edge--hi" : ""}`}>
                 <path
                   d={routed.pathD}
                   fill="none"
-                  stroke={highlighted ? "var(--active-scene)" : "var(--border)"}
-                  strokeWidth={highlighted ? 1.4 : steps > 1 ? 1 : 0.75}
-                  strokeDasharray={steps > 1 && !highlighted ? "2 1" : undefined}
-                  markerEnd={e.direction ? `url(#${arrowMarkerId(highlighted)})` : undefined}
+                  stroke={highlighted ? "var(--active-scene)" : "var(--map-path, var(--border))"}
+                  strokeWidth={highlighted ? 1.2 : routed.outdoor ? 0.7 : 0.55}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  markerEnd={
+                    !routed.outdoor && e.direction && steps <= 1
+                      ? `url(#${arrowMarkerId(highlighted)})`
+                      : undefined
+                  }
                 />
                 {badgePos && (
                   <g className="map-edge-badge">
@@ -213,85 +233,131 @@ export function MapRenderer({
                     </text>
                   </g>
                 )}
-                {e.doorState && e.doorState !== "open" && (
-                  <text
-                    x={routed.doorPoint.x}
-                    y={routed.doorPoint.y}
-                    fontSize={2}
-                    className="map-door-glyph"
-                    textAnchor="middle"
-                  >
-                    ║
-                  </text>
+                {showDoor && (
+                  <DoorGlyph point={routed.doorPoint} angleDeg={angle} highlighted={highlighted} />
+                )}
+                {showGate && (
+                  <GateGlyph
+                    point={routed.labelPoint}
+                    angleDeg={angle + 90}
+                    highlighted={highlighted}
+                  />
                 )}
                 <title>{e.label}</title>
               </g>
             );
           })}
 
-          {/* 4. Envelope strokes + structure titles */}
+          {/* 4. Envelope strokes */}
           {showEnvelopes &&
             (mg.structures ?? []).map((st) => {
-              const env = structureEnvelope(st.structureId, nodes, st.boundary);
-              if (!env) return null;
-              const { minX, minY, maxX, maxY, vertices } = env;
-              const titleY = minY + 2.8;
-              const title = truncateLabel(st.displayName);
-              const titleW = title.length * 1.35 + 2;
-              const titleX = (minX + maxX) / 2;
+              const dash = envelopeDashForKind(archStyle, st.kind) ?? tokens.envelopeDasharray;
               return (
-                <g key={`env-${st.structureId}`} className="map-envelope">
-                  {vertices && vertices.length >= 3 ? (
-                    <polygon
-                      points={vertices.map((v) => `${v.x},${v.y}`).join(" ")}
-                      fill="none"
-                      stroke="var(--structure-stroke, var(--border))"
-                      strokeWidth={0.7}
-                      strokeDasharray="3 1.5"
-                    />
-                  ) : (
-                    <rect
-                      x={minX}
-                      y={minY}
-                      width={maxX - minX}
-                      height={maxY - minY}
-                      fill="none"
-                      stroke="var(--structure-stroke, var(--border))"
-                      strokeWidth={0.7}
-                      strokeDasharray="3 1.5"
-                      rx={1}
-                    />
-                  )}
+                <SmoothEnvelope
+                  key={`env-${st.structureId}`}
+                  structureId={st.structureId}
+                  nodes={nodes}
+                  boundary={st.boundary}
+                  stroke={tokens.envelopeStroke}
+                  strokeWidth={tokens.envelopeStrokeWidth}
+                  dasharray={dash}
+                  doubleWall={tokens.doubleWall}
+                />
+              );
+            })}
+
+          {/* 5. Zone badges (corner) */}
+          {zoneBadges.map((badge) => {
+            const labelW = badge.text.length * 1.15 + 2;
+            const rectX = badge.anchor === "end" ? badge.x - labelW : badge.x;
+            return (
+              <g key={`zone-${badge.structureId}`} className="map-zone-badge">
+                <rect
+                  x={rectX}
+                  y={badge.y - 2.8}
+                  width={labelW}
+                  height={3}
+                  rx={0.6}
+                  className="map-zone-badge-bg"
+                />
+                <text
+                  x={badge.anchor === "end" ? badge.x - 1 : badge.x + 1}
+                  y={badge.y}
+                  textAnchor={badge.anchor}
+                  fontSize={1.7}
+                  className="map-zone-label"
+                  fontFamily={tokens.labelFont}
+                >
+                  {badge.text}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* 6. Structure titles (above envelope) */}
+          {structLabels.map((lab) => (
+            <g key={`title-${lab.structureId}`} className="map-structure-title">
+              <text
+                x={lab.x}
+                y={lab.y}
+                textAnchor="middle"
+                fontSize={2.4}
+                className="map-structure-label"
+                fontFamily={tokens.labelFont}
+              >
+                <title>{lab.fullName}</title>
+                {lab.text}
+              </text>
+            </g>
+          ))}
+
+          {/* 7. Level badges on active structure */}
+          {showZones &&
+            (mg.structures ?? []).map((st) => {
+              if (!st.containsActiveScene) return null;
+              const env = getEnvelopePath(st.structureId, nodes, st.boundary);
+              if (!env) return null;
+              const zone = mg.nodes.find((n) => n.structureId === st.structureId)?.mapZone;
+              const short = levelBadgeShort(zone);
+              if (!short) return null;
+              return (
+                <g key={`lvl-${st.structureId}`} className="map-level-badge">
                   <rect
-                    x={titleX - titleW / 2}
-                    y={minY + 0.5}
-                    width={titleW}
-                    height={3.2}
-                    className="map-structure-title-bg"
-                    rx={0.5}
+                    x={env.maxX - short.length * 1.2 - 3}
+                    y={env.maxY - 3.5}
+                    width={short.length * 1.2 + 2}
+                    height={3}
+                    rx={0.4}
+                    className="map-level-badge-bg"
                   />
                   <text
-                    x={titleX}
-                    y={titleY}
-                    textAnchor="middle"
-                    fontSize={2.2}
-                    className="map-structure-label"
+                    x={env.maxX - 2}
+                    y={env.maxY - 1.2}
+                    textAnchor="end"
+                    fontSize={1.7}
+                    className="map-level-badge-text"
+                    fontFamily={tokens.labelFont}
                   >
-                    <title>{st.displayName}</title>
-                    {title}
+                    {short}
                   </text>
                 </g>
               );
             })}
 
-          {/* 5. Nodes */}
+          {/* 8. Nodes */}
           {nodes.map((n) => {
             const fp = nodeFootprint(n);
             const isDimmed = dimmed.get(n.sceneId);
             const active = n.isActive;
             return (
               <g key={n.sceneId} filter={active ? "url(#map-active-glow)" : undefined}>
-                <MapNodeShape fp={fp} active={active} dimmed={isDimmed} label={n.locationName} />
+                <MapNodeShape
+                  fp={fp}
+                  active={active}
+                  dimmed={isDimmed}
+                  label={n.locationName}
+                  tokens={tokens}
+                />
                 <title>{n.locationName}</title>
               </g>
             );
@@ -312,6 +378,9 @@ export function MapRenderer({
           )}
 
           {showRose && <MapCompass x={viewBox.x + viewBox.w - 8} y={viewBox.y + 6} />}
+          {showScaleBar && (
+            <MapScaleBar x={viewBox.x + 4} y={viewBox.y + viewBox.h - 5} />
+          )}
         </g>
       </svg>
     </div>

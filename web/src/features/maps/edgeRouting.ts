@@ -1,11 +1,14 @@
+import { findCorridorForEdge, routeThroughCorridor } from "./corridorGeometry";
 import { footprintBounds } from "./layoutGeometry";
-import type { Footprint, Point } from "./types";
+import { outdoorWaypoints, smoothCurvePath, smoothQuadraticPath } from "./smoothGeometry";
+import type { CorridorSegment, Footprint, Point } from "./types";
 
 export type RoutedEdge = {
   pathD: string;
   labelPoint: Point;
   doorPoint: Point;
   points: Point[];
+  outdoor: boolean;
 };
 
 function segmentIntersectsRect(
@@ -15,15 +18,11 @@ function segmentIntersectsRect(
 ): boolean {
   if (a.x >= r.minX && a.x <= r.maxX && a.y >= r.minY && a.y <= r.maxY) return true;
   if (b.x >= r.minX && b.x <= r.maxX && b.y >= r.minY && b.y <= r.maxY) return true;
-  const left = r.minX;
-  const right = r.maxX;
-  const top = r.minY;
-  const bottom = r.maxY;
   const edges: Array<[Point, Point]> = [
-    [{ x: left, y: top }, { x: right, y: top }],
-    [{ x: right, y: top }, { x: right, y: bottom }],
-    [{ x: right, y: bottom }, { x: left, y: bottom }],
-    [{ x: left, y: bottom }, { x: left, y: top }],
+    [{ x: r.minX, y: r.minY }, { x: r.maxX, y: r.minY }],
+    [{ x: r.maxX, y: r.minY }, { x: r.maxX, y: r.maxY }],
+    [{ x: r.maxX, y: r.maxY }, { x: r.minX, y: r.maxY }],
+    [{ x: r.minX, y: r.maxY }, { x: r.minX, y: r.minY }],
   ];
   for (const [p1, p2] of edges) {
     if (segmentsIntersect(a, b, p1, p2)) return true;
@@ -36,7 +35,7 @@ function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
   if (Math.abs(det) < 1e-9) return false;
   const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / det;
   const u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / det;
-  return t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98;
+  return t > 0.05 && t < 0.95 && u > 0.05 && u < 0.95;
 }
 
 function pathHitsObstacles(points: Point[], obstacles: Footprint[]): boolean {
@@ -44,7 +43,7 @@ function pathHitsObstacles(points: Point[], obstacles: Footprint[]): boolean {
     const a = points[i];
     const b = points[i + 1];
     for (const fp of obstacles) {
-      const r = footprintBounds(fp, 0.8);
+      const r = footprintBounds(fp, 1.2);
       if (segmentIntersectsRect(a, b, r)) return true;
     }
   }
@@ -72,29 +71,10 @@ function applyParallelOffset(points: Point[], offset: number): Point[] {
   return out;
 }
 
-function buildCandidatePaths(start: Point, end: Point): Point[][] {
-  const midH: Point = { x: end.x, y: start.y };
-  const midV: Point = { x: start.x, y: end.y };
-  const direct =
-    Math.abs(start.x - end.x) < 0.5 || Math.abs(start.y - end.y) < 0.5
-      ? [start, end]
-      : null;
-  const paths: Point[][] = [];
-  if (direct) paths.push(direct);
-  paths.push([start, midH, end]);
-  paths.push([start, midV, end]);
-  if (!direct) {
-    const gutterY = (start.y + end.y) / 2;
-    const gutterX = (start.x + end.x) / 2;
-    paths.push([start, { x: start.x, y: gutterY }, { x: end.x, y: gutterY }, end]);
-    paths.push([start, { x: gutterX, y: start.y }, { x: gutterX, y: end.y }, end]);
-  }
-  return paths;
-}
-
 function pathToD(points: Point[]): string {
   if (points.length < 2) return "";
-  return points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  if (points.length === 2) return smoothQuadraticPath(points[0], points[1], 0.12);
+  return smoothCurvePath(points, 0.4);
 }
 
 function labelOnPath(points: Point[]): Point {
@@ -104,40 +84,90 @@ function labelOnPath(points: Point[]): Point {
       y: (points[0].y + points[1].y) / 2,
     };
   }
-  const midIdx = Math.floor((points.length - 1) / 2);
-  const a = points[midIdx];
-  const b = points[midIdx + 1];
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const mid = Math.floor(points.length / 2);
+  return { ...points[mid] };
 }
 
 function doorOnPath(points: Point[]): Point {
   if (points.length < 2) return points[0];
   const a = points[0];
   const b = points[1];
-  return { x: a.x + (b.x - a.x) * 0.35, y: a.y + (b.y - a.y) * 0.35 };
+  return { x: a.x + (b.x - a.x) * 0.28, y: a.y + (b.y - a.y) * 0.28 };
 }
 
-/** Route edge with obstacle avoidance and optional hub offset (UI-MAP-R9, R2). */
+export type RouteEdgeOptions = {
+  obstacles?: Footprint[];
+  parallelOffset?: number;
+  corridors?: CorridorSegment[];
+  crossesStructure?: boolean;
+  interiorOnly?: boolean;
+};
+
+/** Flowing routes: smooth curves for site paths, short interior links. */
 export function routeEdge(
   start: Point,
   end: Point,
-  obstacles: Footprint[],
-  parallelOffset = 0
+  obstacles: Footprint[] = [],
+  parallelOffset = 0,
+  options: RouteEdgeOptions = {}
 ): RoutedEdge {
-  const candidates = buildCandidatePaths(start, end);
-  let best: Point[] = candidates[0];
-  for (const cand of candidates) {
-    if (!pathHitsObstacles(cand, obstacles)) {
-      best = cand;
-      break;
+  const { corridors = [], crossesStructure = false, interiorOnly = false } = options;
+  const obsRects = obstacles.map((fp) => footprintBounds(fp, 1.5));
+
+  if (interiorOnly && corridors.length > 0) {
+    const corridor = findCorridorForEdge(corridors, start, end);
+    if (corridor) {
+      const via = routeThroughCorridor(start, end, corridor);
+      const points = applyParallelOffset(via, parallelOffset);
+      return {
+        pathD: pathToD(points),
+        labelPoint: labelOnPath(points),
+        doorPoint: doorOnPath(points),
+        points,
+        outdoor: false,
+      };
     }
   }
-  const points = applyParallelOffset(best, parallelOffset);
+
+  if (interiorOnly) {
+    const points = applyParallelOffset([start, end], parallelOffset);
+    return {
+      pathD: smoothQuadraticPath(points[0], points[1], 0.08),
+      labelPoint: labelOnPath(points),
+      doorPoint: doorOnPath(points),
+      points,
+      outdoor: false,
+    };
+  }
+
+  if (crossesStructure || obstacles.length > 0) {
+    const waypoints = outdoorWaypoints(start, end, obsRects);
+    let points = applyParallelOffset(waypoints, parallelOffset);
+    if (pathHitsObstacles(points, obstacles)) {
+      const bulge = Math.hypot(end.x - start.x, end.y - start.y) * 0.28;
+      const mx = (start.x + end.x) / 2;
+      const my = (start.y + end.y) / 2;
+      points = applyParallelOffset(
+        [start, { x: mx - bulge, y: my + bulge }, { x: mx + bulge, y: my - bulge }, end],
+        parallelOffset
+      );
+    }
+    return {
+      pathD: pathToD(points),
+      labelPoint: labelOnPath(points),
+      doorPoint: doorOnPath(points),
+      points,
+      outdoor: true,
+    };
+  }
+
+  const points = applyParallelOffset([start, end], parallelOffset);
   return {
-    pathD: pathToD(points),
+    pathD: smoothQuadraticPath(points[0], points[1], 0.15),
     labelPoint: labelOnPath(points),
     doorPoint: doorOnPath(points),
     points,
+    outdoor: false,
   };
 }
 

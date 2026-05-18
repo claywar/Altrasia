@@ -133,7 +133,14 @@ export function SiteMapCanvas({ graph, onClose, onEnhanceLayout }: Props) {
               transformOrigin: "center center",
             }}
           >
-            <MapRenderer graph={graph} showCompass className="site-map-main" viewFit="full" />
+            <MapRenderer
+              graph={graph}
+              showCompass
+              showSiteUnderlay
+              showScaleBar
+              className="site-map-main"
+              viewFit="full"
+            />
           </div>
         </div>
         <aside className="map-pip" aria-label="Mini-map inset">

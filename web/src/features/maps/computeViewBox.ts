@@ -3,7 +3,9 @@ import type { MapGraph } from "./types";
 
 export type ViewBox = { x: number; y: number; w: number; h: number };
 
-const PAD = 4;
+const PAD_NEIGHBORHOOD = 6;
+const PAD_FULL = 11;
+const TITLE_HEADROOM = 4;
 
 function expandBbox(
   bbox: ViewBox | null,
@@ -52,11 +54,12 @@ export function computeViewBox(
 
   if (!bbox) return { x: 0, y: 0, w: 100, h: 100 };
 
+  const pad = mode === "full" ? PAD_FULL : PAD_NEIGHBORHOOD;
   return {
-    x: bbox.x - PAD,
-    y: bbox.y - PAD,
-    w: bbox.w + PAD * 2,
-    h: bbox.h + PAD * 2,
+    x: bbox.x - pad,
+    y: bbox.y - pad - TITLE_HEADROOM,
+    w: bbox.w + pad * 2,
+    h: bbox.h + pad * 2 + TITLE_HEADROOM,
   };
 }
 
