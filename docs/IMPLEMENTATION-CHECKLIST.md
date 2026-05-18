@@ -2,7 +2,9 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** v1 + v1.1 **feature-complete**; Phase 3–6 wedge (commissions, debate, MapDraft, approvals, evidence, briefing, policy UI). **53 pytest** + golden path 1–8.
+**Status:** v1 + v1.1 **feature-complete**; Phase 3–6 wedge (commissions, debate, MapDraft, approvals, evidence, briefing, policy UI). **84 pytest** (83 default CI, 1 `slow`) + golden path 1–8 + Playwright e2e in CI.
+
+**Outstanding (full spec depth):** see [SPEC-GAPS.md](SPEC-GAPS.md) and [BACKLOG.md](BACKLOG.md) T-100+.
 
 ### Doc vs implementation (v1 wedge)
 
@@ -109,14 +111,14 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 - [x] OQ-1, OQ-3 in CI integration layer
 - [x] Operator can complete [guides/first-run-experience.md](guides/first-run-experience.md) without reading normative specs (launcher walkthrough + automated API tests)
 
-## Explicitly not Sprint 2
+## Originally deferred in Sprint 2 (now in tree)
 
-| Capability | Phase | Spec |
-|------------|-------|------|
-| Phone, global heartbeat, world package | v1.1 | [21](21-cross-scene-awareness.md), [08](08-real-world-capabilities.md), DM-4 |
-| MapDraft, WorldMapCanvas | Phase 6 | [18](18-location-maps.md), [25](25-map-authoring.md) |
-| Character authoring UI | Phase 3 | [24](24-character-authoring.md) |
-| Commissions / debate runtime | Phase 4+ | [23](23-in-world-work.md) |
+| Capability | Phase | Status |
+|------------|-------|--------|
+| Phone, global heartbeat, world package | v1.1 | Done |
+| MapDraft, minimal world map | Phase 6 wedge | Done; full canvas in BACKLOG |
+| Character authoring UI | Phase 3 | Done |
+| Commissions / debate runtime | Phase 4+ | Done |
 
 ## Fixture inventory
 

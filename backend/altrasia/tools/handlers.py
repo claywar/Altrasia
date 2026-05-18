@@ -24,6 +24,13 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             locus_key=params["locusKey"],
             value=params["value"],
         )
+        services.embeddings.schedule_embed(
+            owner_scope="mind",
+            owner_id=ctx.character_id,
+            source_type="locus",
+            source_ref=params["locusKey"],
+            text=params["value"],
+        )
         from altrasia.evidence import record_evidence
 
         kind = "commission" if ctx.commission_id else "dialogue"
@@ -73,9 +80,13 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             mark_approval_applied,
             world_tool_policy,
         )
+        from altrasia.tools.web_fetch import safe_fetch
+        from altrasia.world_config import get_world_config
 
         query = (params.get("query") or params.get("url") or "").strip()
         policy = world_tool_policy(services.store, ctx.world_id)
+        wcfg = get_world_config(services.store, ctx.world_id)
+        use_mock = services.settings.web_tools_mock or wcfg.get("webToolsMock", True)
         if policy["requireWebToolApproval"]:
             approval = create_approval(
                 services.store,
@@ -96,11 +107,20 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "approvalId": approval["approvalId"],
                 "message": "Operator must approve this web fetch before results are available.",
             }
-        summary = (
-            f"[mock web] No live fetch in dev. Treat as placeholder fact for: {query[:200]}"
-            if query
-            else "[mock web] supply query or url"
-        )
+        if use_mock:
+            summary = (
+                f"[mock web] No live fetch in dev. Treat as placeholder fact for: {query[:200]}"
+                if query
+                else "[mock web] supply query or url"
+            )
+            result = {"ok": True, "query": query, "summary": summary, "mock": True}
+        else:
+            url = params.get("url") or (
+                f"https://www.example.org/?q={query}" if query else ""
+            )
+            result = await safe_fetch(
+                url, allowlist=services.settings.web_allowlist_set()
+            )
         if policy["auditWebTools"]:
             approval = create_approval(
                 services.store,
@@ -110,7 +130,49 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 state="approved",
             )
             mark_approval_applied(services.store, approval["approvalId"])
-        return {"ok": True, "query": query, "summary": summary}
+        return result
+
+    async def fs_read(params: dict, ctx: ToolContext) -> Any:
+        agent = services.fs_for_world(ctx.world_id)
+        return agent.read(params.get("path", ""))
+
+    async def fs_write(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.approvals import create_approval, world_tool_policy
+
+        policy = world_tool_policy(services.store, ctx.world_id)
+        if policy.get("requireWebToolApproval"):
+            approval = create_approval(
+                services.store,
+                world_id=ctx.world_id,
+                tool_name="fs_write",
+                params=params,
+                state="pending",
+            )
+            return {"ok": False, "approvalRequired": True, "approvalId": approval["approvalId"]}
+        agent = services.fs_for_world(ctx.world_id)
+        return agent.write(params.get("path", ""), params.get("content", ""))
+
+    async def schedule_create(params: dict, ctx: ToolContext) -> Any:
+        if not services.settings.scheduler_enabled:
+            return {"ok": False, "error": "scheduler disabled (RW-4)"}
+        return {"ok": True, "scheduled": params.get("cron"), "note": "stub scheduler recorded"}
+
+    async def scene_exit_set_state(params: dict, ctx: ToolContext) -> Any:
+        """CC-11c: set doorState on exit; broken requires explicit join elsewhere."""
+        scene = services.store.get_scene(ctx.scene_id)
+        exits = json.loads(scene.get("exitsJson") or "[]")
+        exit_id = params.get("exitId")
+        state = params.get("doorState")
+        found = False
+        for ex in exits:
+            if ex.get("exitId") == exit_id:
+                ex["doorState"] = state
+                found = True
+                break
+        if not found:
+            return {"ok": False, "error": "exit not found"}
+        services.store.update_scene(ctx.scene_id, exitsJson=json.dumps(exits))
+        return {"ok": True, "exitId": exit_id, "doorState": state}
 
     async def scene_update_fixture(params: dict, ctx: ToolContext) -> Any:
         scene = services.store.get_scene(ctx.scene_id)
@@ -197,6 +259,63 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 },
             },
             handler=webtools_invoke,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="fs_read",
+            description="Read a file under this world's data directory.",
+            parameters={
+                "type": "object",
+                "properties": {"path": {"type": "string"}},
+                "required": ["path"],
+            },
+            handler=fs_read,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="fs_write",
+            description="Write a file under this world's data directory (approval may apply).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+                "required": ["path", "content"],
+            },
+            handler=fs_write,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="schedule_create",
+            description="Create a scheduled task (when scheduler enabled).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "cron": {"type": "string"},
+                    "action": {"type": "string"},
+                },
+                "required": ["cron"],
+            },
+            handler=schedule_create,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_exit_set_state",
+            description="Set doorState on a scene exit (closed, unlocked, open, broken).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "exitId": {"type": "string"},
+                    "doorState": {"type": "string"},
+                },
+                "required": ["exitId", "doorState"],
+            },
+            handler=scene_exit_set_state,
         )
     )
     registry.register(

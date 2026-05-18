@@ -121,6 +121,11 @@ class HeartbeatPatch(BaseModel):
 
 class OperatorSettingsPatch(BaseModel):
     heartbeat: HeartbeatPatch | None = None
+    enableServerPlugins: bool | None = None
+
+
+class ExitStateBody(BaseModel):
+    doorState: str
 
 
 class CharacterDraftCreateBody(BaseModel):
@@ -862,6 +867,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await refresh_commissions(svc, world_id)
         return {"ok": True}
 
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/exits/{exit_id}/state",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def set_exit_state(
+        world_id: str,
+        scene_id: str,
+        exit_id: str,
+        body: ExitStateBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.tools.registry import ToolContext
+
+        ctx = ToolContext(
+            world_id=world_id,
+            scene_id=scene_id,
+            character_id="__observer__",
+            services=svc,
+        )
+        raw = await svc.tools.invoke(
+            "scene_exit_set_state",
+            {"exitId": exit_id, "doorState": body.doorState},
+            ctx,
+        )
+        return json.loads(raw)
+
     @app.get("/api/v1/worlds/{world_id}/roster", dependencies=[Depends(verify_auth)])
     def roster(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
         return svc.presence.roster(world_id)
@@ -869,6 +900,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/v1/worlds/{world_id}/spatial-graph", dependencies=[Depends(verify_auth)])
     def spatial_graph(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
         return build_spatial_graph(svc.store, world_id)
+
+    @app.get("/api/v1/worlds/{world_id}/map-artifacts/site", dependencies=[Depends(verify_auth)])
+    def map_site_artifact(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        from altrasia.map_artifacts import get_world_site_artifact
+
+        art = get_world_site_artifact(svc.store, world_id)
+        return {"artifact": art}
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/map-artifact",
+        dependencies=[Depends(verify_auth)],
+    )
+    def map_scene_artifact(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        from altrasia.map_artifacts import get_scene_artifact
+
+        art = get_scene_artifact(svc.store, world_id, scene_id)
+        return {"artifact": art}
 
     @app.get("/api/v1/worlds/{world_id}/channels", dependencies=[Depends(verify_auth)])
     def _channel_payload(ch: dict) -> dict:
@@ -1375,7 +1425,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if body.heartbeat.intervalSeconds is not None:
                 hb["intervalSeconds"] = body.heartbeat.intervalSeconds
             updates["heartbeat"] = hb
+        if body.enableServerPlugins is not None:
+            updates["enableServerPlugins"] = body.enableServerPlugins
         return svc.operator_settings.patch(updates).to_api()
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/portrait/generate",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_portrait_generate(
+        world_id: str,
+        character_id: str,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.inference.comfyui import generate_portrait
+
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        ch = svc.store.get_character(character_id)
+        if not ch:
+            raise HTTPException(404, "character not found")
+        prompt = f"Portrait of {ch.get('displayName', character_id)}, character study"
+        return await generate_portrait(svc, character_id=character_id, prompt=prompt)
 
     @app.get("/api/v1/worlds/{world_id}/approvals", dependencies=[Depends(verify_auth)])
     def get_approvals(

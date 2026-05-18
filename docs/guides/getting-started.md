@@ -66,7 +66,43 @@ cd backend && pytest ../tests -v
 cd backend && pytest ../tests/test_memory_perf.py -v -m slow
 ```
 
+## 6. Nightly (real LLM)
+
+On reference hardware with [llama.cpp](https://github.com/ggerganov/llama.cpp) serving Qwen3.6-35B-A3B:
+
+```bash
+export ALTRASIA_MOCK_LLM=false
+export ALTRASIA_LLM_BASE_URL=http://127.0.0.1:8080
+export ALTRASIA_LLM_MODEL=Qwen3.6-35B-A3B
+pytest tests/test_golden_path.py tests/test_output_quality.py -v
+```
+
+GitHub Actions: `.github/workflows/nightly.yml` (requires `ALTRASIA_LLM_BASE_URL` secret).
+
+## 7. Web E2E (Playwright)
+
+```bash
+cd web && npm install && npx playwright install chromium
+npx playwright test
+```
+
+## 8. Demo world (canonical)
+
+- **API:** `POST /api/v1/worlds` with `{"fixtureId":"demo-spatial-v1"}`
+- **CLI:** `altrasia load-demo` (persists under `~/.altrasia/`)
+
+## 9. OpenAPI export
+
+Regenerate the API contract after backend route changes:
+
+```bash
+python scripts/export_openapi.py
+```
+
+Artifact: [packages/openapi/altrasia-v1.json](../../packages/openapi/altrasia-v1.json). CI fails if the export drifts from committed JSON.
+
 ## Next
 
 - Spatial golden path: [17-acceptance-criteria.md](../17-acceptance-criteria.md)
 - First session UX: [first-run-experience.md](first-run-experience.md)
+- Spec gaps tracker: [SPEC-GAPS.md](../SPEC-GAPS.md)

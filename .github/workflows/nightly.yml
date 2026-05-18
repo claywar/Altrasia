@@ -1,0 +1,39 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  golden-path-real-llm:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ALTRASIA_LLM_BASE_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend
+        run: pip install -e "./backend[dev]"
+      - name: Golden path + output quality (real LLM)
+        env:
+          ALTRASIA_MOCK_LLM: "false"
+          ALTRASIA_LLM_BASE_URL: ${{ secrets.ALTRASIA_LLM_BASE_URL }}
+          ALTRASIA_LLM_MODEL: ${{ secrets.ALTRASIA_LLM_MODEL || 'Qwen3.6-35B-A3B' }}
+        run: |
+          python -m pytest tests/test_golden_path.py tests/test_output_quality.py -v --tb=short
+      - name: Upload nightly logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-pytest-log
+          path: |
+            tests/fixtures/output-quality/
+          retention-days: 14
+
+  skip-notice:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ALTRASIA_LLM_BASE_URL == '' }}
+    steps:
+      - run: echo "Skipping nightly real-LLM tests — set ALTRASIA_LLM_BASE_URL secret to enable."

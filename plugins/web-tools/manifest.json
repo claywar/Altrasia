@@ -1,0 +1,7 @@
+{
+  "id": "web-tools",
+  "version": "0.1.0",
+  "hooks": [],
+  "tools": ["web_fetch_plugin"],
+  "permissions": ["web"]
+}

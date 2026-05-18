@@ -9,6 +9,7 @@ export function WorldPolicyPanel({ worldId }: Props) {
   const [policy, setPolicy] = useState({
     requireWebToolApproval: false,
     auditWebTools: true,
+    webToolsMock: true,
     pauseCommissionsDuringPersonaDialogue: true,
     citeProvenanceInPrompt: false,
   });
@@ -19,6 +20,7 @@ export function WorldPolicyPanel({ worldId }: Props) {
       setPolicy({
         requireWebToolApproval: !!p.requireWebToolApproval,
         auditWebTools: p.auditWebTools !== false,
+        webToolsMock: p.webToolsMock !== false,
         pauseCommissionsDuringPersonaDialogue: p.pauseCommissionsDuringPersonaDialogue !== false,
         citeProvenanceInPrompt: !!p.citeProvenanceInPrompt,
       })
@@ -32,6 +34,7 @@ export function WorldPolicyPanel({ worldId }: Props) {
       setPolicy({
         requireWebToolApproval: !!next.requireWebToolApproval,
         auditWebTools: next.auditWebTools !== false,
+        webToolsMock: next.webToolsMock !== false,
         pauseCommissionsDuringPersonaDialogue: next.pauseCommissionsDuringPersonaDialogue !== false,
         citeProvenanceInPrompt: !!next.citeProvenanceInPrompt,
       });
@@ -61,6 +64,15 @@ export function WorldPolicyPanel({ worldId }: Props) {
           onChange={(e) => save({ auditWebTools: e.target.checked })}
         />
         Audit web tool calls (auto-approve when not required)
+      </label>
+      <label className="settings-row">
+        <input
+          type="checkbox"
+          checked={policy.webToolsMock}
+          disabled={saving}
+          onChange={(e) => save({ webToolsMock: e.target.checked })}
+        />
+        Use mock web fetch (disable for live allowlisted fetch)
       </label>
       <label className="settings-row">
         <input

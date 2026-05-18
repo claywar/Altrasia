@@ -33,9 +33,16 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
         }
         if hints.get("mapPosition"):
             node["mapPositionAuthor"] = hints["mapPosition"]
-        for key in ("structureId", "mapZone", "mapShape", "mapSize"):
-            if hints.get(key) or scene.get(key):
-                node[key] = hints.get(key) or scene.get(key)
+        for key in (
+            "structureId",
+            "mapZone",
+            "mapShape",
+            "mapSize",
+            "levelIndex",
+            "exitAnchor",
+        ):
+            if hints.get(key) is not None or scene.get(key) is not None:
+                node[key] = hints.get(key) if hints.get(key) is not None else scene.get(key)
         nodes.append(node)
         for ex in json.loads(scene.get("exitsJson") or "[]"):
             edges.append(

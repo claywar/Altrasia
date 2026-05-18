@@ -8,11 +8,13 @@ from altrasia.persistence.sqlite_store import SqlitePersistence
 POLICY_KEYS = (
     "requireWebToolApproval",
     "auditWebTools",
+    "webToolsMock",
     "pauseCommissionsDuringPersonaDialogue",
     "mandatoryRecallBlocking",
     "maxContinueDepth",
     "citeProvenanceInPrompt",
     "commonsAccessIds",
+    "speakIntentOnTie",
 )
 
 

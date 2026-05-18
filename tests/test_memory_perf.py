@@ -103,7 +103,7 @@ def test_mem_acc1_no_cross_owner_mind_leakage(scale_mem: tuple[MemoryService, di
     mem, meta = scale_mem
     chars = meta["characterIds"]
     tokens = [f"SECRET_TOKEN_{c}_ONLY" for c in chars[:8]]
-    for _ in range(1000):
+    for _ in range(10000):
         owner = random.choice(chars)
         q = random.choice(tokens + ["alpha", "beta", "fact", "keyword"])
         hits = mem.memory_search(pool="mind", owner_id=owner, query=q, limit=20)

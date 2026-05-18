@@ -74,6 +74,7 @@ export function GpuQueueStrip({
           {currentJob.characterId.replace("char-", "")}
         </span>
       )}
+      {leaseKind === "image" && <span className="queue-image-badge">Image</span>}
       {lease && !currentJob && <span className="queue-rationale">{lease}</span>}
       {rationale && <span className="queue-rationale">{rationale}</span>}
       {busy && currentJob && onCancel && (

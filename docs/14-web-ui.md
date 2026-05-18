@@ -24,9 +24,11 @@ Build **only** these sections for the v1 tag; other `UI-*` rows are later phases
 | Structured mini-map | §21.1 only | UI-MAP-ACC1–4 |
 | API binding | §24 | STR-*, queue strip |
 
-**Defer to v1.1:** §11 heartbeat UI, §21.2–§21.3 shapes/envelopes (UI-MAP-ACC5–8).
+**v1.1 (shipped wedge):** §11 heartbeat UI, §21.2–§21.3 shapes/envelopes (UI-MAP-ACC5–8) — see [MiniMap.tsx](../web/src/components/MiniMap.tsx); Playwright coverage in `web/e2e/`.
 
-**Defer to Phase 3+:** §12 character authoring, §13 in-world work, §17 ComfyUI, §21.4–§21.5 MapDraft / WorldMapCanvas.
+**Post-v1 wedge (shipped in tree; full spec depth in [SPEC-GAPS.md](SPEC-GAPS.md)):** §12 character authoring, §13 in-world work, §17 ComfyUI stub, §21.4–§21.5 MapDraft / WorldMapCanvas minimal overlay.
+
+**Still partial vs normative:** UI-* automated acceptance in CI, full Phase 6 maps ([18-location-maps.md](18-location-maps.md)), production ComfyUI ([19-comfyui-media.md](19-comfyui-media.md)).
 
 ### Wireframe → UI mapping (non-normative)
 

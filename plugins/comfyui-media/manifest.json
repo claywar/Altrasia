@@ -1,0 +1,7 @@
+{
+  "id": "comfyui-media",
+  "version": "0.1.0",
+  "hooks": ["onGenerationStart"],
+  "tools": [],
+  "permissions": ["hooks.generation"]
+}

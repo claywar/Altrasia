@@ -19,9 +19,14 @@ def parse_activity(scene: dict[str, Any]) -> dict[str, Any] | None:
         data = json.loads(raw)
     except json.JSONDecodeError:
         return None
-    if data.get("kind") != "debate":
+    if data.get("kind") not in ("debate", "conversation", "banter"):
         return None
     return data
+
+
+def activity_current_speaker(activity: dict[str, Any]) -> str | None:
+    """DEB-2 / AO-22: ordered speaker for debate, conversation, or banter."""
+    return debate_current_speaker(activity)
 
 
 def debate_current_speaker(activity: dict[str, Any]) -> str | None:

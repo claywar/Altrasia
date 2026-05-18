@@ -14,7 +14,7 @@ In practice:
 
 This specification describes *what* the system MUST do. Normative specs are `00`–`25`. **Implementation stack:** Python-first extensible backend + professional Web UI frontend — [26-system-architecture.md](26-system-architecture.md). Persistence: SQLite ([11-data-model.md](11-data-model.md)). Operator console: [14-web-ui.md](14-web-ui.md).
 
-**Repository status:** design specifications complete; **implementation not started**. Milestones: [ROADMAP.md](ROADMAP.md). Personas: [personas.md](personas.md). Target first session: [guides/first-run-experience.md](guides/first-run-experience.md).
+**Repository status:** design specifications complete; **implementation Alpha** (v1 + v1.1 + Phase 3–6 wedge in tree). Milestones: [ROADMAP.md](ROADMAP.md). Traceability: [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md). Remaining normative depth: [SPEC-GAPS.md](SPEC-GAPS.md). Personas: [personas.md](personas.md). Target first session: [guides/first-run-experience.md](guides/first-run-experience.md).
 
 ## Reading order
 

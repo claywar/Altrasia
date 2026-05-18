@@ -100,54 +100,122 @@ class Orchestrator:
         return self._filter_tools(all_tools, cast_tools)
 
     def pick_reactive_character(
-        self, world_id: str, scene_id: str, trigger_text: str
+        self,
+        world_id: str,
+        scene_id: str,
+        trigger_text: str,
+        *,
+        trigger_message_id: str | None = None,
+        target_character_id: str | None = None,
     ) -> tuple[str | None, dict]:
-        """AO-18: @mention, name in text, else highest speechWeight among present cast."""
+        """AO-17/18: scoreSpeakers with debate/activity overrides."""
+        from altrasia.debate_activity import debate_current_speaker, parse_activity
+        from altrasia.orchestrator.speaker_selection import score_speakers
+        from altrasia.world_config import get_world_config
+
         scene = self.svc.store.get_scene(scene_id)
         present = json.loads(scene["presentJson"])
         cast = [c for c in present if c not in (PERSONA_ID,)]
         if not cast:
             return None, {}
-        from altrasia.debate_activity import debate_current_speaker, parse_activity
-
         activity = parse_activity(scene)
-        if activity and activity.get("kind") == "debate":
+        if activity and activity.get("kind") in ("debate", "conversation", "banter"):
             speaker = debate_current_speaker(activity)
             if speaker and speaker in cast:
                 return speaker, {
-                    "pick": "debate",
+                    "pick": activity.get("kind"),
                     "phase": activity.get("phase"),
                     "characterId": speaker,
                 }
+        pick = score_speakers(
+            self.svc,
+            world_id=world_id,
+            scene_id=scene_id,
+            trigger_text=trigger_text,
+            eligible=cast,
+            target_character_id=target_character_id,
+            trigger_message_id=trigger_message_id,
+        )
+        if not pick:
+            return None, {}
+        return pick.character_id, pick.rationale
+
+    async def pick_reactive_character_async(
+        self,
+        world_id: str,
+        scene_id: str,
+        trigger_text: str,
+        *,
+        trigger_message_id: str | None = None,
+        target_character_id: str | None = None,
+    ) -> tuple[str | None, dict]:
+        """AO-17 v1.1: optional speak_intent LLM resolve on score tie."""
+        from altrasia.orchestrator.speaker_selection import resolve_speak_intent_tie
+        from altrasia.world_config import get_world_config
+
+        cid, rationale = self.pick_reactive_character(
+            world_id,
+            scene_id,
+            trigger_text,
+            trigger_message_id=trigger_message_id,
+            target_character_id=target_character_id,
+        )
+        if not cid:
+            return None, {}
+        cfg = get_world_config(self.svc.store, world_id)
+        if not cfg.get("speakIntentOnTie"):
+            return cid, rationale
+        scores = rationale.get("scores") or {}
+        if len(scores) < 2:
+            return cid, rationale
+        totals = [(c, float(v.get("total", 0))) for c, v in scores.items()]
+        top = max(t for _, t in totals)
+        tied = [c for c, t in totals if top - t <= 0.05]
+        if len(tied) <= 1:
+            return cid, rationale
         chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
-        lower = trigger_text.lower()
-
-        mention = re.search(r"@(\w+)", trigger_text, re.I)
-        if mention:
-            name = mention.group(1).lower()
-            for cid in cast:
-                if name in chars.get(cid, {}).get("displayName", "").lower():
-                    return cid, {"pick": "mention", "scores": {cid: {"total": 1.0}}}
-
-        for cid in cast:
-            display = chars.get(cid, {}).get("displayName", "")
-            if display and display.lower() in lower:
-                return cid, {"pick": "addressed", "scores": {cid: {"total": 0.95}}}
-
-        best = max(cast, key=lambda c: float(chars.get(c, {}).get("speechWeight", 0.5)))
-        return best, {"pick": "speechWeight", "scores": {best: {"total": 0.8}}}
+        resolved = await resolve_speak_intent_tie(
+            self.svc.llm,
+            trigger_text=trigger_text,
+            tied=tied,
+            chars=chars,
+        )
+        if resolved and resolved != cid:
+            rationale = {
+                **rationale,
+                "pick": "speak_intent",
+                "characterId": resolved,
+                "tiedCandidates": tied,
+            }
+            return resolved, rationale
+        return cid, rationale
 
     def _pick_continue_character(
-        self, world_id: str, scene_id: str, exclude_id: str
+        self,
+        world_id: str,
+        scene_id: str,
+        exclude_id: str,
+        *,
+        trigger_text: str = "",
+        trigger_message_id: str | None = None,
     ) -> str | None:
-        """AO-19: next cast member for agent_continue after reactive reply."""
+        """AO-19: scoreSpeakers for agent_continue."""
+        from altrasia.orchestrator.speaker_selection import score_speakers
+
         scene = self.svc.store.get_scene(scene_id)
         present = json.loads(scene["presentJson"])
         cast = [c for c in present if c not in (PERSONA_ID, exclude_id)]
-        if not cast:
-            return None
-        chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
-        return max(cast, key=lambda c: float(chars.get(c, {}).get("speechWeight", 0.5)))
+        pick = score_speakers(
+            self.svc,
+            world_id=world_id,
+            scene_id=scene_id,
+            trigger_text=trigger_text or "continue",
+            eligible=cast,
+            exclude_id=exclude_id,
+            last_speaker_id=exclude_id,
+            trigger_message_id=trigger_message_id,
+        )
+        return pick.character_id if pick else None
 
     async def enqueue_generation(
         self,
@@ -490,7 +558,11 @@ class Orchestrator:
             and not debate_active
         ):
             nxt = self._pick_continue_character(
-                job["worldId"], job["sceneId"], job["characterId"]
+                job["worldId"],
+                job["sceneId"],
+                job["characterId"],
+                trigger_text=text,
+                trigger_message_id=msg_id,
             )
             if nxt:
                 await self.enqueue_generation(
@@ -543,7 +615,9 @@ class Orchestrator:
             return None
         if scene_id in self._scene_chain_active:
             return None
-        cid, rationale = self.pick_reactive_character(world_id, scene_id, text)
+        cid, rationale = await self.pick_reactive_character_async(
+            world_id, scene_id, text, trigger_message_id=message_id
+        )
         if not cid:
             return None
         job = await self.enqueue_generation(

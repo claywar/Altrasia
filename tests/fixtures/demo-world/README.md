@@ -9,4 +9,10 @@ POST /api/v1/worlds
 { "fixtureId": "demo-spatial-v1" }
 ```
 
-Or Web UI **Load demo world**.
+Or Web UI **Load demo world**, or CLI:
+
+```bash
+altrasia load-demo
+```
+
+Spec: [demo-spatial-v1.json](demo-spatial-v1.json). Target load time: under 2s on reference dev hardware.

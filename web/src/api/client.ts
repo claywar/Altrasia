@@ -26,11 +26,13 @@ export type World = {
 export type WorldPolicy = {
   requireWebToolApproval?: boolean;
   auditWebTools?: boolean;
+  webToolsMock?: boolean;
   pauseCommissionsDuringPersonaDialogue?: boolean;
   mandatoryRecallBlocking?: boolean;
   maxContinueDepth?: number;
   citeProvenanceInPrompt?: boolean;
   commonsAccessIds?: string[];
+  speakIntentOnTie?: boolean;
 };
 
 export type EvidenceRecord = {
@@ -52,6 +54,7 @@ export type Scene = {
   presentJson: string;
   exitsJson: string;
   activityJson?: string | null;
+  layoutHintsJson?: string | null;
 };
 
 export type DebateActivity = {
@@ -104,6 +107,7 @@ export type QueueSnapshot = {
 
 export type OperatorSettings = {
   heartbeat: { enabled: boolean; intervalSeconds: number };
+  enableServerPlugins?: boolean;
   lastHeartbeatAt: string | null;
 };
 
@@ -198,13 +202,26 @@ export type SpatialGraph = {
     isActive: boolean;
     layout: { x: number; y: number };
     presentCount: number;
+    mapShape?: string;
+    structureId?: string;
+    levelIndex?: number;
+    exitAnchor?: string;
   }>;
   edges: Array<{
     exitId: string;
     sourceSceneId: string;
     targetSceneId: string;
     label: string;
+    exitAnchor?: string;
+    travelSteps?: number;
   }>;
+  structures?: Array<{
+    structureId: string;
+    displayName: string;
+    kind?: string;
+    containsActiveScene?: boolean;
+  }>;
+  layout?: { coordinateSpace?: string; algorithm?: string };
 };
 
 export const api = {
@@ -498,7 +515,10 @@ export const api = {
   cancelJob: (jobId: string) =>
     request(`/inference/queue/${jobId}`, { method: "DELETE" }),
   operatorSettings: () => request<OperatorSettings>("/operator/settings"),
-  patchOperatorSettings: (body: { heartbeat?: { enabled?: boolean; intervalSeconds?: number } }) =>
+  patchOperatorSettings: (body: {
+    heartbeat?: { enabled?: boolean; intervalSeconds?: number };
+    enableServerPlugins?: boolean;
+  }) =>
     request<OperatorSettings>("/operator/settings", {
       method: "PATCH",
       body: JSON.stringify(body),

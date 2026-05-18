@@ -1,0 +1,10 @@
+{
+  "structureId": "manor",
+  "nodes": [
+    {"sceneId": "scene-hall", "layout": {"x": 30, "y": 50}, "mapShape": "rect"},
+    {"sceneId": "scene-gallery", "layout": {"x": 70, "y": 50}, "mapShape": "circle", "levelIndex": 1, "levelLabel": "Upper"}
+  ],
+  "edges": [
+    {"sourceSceneId": "scene-hall", "targetSceneId": "scene-gallery", "exitAnchor": "E", "kind": "stairs"}
+  ]
+}

@@ -21,10 +21,11 @@ class GpuLease:
 class GpuResourceQueue:
     """INF-5: single concurrent GPU work by default."""
 
-    def __init__(self) -> None:
+    def __init__(self, max_depth: int = 4) -> None:
         self._lock = asyncio.Lock()
         self._current: GpuLease | None = None
         self._busy = False
+        self.max_depth = max(1, max_depth)
 
     @property
     def busy(self) -> bool:

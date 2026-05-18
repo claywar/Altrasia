@@ -98,7 +98,10 @@ class IdleScheduler:
         orch = self.svc.orchestrator
         if self.svc.gpu_queue.busy:
             return
-        if self.svc.store.list_queued_jobs(world_id):
+        queued = self.svc.store.list_queued_jobs(world_id)
+        if queued and len(queued) >= self.svc.gpu_queue.max_depth:
+            return
+        if queued:
             return
         for scene in self.svc.store.list_scenes(world_id):
             scene_id = scene["sceneId"]

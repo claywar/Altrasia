@@ -136,6 +136,34 @@ export function SettingsPanel({
         {scenes.length > 0 && <MapDraftPanel worldId={worldId} onCommitted={() => onScenesChanged?.()} />}
         {scenes.length > 0 && <CommissionsPanel worldId={worldId} scenes={scenes} />}
         <section className="settings-section">
+          <h3>Voice (UI-VOX-0)</h3>
+          <p className="settings-muted">Speech input and TTS are not available in this alpha build.</p>
+        </section>
+        {settings && (
+          <section className="settings-section">
+            <h3>Server plugins</h3>
+            <label className="settings-row">
+              <input
+                type="checkbox"
+                checked={!!settings.enableServerPlugins}
+                disabled={saving}
+                onChange={async (e) => {
+                  setSaving(true);
+                  try {
+                    const next = await api.patchOperatorSettings({
+                      enableServerPlugins: e.target.checked,
+                    });
+                    setSettings(next);
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              />
+              Enable server plugins (WEB-2)
+            </label>
+          </section>
+        )}
+        <section className="settings-section">
           <h3>Global heartbeat (v1.1)</h3>
           <p className="settings-muted">
             NPC idle rotation when no browser tab is connected. Tab-visible idle still runs

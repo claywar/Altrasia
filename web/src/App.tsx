@@ -426,6 +426,17 @@ export default function App() {
 
         <main className="center">
           <header className="scene-header">
+            {(() => {
+              const hints = scene?.layoutHintsJson
+                ? JSON.parse(scene.layoutHintsJson || "{}")
+                : {};
+              const structureId = hints.structureId as string | undefined;
+              return structureId ? (
+                <p className="scene-breadcrumb" style={{ fontSize: 12, color: "var(--muted)" }}>
+                  {structureId.replace(/^struct-/, "").replace(/-/g, " ")} › {scene?.locationName}
+                </p>
+              ) : null;
+            })()}
             <h2>{scene?.locationName}</h2>
             <p>{scene?.locationDescription}</p>
             <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
@@ -447,12 +458,17 @@ export default function App() {
                   title={perceived ? undefined : "Not perceived at your position"}
                 >
                   <div className="bubble-header">
+                    <span className="portrait-placeholder" aria-hidden />
                     {label} · {sc}
                     {m.role === "assistant" && m.generationJobId && (
                       <MessageRationale worldId={world.worldId} jobId={m.generationJobId} />
                     )}
                   </div>
-                  <MarkdownBody>{m.outputText}</MarkdownBody>
+                  {m.streamStatus === "streaming" ? (
+                    <p className="plain-stream">{m.outputText}</p>
+                  ) : (
+                    <MarkdownBody>{m.outputText}</MarkdownBody>
+                  )}
                 </article>
               );
             })}
