@@ -1,23 +1,21 @@
 import { useState } from "react";
 import { api, type LayoutDraft } from "../api/client";
+import { SettingsBlock } from "./settings/SettingsBlock";
 
 type Props = {
   worldId: string;
   onCommitted?: () => void;
+  embedded?: boolean;
 };
 
-export function MapDraftPanel({ worldId, onCommitted }: Props) {
+export function MapDraftPanel({ worldId, onCommitted, embedded }: Props) {
   const [brief, setBrief] = useState("");
   const [draft, setDraft] = useState<LayoutDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  return (
-    <section className="settings-section">
-      <h3>Map layout (MapDraft)</h3>
-      <p className="settings-muted">
-        Propose mini-map positions via LLM; commit applies non-conflicting scene positions.
-      </p>
+  const body = (
+    <>
       <textarea
         className="char-draft-brief"
         value={brief}
@@ -25,7 +23,7 @@ export function MapDraftPanel({ worldId, onCommitted }: Props) {
         placeholder="e.g. Hall left, kitchen right, courtyard below…"
         rows={3}
       />
-      <div className="settings-actions">
+      <div className="settings-inline-actions">
         <button
           type="button"
           disabled={busy || !brief.trim()}
@@ -70,7 +68,7 @@ export function MapDraftPanel({ worldId, onCommitted }: Props) {
           </button>
         )}
       </div>
-      {error && <p className="settings-muted" style={{ color: "var(--danger, #c44)" }}>{error}</p>}
+      {error && <p className="settings-error">{error}</p>}
       {draft?.proposed?.nodes && draft.proposed.nodes.length > 0 && (
         <svg className="map-draft-svg" viewBox="0 0 100 100" role="img" aria-label="Draft layout preview">
           {draft.proposed.nodes.map((n) => {
@@ -98,6 +96,27 @@ export function MapDraftPanel({ worldId, onCommitted }: Props) {
           {JSON.stringify(draft.proposed?.nodes ?? [], null, 2)}
         </pre>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <SettingsBlock
+        title="Map layout"
+        description="Propose mini-map positions via LLM; commit applies scene positions."
+      >
+        {body}
+      </SettingsBlock>
+    );
+  }
+
+  return (
+    <section className="settings-section">
+      <h3>Map layout (MapDraft)</h3>
+      <p className="settings-muted">
+        Propose mini-map positions via LLM; commit applies non-conflicting scene positions.
+      </p>
+      {body}
     </section>
   );
 }

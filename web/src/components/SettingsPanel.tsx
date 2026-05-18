@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type OperatorSettings } from "../api/client";
+import { api, type OperatorSettings, type Scene } from "../api/client";
 import { CharacterDraftPanel } from "./CharacterDraftPanel";
 import { SceneGeographyPanel } from "./SceneGeographyPanel";
 import { CastListPanel } from "./CastListPanel";
@@ -7,14 +7,23 @@ import { CommissionsPanel } from "./CommissionsPanel";
 import { MapDraftPanel } from "./MapDraftPanel";
 import { WorldPolicyPanel } from "./WorldPolicyPanel";
 import { BriefingPanel } from "./BriefingPanel";
-import type { Scene } from "../api/client";
+import { SettingsShell } from "./settings/SettingsShell";
+import { SettingsCategoryPane } from "./settings/SettingsCategoryPane";
+import type { SettingsCategoryId } from "./settings/settingsNav";
+import { WorldPackageSection } from "./settings/WorldPackageSection";
+import { WorldStatusSection } from "./settings/WorldStatusSection";
+import { ServerPluginsSection } from "./settings/ServerPluginsSection";
+import { ServerInferenceSection } from "./settings/ServerInferenceSection";
+import { ServerHeartbeatSection } from "./settings/ServerHeartbeatSection";
+import { SettingsScenesEmpty } from "./settings/SettingsScenesEmpty";
+import { OperationsDebateHint } from "./settings/OperationsDebateHint";
+import { SettingsGroup } from "./settings/SettingsGroup";
 
 type Props = {
   worldId: string;
   worldName: string;
   worldPaused: boolean;
   onClose: () => void;
-  onWorldPauseChange: () => void;
   onWorldImported: (world: { worldId: string; name: string; activeSceneId: string }) => void;
   onCastChanged?: () => void;
   scenes?: Scene[];
@@ -27,7 +36,6 @@ export function SettingsPanel({
   worldName,
   worldPaused,
   onClose,
-  onWorldPauseChange,
   onWorldImported,
   onCastChanged,
   scenes = [],
@@ -35,168 +43,113 @@ export function SettingsPanel({
   activeSceneId = "",
 }: Props) {
   const [settings, setSettings] = useState<OperatorSettings | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<SettingsCategoryId>("world");
+  const hasScenes = scenes.length > 0;
 
   useEffect(() => {
     api.operatorSettings().then(setSettings);
   }, []);
 
-  const saveHeartbeat = async (patch: { enabled?: boolean; intervalSeconds?: number }) => {
-    setSaving(true);
-    try {
-      const next = await api.patchOperatorSettings({ heartbeat: patch });
-      setSettings(next);
-    } finally {
-      setSaving(false);
+  const renderCategory = () => {
+    switch (activeCategory) {
+      case "world":
+        return (
+          <SettingsCategoryPane categoryId="world">
+            <SettingsGroup>
+              <WorldStatusSection worldPaused={worldPaused} />
+              <WorldPolicyPanel worldId={worldId} embedded />
+              <WorldPackageSection
+                worldId={worldId}
+                worldName={worldName}
+                onImported={onWorldImported}
+                onClose={onClose}
+              />
+              {hasScenes && activeSceneId && (
+                <BriefingPanel
+                  worldId={worldId}
+                  scenes={scenes}
+                  activeSceneId={activeSceneId}
+                  embedded
+                />
+              )}
+            </SettingsGroup>
+          </SettingsCategoryPane>
+        );
+      case "architect":
+        return (
+          <SettingsCategoryPane categoryId="architect">
+            {!hasScenes ? (
+              <SettingsScenesEmpty />
+            ) : (
+              <SettingsGroup>
+                <SceneGeographyPanel
+                  worldId={worldId}
+                  scenes={scenes}
+                  onChanged={() => onScenesChanged?.()}
+                  embedded
+                />
+                <MapDraftPanel
+                  worldId={worldId}
+                  onCommitted={() => onScenesChanged?.()}
+                  embedded
+                />
+              </SettingsGroup>
+            )}
+          </SettingsCategoryPane>
+        );
+      case "cast":
+        return (
+          <SettingsCategoryPane categoryId="cast">
+            <SettingsGroup>
+              <CastListPanel worldId={worldId} embedded />
+              <CharacterDraftPanel
+                worldId={worldId}
+                onCharacterAdded={() => onCastChanged?.()}
+                embedded
+              />
+            </SettingsGroup>
+          </SettingsCategoryPane>
+        );
+      case "operations":
+        return (
+          <SettingsCategoryPane categoryId="operations">
+            {!hasScenes ? (
+              <SettingsScenesEmpty />
+            ) : (
+              <SettingsGroup>
+                <OperationsDebateHint />
+                <CommissionsPanel worldId={worldId} scenes={scenes} embedded />
+              </SettingsGroup>
+            )}
+          </SettingsCategoryPane>
+        );
+      case "server":
+        return (
+          <SettingsCategoryPane categoryId="server">
+            {settings ? (
+              <SettingsGroup>
+                <ServerInferenceSection settings={settings} onUpdated={setSettings} />
+                <ServerHeartbeatSection settings={settings} onUpdated={setSettings} />
+                <ServerPluginsSection settings={settings} onUpdated={setSettings} />
+              </SettingsGroup>
+            ) : (
+              <p className="settings-muted settings-loading">Loading server settings…</p>
+            )}
+          </SettingsCategoryPane>
+        );
+      default:
+        return null;
     }
   };
 
   return (
-    <div className="settings-overlay" role="dialog" aria-label="Server settings">
-      <div className="settings-panel">
-        <header className="settings-header">
-          <h2>Settings</h2>
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
-        </header>
-        <WorldPolicyPanel worldId={worldId} />
-        {scenes.length > 0 && activeSceneId && (
-          <BriefingPanel worldId={worldId} scenes={scenes} activeSceneId={activeSceneId} />
-        )}
-        <section className="settings-section">
-          <h3>This world</h3>
-          <p className="settings-muted">
-            {worldPaused ? "World is paused — no generation." : "World is active."}
-          </p>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={async () => {
-              if (worldPaused) await api.resumeWorld(worldId);
-              else await api.pauseWorld(worldId);
-              onWorldPauseChange();
-            }}
-          >
-            {worldPaused ? "Resume world" : "Pause world"}
-          </button>
-          <div className="settings-actions">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={async () => {
-                setSaving(true);
-                try {
-                  const blob = await api.exportPackage(worldId);
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `altrasia-${worldName.replace(/\s+/g, "-").toLowerCase()}.zip`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              Export world package
-            </button>
-            <label className="settings-file">
-              Import package
-              <input
-                type="file"
-                accept=".zip,application/zip"
-                disabled={saving}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setSaving(true);
-                  try {
-                    const w = await api.importPackage(file);
-                    onWorldImported(w);
-                    onClose();
-                  } finally {
-                    setSaving(false);
-                    e.target.value = "";
-                  }
-                }}
-              />
-            </label>
-          </div>
-        </section>
-        {scenes.length > 0 && onScenesChanged && (
-          <SceneGeographyPanel
-            worldId={worldId}
-            scenes={scenes}
-            onChanged={() => onScenesChanged()}
-          />
-        )}
-        <CastListPanel worldId={worldId} />
-        <CharacterDraftPanel worldId={worldId} onCharacterAdded={() => onCastChanged?.()} />
-        {scenes.length > 0 && <MapDraftPanel worldId={worldId} onCommitted={() => onScenesChanged?.()} />}
-        {scenes.length > 0 && <CommissionsPanel worldId={worldId} scenes={scenes} />}
-        <section className="settings-section">
-          <h3>Voice (UI-VOX-0)</h3>
-          <p className="settings-muted">Speech input and TTS are not available in this alpha build.</p>
-        </section>
-        {settings && (
-          <section className="settings-section">
-            <h3>Server plugins</h3>
-            <label className="settings-row">
-              <input
-                type="checkbox"
-                checked={!!settings.enableServerPlugins}
-                disabled={saving}
-                onChange={async (e) => {
-                  setSaving(true);
-                  try {
-                    const next = await api.patchOperatorSettings({
-                      enableServerPlugins: e.target.checked,
-                    });
-                    setSettings(next);
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-              />
-              Enable server plugins (WEB-2)
-            </label>
-          </section>
-        )}
-        <section className="settings-section">
-          <h3>Global heartbeat (v1.1)</h3>
-          <p className="settings-muted">
-            NPC idle rotation when no browser tab is connected. Tab-visible idle still runs
-            while this page is open.
-          </p>
-          {settings && (
-            <>
-              <label className="settings-row">
-                <input
-                  type="checkbox"
-                  checked={settings.heartbeat.enabled}
-                  onChange={(e) => saveHeartbeat({ enabled: e.target.checked })}
-                />
-                Enable server heartbeat
-              </label>
-              <label className="settings-row">
-                Interval (seconds)
-                <input
-                  type="number"
-                  min={5}
-                  value={settings.heartbeat.intervalSeconds}
-                  onChange={(e) =>
-                    saveHeartbeat({ intervalSeconds: parseInt(e.target.value, 10) || 60 })
-                  }
-                />
-              </label>
-              {settings.lastHeartbeatAt && (
-                <p className="settings-muted">Last tick: {settings.lastHeartbeatAt}</p>
-              )}
-            </>
-          )}
-        </section>
-      </div>
-    </div>
+    <SettingsShell
+      worldName={worldName}
+      activeCategory={activeCategory}
+      onCategoryChange={setActiveCategory}
+      onClose={onClose}
+    >
+      {renderCategory()}
+    </SettingsShell>
   );
 }

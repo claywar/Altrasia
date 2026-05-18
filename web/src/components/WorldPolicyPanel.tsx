@@ -1,18 +1,45 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { SettingsBlock } from "./settings/SettingsBlock";
+
+const policyDefaults = {
+  requireWebToolApproval: false,
+  auditWebTools: true,
+  webToolsMock: true,
+  pauseCommissionsDuringPersonaDialogue: true,
+  citeProvenanceInPrompt: false,
+};
+
+const POLICY_ITEMS: Array<{
+  key: keyof typeof policyDefaults;
+  label: string;
+  hint?: string;
+}> = [
+  { key: "requireWebToolApproval", label: "Require approval for web tools" },
+  {
+    key: "auditWebTools",
+    label: "Audit web tool calls",
+    hint: "Auto-approve when approval not required",
+  },
+  {
+    key: "webToolsMock",
+    label: "Use mock web fetch",
+    hint: "Disable for live allowlisted fetch",
+  },
+  {
+    key: "pauseCommissionsDuringPersonaDialogue",
+    label: "Defer commissions during persona dialogue",
+  },
+  { key: "citeProvenanceInPrompt", label: "Cite evidence provenance in cast prompts" },
+];
 
 type Props = {
   worldId: string;
+  embedded?: boolean;
 };
 
-export function WorldPolicyPanel({ worldId }: Props) {
-  const [policy, setPolicy] = useState({
-    requireWebToolApproval: false,
-    auditWebTools: true,
-    webToolsMock: true,
-    pauseCommissionsDuringPersonaDialogue: true,
-    citeProvenanceInPrompt: false,
-  });
+export function WorldPolicyPanel({ worldId, embedded }: Props) {
+  const [policy, setPolicy] = useState({ ...policyDefaults });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -43,55 +70,41 @@ export function WorldPolicyPanel({ worldId }: Props) {
     }
   };
 
+  const list = (
+    <ul className="settings-list">
+      {POLICY_ITEMS.map((item) => (
+        <li key={item.key} className="settings-list-item">
+          <label className="settings-list-item-label">
+            <span className="settings-list-text">
+              {item.label}
+              {item.hint && <span className="settings-list-hint">{item.hint}</span>}
+            </span>
+            <input
+              type="checkbox"
+              className="settings-toggle"
+              checked={policy[item.key]}
+              disabled={saving}
+              onChange={(e) => save({ [item.key]: e.target.checked } as Partial<typeof policy>)}
+            />
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+
+  if (embedded) {
+    return (
+      <SettingsBlock title="World policy" description="Orchestration and tool gates for this world.">
+        {list}
+      </SettingsBlock>
+    );
+  }
+
   return (
     <section className="settings-section">
       <h3>World policy</h3>
       <p className="settings-muted">Per-world orchestration and tool gates (stored in world config).</p>
-      <label className="settings-row">
-        <input
-          type="checkbox"
-          checked={policy.requireWebToolApproval}
-          disabled={saving}
-          onChange={(e) => save({ requireWebToolApproval: e.target.checked })}
-        />
-        Require approval for web tools
-      </label>
-      <label className="settings-row">
-        <input
-          type="checkbox"
-          checked={policy.auditWebTools}
-          disabled={saving}
-          onChange={(e) => save({ auditWebTools: e.target.checked })}
-        />
-        Audit web tool calls (auto-approve when not required)
-      </label>
-      <label className="settings-row">
-        <input
-          type="checkbox"
-          checked={policy.webToolsMock}
-          disabled={saving}
-          onChange={(e) => save({ webToolsMock: e.target.checked })}
-        />
-        Use mock web fetch (disable for live allowlisted fetch)
-      </label>
-      <label className="settings-row">
-        <input
-          type="checkbox"
-          checked={policy.pauseCommissionsDuringPersonaDialogue}
-          disabled={saving}
-          onChange={(e) => save({ pauseCommissionsDuringPersonaDialogue: e.target.checked })}
-        />
-        Defer commissions during persona dialogue at target scene
-      </label>
-      <label className="settings-row">
-        <input
-          type="checkbox"
-          checked={policy.citeProvenanceInPrompt}
-          disabled={saving}
-          onChange={(e) => save({ citeProvenanceInPrompt: e.target.checked })}
-        />
-        Cite evidence provenance in cast prompts
-      </label>
+      {list}
     </section>
   );
 }

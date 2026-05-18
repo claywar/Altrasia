@@ -335,7 +335,13 @@ export default function App() {
         <button type="button" onClick={() => setObserverOpen(true)}>
           Observer Studio
         </button>
-        <button type="button" onClick={() => setSettingsOpen(true)}>
+        <button
+          type="button"
+          onClick={async () => {
+            if (world) await refresh(world);
+            setSettingsOpen(true);
+          }}
+        >
           Settings
         </button>
         {worldPaused && <span className="paused-badge">Paused</span>}
@@ -595,12 +601,6 @@ export default function App() {
           worldName={world.name}
           worldPaused={worldPaused}
           onClose={() => setSettingsOpen(false)}
-          onWorldPauseChange={async () => {
-            const w2 = await api.getWorld(world.worldId);
-            setWorld(w2);
-            setWorldPaused(!!w2.paused);
-            await refresh(w2);
-          }}
           onWorldImported={async (w) => {
             const full = await api.getWorld(w.worldId);
             setWorld(full);

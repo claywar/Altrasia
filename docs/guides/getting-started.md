@@ -31,11 +31,13 @@ npm run dev
 
 Open http://localhost:5173 → **Load demo world** → play as persona in the Hall.
 
-Optional: **Settings** → enable **Global heartbeat** for NPC idle when the browser tab is closed (saved in `~/.altrasia/config.yaml`).
+Optional: **Settings** → **Server** → enable **Server heartbeat** for NPC idle when the browser tab is closed (saved in `~/.altrasia/config.yaml`).
 
-**World package:** Settings → **Export world package** (`.zip`); import via **Import package** or `POST /api/v1/worlds/import`.
+**Remote inference:** **Settings** → **Server** → **Inference endpoints** — set primary and embedding base URLs and model ids (saved in `~/.altrasia/config.yaml`). Use **List models** to query `/v1/models` from a llama.cpp router. Empty fields use `ALTRASIA_LLM_*` / `ALTRASIA_EMBED_*` environment variables.
 
-**Phase 3–6 features (Settings):** world policy (web approval, commission defer), briefing board, MapDraft layout, commissions, character draft, scene geography. **Play UI:** debate panel, world **Map** overlay, approvals banner. **Observer Studio:** digest with signals, commissions, debates, approvals.
+**World package:** Settings → **World** → **Export world package** (`.zip`); import via **Import package** or `POST /api/v1/worlds/import`.
+
+**Settings categories:** **World** (policy, activity status, package, briefing), **Scenes & layout** (geography, map layout), **Cast** (list, AI character draft), **Operations** (commissions), **Server** (heartbeat, plugins). **Play UI:** debate panel (right sidebar), world **Map** overlay, approvals banner. **Observer Studio:** digest with signals, commissions, debates, approvals.
 
 ## 3. Real inference (optional)
 

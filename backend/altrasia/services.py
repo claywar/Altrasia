@@ -12,7 +12,7 @@ from altrasia.inference.queue import GpuResourceQueue
 from altrasia.memory.embeddings import EmbeddingService
 from altrasia.memory.service import MemoryService
 from altrasia.orchestrator.engine import Orchestrator
-from altrasia.operator_settings import OperatorSettingsStore
+from altrasia.operator_settings import OperatorSettingsStore, resolve_inference
 from altrasia.orchestrator.idle_scheduler import IdleScheduler
 from altrasia.persistence.sqlite_store import SqlitePersistence
 from altrasia.plugins.loader import PluginHost, load_plugins
@@ -46,6 +46,16 @@ class AppServices:
             root = self.settings.data_dir / "worlds" / world_id / "files"
             self._fs_agents[world_id] = FsAgent(root)
         return self._fs_agents[world_id]
+
+    def apply_inference_config(self) -> dict:
+        """Apply operator inference overrides to the live LLM client and memory search mode."""
+        eff = resolve_inference(self.settings, self.operator_settings.load())
+        primary = eff.get("primaryBaseUrl")
+        self.llm.base_url = primary.rstrip("/") if primary else None
+        self.llm.model = eff["primaryModel"]
+        self.llm.mock = bool(eff["mockLlm"])
+        self.memory.hybrid_search_enabled = bool(eff["embeddingBaseUrl"])
+        return eff
 
     @classmethod
     def create(cls, settings: Settings | None = None) -> "AppServices":
@@ -84,4 +94,5 @@ class AppServices:
         load_plugins(plugins, tools, svc)
         svc.orchestrator = Orchestrator(svc)
         svc.idle_scheduler = IdleScheduler(svc)
+        svc.apply_inference_config()
         return svc

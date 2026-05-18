@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Scene } from "../api/client";
+import { SettingsBlock } from "./settings/SettingsBlock";
 
 type Geography = {
   layoutDesignMode: boolean;
@@ -11,9 +12,10 @@ type Props = {
   worldId: string;
   scenes: Scene[];
   onChanged: () => void;
+  embedded?: boolean;
 };
 
-export function SceneGeographyPanel({ worldId, scenes, onChanged }: Props) {
+export function SceneGeographyPanel({ worldId, scenes, onChanged, embedded }: Props) {
   const [geo, setGeo] = useState<Geography | null>(null);
   const [name, setName] = useState("");
   const [connectFrom, setConnectFrom] = useState("");
@@ -68,16 +70,14 @@ export function SceneGeographyPanel({ worldId, scenes, onChanged }: Props) {
     }
   };
 
-  return (
-    <section className="settings-section">
-      <h3>Scenes (Architect World)</h3>
-      <p className="settings-muted">
-        {design
-          ? "Layout design mode — add scenes and exits, then lock geography before play."
-          : geo?.geographyLockedAt
-            ? `Geography locked · ${geo.sceneCount} scene(s) · rename or add connected locations`
-            : "Geography locked — rename scenes or add locations linked by exits."}
-      </p>
+  const description = design
+    ? "Layout design mode — add scenes and exits, then lock geography before play."
+    : geo?.geographyLockedAt
+      ? `Geography locked · ${geo.sceneCount} scene(s) · rename or add connected locations`
+      : "Rename scenes or add locations linked by exits.";
+
+  const body = (
+    <>
       <ul className="scene-geo-list">
         {scenes.map((s) => (
           <li key={s.sceneId} className="scene-geo-row">
@@ -198,6 +198,22 @@ export function SceneGeographyPanel({ worldId, scenes, onChanged }: Props) {
         </>
       )}
       {error && <p className="settings-error">{error}</p>}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <SettingsBlock title="Scenes" description={description}>
+        {body}
+      </SettingsBlock>
+    );
+  }
+
+  return (
+    <section className="settings-section">
+      <h3>Scenes (Architect World)</h3>
+      <p className="settings-muted">{description}</p>
+      {body}
     </section>
   );
 }

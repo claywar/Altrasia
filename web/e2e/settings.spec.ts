@@ -5,13 +5,15 @@ import { loadDemoWorld } from "./helpers";
 test("settings opens and heartbeat toggle persists in session", async ({ page }) => {
   await loadDemoWorld(page);
   await page.getByRole("button", { name: /^Settings$/i }).click();
-  await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: /^Settings$/i })).toBeVisible();
+  await page.getByRole("tab", { name: /^Server$/i }).click();
   const hb = page.getByLabel(/enable server heartbeat/i);
   await expect(hb).toBeVisible();
   const wasChecked = await hb.isChecked();
   await hb.setChecked(!wasChecked);
-  await page.locator(".settings-header").getByRole("button", { name: /^Close$/i }).click();
+  await page.getByRole("button", { name: /Esc — Close/i }).click();
   await page.getByRole("button", { name: /^Settings$/i }).click();
+  await page.getByRole("tab", { name: /^Server$/i }).click();
   await expect(page.getByLabel(/enable server heartbeat/i)).toBeChecked({ checked: !wasChecked });
-  await hb.setChecked(wasChecked);
+  await page.getByLabel(/enable server heartbeat/i).setChecked(wasChecked);
 });

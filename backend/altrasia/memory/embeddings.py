@@ -23,9 +23,14 @@ class EmbeddingService:
         self._pending: dict[str, asyncio.Task] = {}
         self._debounce_seconds = 2.0
 
+    def _effective(self) -> dict:
+        from altrasia.operator_settings import resolve_inference
+
+        return resolve_inference(self.svc.settings, self.svc.operator_settings.load())
+
     @property
     def enabled(self) -> bool:
-        return bool(self.svc.settings.embed_base_url)
+        return bool(self._effective().get("embeddingBaseUrl"))
 
     def schedule_embed(
         self,
@@ -80,11 +85,12 @@ class EmbeddingService:
         self.svc.store.conn.commit()
 
     async def _fetch_vector(self, text: str) -> list[float] | None:
-        base = self.svc.settings.embed_base_url
+        eff = self._effective()
+        base = eff.get("embeddingBaseUrl")
         if not base:
             return _hash_embed(text)
-        url = base.rstrip("/") + "/v1/embeddings"
-        payload = {"model": self.svc.settings.embed_model, "input": text[:8000]}
+        url = str(base).rstrip("/") + "/v1/embeddings"
+        payload = {"model": eff.get("embeddingModel"), "input": text[:8000]}
         try:
 
             async def work() -> list[float]:

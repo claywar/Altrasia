@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { api, type CharacterDraft } from "../api/client";
+import { SettingsBlock } from "./settings/SettingsBlock";
 
 type Props = {
   worldId: string;
   onCharacterAdded: () => void;
   variant?: "settings" | "observer";
+  embedded?: boolean;
 };
 
 export function CharacterDraftPanel({
   worldId,
   onCharacterAdded,
   variant = "settings",
+  embedded,
 }: Props) {
   const [brief, setBrief] = useState("");
   const [draft, setDraft] = useState<CharacterDraft | null>(null);
@@ -65,17 +68,11 @@ export function CharacterDraftPanel({
     }
   };
 
-  return (
-    <section
-      className={
-        variant === "observer" ? "observer-char-draft settings-section" : "settings-section"
-      }
-    >
-      <h3>Create character (AI draft)</h3>
-      <p className="settings-muted">
-        Describe a new cast member in natural language. Review the draft before adding to this
-        world.
-      </p>
+  const form = (
+    <div className="settings-fields">
+      {variant === "settings" && embedded && (
+        <p className="settings-block-foot">Also available in Observer Studio.</p>
+      )}
       <textarea
         className="char-draft-brief"
         rows={3}
@@ -84,16 +81,16 @@ export function CharacterDraftPanel({
         placeholder="e.g. A retired sea captain, gruff but fair…"
         disabled={busy}
       />
-      <div className="settings-actions">
+      <div className="settings-inline-actions">
         <button type="button" disabled={busy || !brief.trim()} onClick={generateDraft}>
           {busy && !draft ? "Drafting…" : "Generate draft"}
         </button>
         {draft && (
           <>
             <button type="button" disabled={busy} onClick={approve}>
-              Approve & add to world
+              Approve & add
             </button>
-            <button type="button" disabled={busy} onClick={discard}>
+            <button type="button" className="people-secondary" disabled={busy} onClick={discard}>
               Discard
             </button>
           </>
@@ -102,8 +99,8 @@ export function CharacterDraftPanel({
       {error && <p className="settings-error">{error}</p>}
       {draft?.definitionJson && (
         <div className="char-draft-preview">
-          <label className="settings-row">
-            Display name
+          <label className="settings-field">
+            <span className="settings-field-label">Display name</span>
             <input
               type="text"
               value={displayName}
@@ -119,6 +116,40 @@ export function CharacterDraftPanel({
           </p>
         </div>
       )}
+    </div>
+  );
+
+  if (variant === "observer") {
+    return (
+      <section className="observer-char-draft settings-section">
+        <h3>Create character (AI draft)</h3>
+        <p className="settings-muted">
+          Describe a new cast member in natural language. Review the draft before adding.
+        </p>
+        {form}
+      </section>
+    );
+  }
+
+  if (embedded) {
+    return (
+      <SettingsBlock
+        title="Create character"
+        description="Describe a new cast member; review the AI draft before adding."
+      >
+        {form}
+      </SettingsBlock>
+    );
+  }
+
+  return (
+    <section className="settings-section">
+      <h3>Create character (AI draft)</h3>
+      <p className="settings-muted">
+        Describe a new cast member in natural language. Review the draft before adding to this
+        world.
+      </p>
+      {form}
     </section>
   );
 }

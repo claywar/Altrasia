@@ -119,9 +119,17 @@ class HeartbeatPatch(BaseModel):
     intervalSeconds: int | None = None
 
 
+class InferencePatch(BaseModel):
+    primaryBaseUrl: str | None = None
+    primaryModel: str | None = None
+    embeddingBaseUrl: str | None = None
+    embeddingModel: str | None = None
+
+
 class OperatorSettingsPatch(BaseModel):
     heartbeat: HeartbeatPatch | None = None
     enableServerPlugins: bool | None = None
+    inference: InferencePatch | None = None
 
 
 class ExitStateBody(BaseModel):
@@ -1412,7 +1420,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/v1/operator/settings", dependencies=[Depends(verify_auth)])
     def get_operator_settings(svc: AppServices = Depends(get_services)) -> dict:
-        return svc.operator_settings.load().to_api()
+        return svc.operator_settings.load().to_api(svc.settings)
 
     @app.patch("/api/v1/operator/settings", dependencies=[Depends(verify_auth)])
     def patch_operator_settings(
@@ -1428,7 +1436,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             updates["heartbeat"] = hb
         if body.enableServerPlugins is not None:
             updates["enableServerPlugins"] = body.enableServerPlugins
-        return svc.operator_settings.patch(updates).to_api()
+        if body.inference is not None:
+            inf: dict[str, Any] = {}
+            if body.inference.primaryBaseUrl is not None:
+                inf["primaryBaseUrl"] = body.inference.primaryBaseUrl
+            if body.inference.primaryModel is not None:
+                inf["primaryModel"] = body.inference.primaryModel
+            if body.inference.embeddingBaseUrl is not None:
+                inf["embeddingBaseUrl"] = body.inference.embeddingBaseUrl
+            if body.inference.embeddingModel is not None:
+                inf["embeddingModel"] = body.inference.embeddingModel
+            updates["inference"] = inf
+        patched = svc.operator_settings.patch(updates)
+        svc.apply_inference_config()
+        return patched.to_api(svc.settings)
+
+    @app.get("/api/v1/operator/inference/models", dependencies=[Depends(verify_auth)])
+    async def list_inference_models(
+        target: str,
+        baseUrl: str | None = None,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.inference.model_catalog import list_openai_models
+        from altrasia.operator_settings import resolve_inference
+
+        if target not in ("primary", "embedding"):
+            raise HTTPException(400, "target must be primary or embedding")
+        eff = resolve_inference(svc.settings, svc.operator_settings.load())
+        url = (baseUrl or "").strip() or (
+            eff["primaryBaseUrl"] if target == "primary" else eff["embeddingBaseUrl"]
+        )
+        result = await list_openai_models(url)
+        return {"target": target, "baseUrl": url, **result}
 
     @app.post(
         "/api/v1/worlds/{world_id}/characters/{character_id}/portrait/generate",
@@ -1508,7 +1547,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/v1/health/llm")
     def health_llm(svc: AppServices = Depends(get_services)) -> dict:
-        return {"mock": svc.settings.mock_llm, "baseUrl": svc.settings.llm_base_url}
+        from altrasia.operator_settings import resolve_inference
+
+        eff = resolve_inference(svc.settings, svc.operator_settings.load())
+        return {
+            "mock": eff["mockLlm"],
+            "baseUrl": eff["primaryBaseUrl"],
+            "model": eff["primaryModel"],
+            "embeddingBaseUrl": eff["embeddingBaseUrl"],
+            "embeddingModel": eff["embeddingModel"],
+        }
 
     @app.websocket("/api/v1/worlds/{world_id}/events")
     async def world_events(websocket: WebSocket, world_id: str) -> None:

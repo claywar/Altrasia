@@ -1,26 +1,24 @@
 import { useState } from "react";
 import { api, type Scene } from "../api/client";
+import { SettingsBlock } from "./settings/SettingsBlock";
 
 type Props = {
   worldId: string;
   scenes: Scene[];
   activeSceneId: string;
+  embedded?: boolean;
 };
 
-export function BriefingPanel({ worldId, scenes, activeSceneId }: Props) {
+export function BriefingPanel({ worldId, scenes, activeSceneId, embedded }: Props) {
   const [sceneId, setSceneId] = useState(activeSceneId);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  return (
-    <section className="settings-section">
-      <h3>Briefing board</h3>
-      <p className="settings-muted">
-        Post shared facts at a scene (fixture + world pool mirror).
-      </p>
-      <label className="settings-row">
-        Scene
+  const form = (
+    <div className="settings-fields">
+      <label className="settings-field">
+        <span className="settings-field-label">Scene</span>
         <select value={sceneId} onChange={(e) => setSceneId(e.target.value)}>
           {scenes.map((s) => (
             <option key={s.sceneId} value={s.sceneId}>
@@ -29,13 +27,16 @@ export function BriefingPanel({ worldId, scenes, activeSceneId }: Props) {
           ))}
         </select>
       </label>
-      <textarea
-        className="char-draft-brief"
-        rows={3}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Facts visible on the briefing board at this location…"
-      />
+      <label className="settings-field">
+        <span className="settings-field-label">Briefing text</span>
+        <textarea
+          className="char-draft-brief"
+          rows={3}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Facts visible on the briefing board at this location…"
+        />
+      </label>
       <button
         type="button"
         disabled={busy || !text.trim()}
@@ -55,7 +56,26 @@ export function BriefingPanel({ worldId, scenes, activeSceneId }: Props) {
       >
         Post briefing
       </button>
-      {msg && <p className="settings-muted">{msg}</p>}
+      {msg && <p className="settings-block-foot">{msg}</p>}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <SettingsBlock
+        title="Briefing board"
+        description="Post shared facts at a scene (fixture + world pool mirror)."
+      >
+        {form}
+      </SettingsBlock>
+    );
+  }
+
+  return (
+    <section className="settings-section">
+      <h3>Briefing board</h3>
+      <p className="settings-muted">Post shared facts at a scene (fixture + world pool mirror).</p>
+      {form}
     </section>
   );
 }

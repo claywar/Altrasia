@@ -105,10 +105,43 @@ export type QueueSnapshot = {
   };
 };
 
+export type InferenceSettings = {
+  primaryBaseUrl: string;
+  primaryModel: string;
+  embeddingBaseUrl: string;
+  embeddingModel: string;
+};
+
+export type InferenceEffective = {
+  primaryBaseUrl: string | null;
+  primaryModel: string;
+  embeddingBaseUrl: string | null;
+  embeddingModel: string;
+  mockLlm: boolean;
+};
+
+export type InferenceModelList = {
+  target: string;
+  baseUrl: string | null;
+  ok: boolean;
+  models: Array<{ id: string }>;
+  error: string | null;
+  routerMode: boolean | null;
+};
+
 export type OperatorSettings = {
   heartbeat: { enabled: boolean; intervalSeconds: number };
   enableServerPlugins?: boolean;
   lastHeartbeatAt: string | null;
+  inference: InferenceSettings;
+  inferenceEffective?: InferenceEffective;
+  envDefaults?: {
+    primaryBaseUrl: string | null;
+    primaryModel: string;
+    embeddingBaseUrl: string | null;
+    embeddingModel: string;
+    mockLlm: boolean;
+  };
 };
 
 export type CharacterDefinition = {
@@ -518,11 +551,17 @@ export const api = {
   patchOperatorSettings: (body: {
     heartbeat?: { enabled?: boolean; intervalSeconds?: number };
     enableServerPlugins?: boolean;
+    inference?: Partial<InferenceSettings>;
   }) =>
     request<OperatorSettings>("/operator/settings", {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  listInferenceModels: (target: "primary" | "embedding", baseUrl?: string) => {
+    const q = new URLSearchParams({ target });
+    if (baseUrl?.trim()) q.set("baseUrl", baseUrl.trim());
+    return request<InferenceModelList>(`/operator/inference/models?${q.toString()}`);
+  },
   pauseWorld: (worldId: string) =>
     request(`/worlds/${worldId}/pause`, { method: "POST" }),
   resumeWorld: (worldId: string) =>
