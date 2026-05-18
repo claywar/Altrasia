@@ -9,9 +9,9 @@ type Props = {
 
 export function SettingsBlock({ title, description, compact, children }: Props) {
   return (
-    <section className={`settings-block${compact ? " settings-block-compact" : ""}`}>
-      <h4 className="settings-block-title">{title}</h4>
-      {description && <p className="settings-block-desc">{description}</p>}
+    <section className={`settings-block ui-form-section${compact ? " settings-block-compact" : ""}`}>
+      <h4 className="settings-block-title ui-form-section__title">{title}</h4>
+      {description && <p className="settings-block-desc ui-form-section__desc">{description}</p>}
       {children}
     </section>
   );

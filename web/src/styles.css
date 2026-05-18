@@ -1,58 +1,4 @@
-:root {
-  --bg: hsl(220, 15%, 9%);
-  --surface-1: hsl(220, 14%, 12%);
-  --surface-2: hsl(220, 13%, 15%);
-  --surface-3: hsl(220, 12%, 18%);
-  --border: hsl(220, 10%, 22%);
-  --fg: hsl(210, 20%, 92%);
-  --muted: hsl(215, 12%, 58%);
-  --accent: hsl(235, 55%, 58%);
-  --scope-public: hsl(210, 20%, 85%);
-  --scope-whisper: hsl(270, 60%, 78%);
-  --scope-dm: hsl(38, 90%, 72%);
-  --rail-w: 260px;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  color: var(--fg);
-  background: var(--bg);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-.app-shell {
-  display: grid;
-  grid-template-rows: 48px 1fr;
-  height: 100vh;
-}
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 0 16px;
-  background: var(--surface-1);
-  border-bottom: 1px solid var(--border);
-}
-
-.top-bar h1 {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0;
-  letter-spacing: 0.02em;
-}
+/* Feature-specific styles — tokens in design-system/tokens.css */
 
 .queue-strip-panel {
   display: flex;
@@ -672,10 +618,10 @@ select {
 }
 
 .settings-overlay {
+  z-index: var(--z-settings) !important;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: 120;
+  background: var(--overlay-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1433,17 +1379,47 @@ select {
   background: rgba(0, 0, 0, 0.65);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 1rem;
+  padding: 5vh 5vw;
+}
+
+.map-overlay.map-canvas--site {
+  padding: 4vh 4vw;
 }
 
 .map-overlay-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  width: min(520px, 100%);
-  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 0.5rem;
+  color: var(--fg);
+}
+
+.map-overlay-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.map-mode-tabs {
+  display: flex;
+  gap: 0.35rem;
+  font-size: 12px;
+}
+
+.map-mode-tabs__active {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.map-mode-tabs__disabled {
+  color: var(--muted);
+  opacity: 0.6;
 }
 
 .map-overlay-body {
@@ -1453,6 +1429,147 @@ select {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.5rem;
+}
+
+.map-canvas-body--site {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  height: min(75vh, 720px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 1fr;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.site-map-viewport {
+  overflow: hidden;
+  cursor: grab;
+  min-height: 280px;
+  border-radius: 6px;
+  background: var(--surface-3);
+}
+
+.site-map-viewport:active {
+  cursor: grabbing;
+}
+
+.site-map-transform {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+}
+
+.site-map-main.minimap svg {
+  height: 100%;
+  min-height: 280px;
+}
+
+.map-pip {
+  width: 140px;
+  align-self: end;
+}
+
+.map-pip-inner.minimap svg {
+  height: 120px;
+}
+
+.map-node-label {
+  fill: var(--fg);
+  pointer-events: none;
+  font-weight: 500;
+}
+
+.map-zone-label,
+.map-structure-label {
+  fill: var(--muted);
+  pointer-events: none;
+}
+
+.map-zone-band {
+  fill: var(--surface-3);
+  opacity: 0.5;
+}
+
+.map-structure-title-bg {
+  fill: var(--map-structure-fill, rgba(120, 130, 150, 0.35));
+}
+
+.map-edge-badge rect {
+  fill: var(--surface-2);
+  stroke: var(--border);
+  stroke-width: 0.15;
+}
+
+.map-edge-badge text {
+  fill: var(--muted);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.map-edge--hi .map-edge-badge rect {
+  stroke: var(--active-scene);
+}
+
+.map-door-glyph {
+  fill: var(--muted);
+  pointer-events: none;
+}
+
+.minimap--pannable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.minimap--pannable:active {
+  cursor: grabbing;
+}
+
+.map-compass__n {
+  fill: var(--muted);
+  font-weight: 600;
+}
+
+.map-draft-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.map-draft-tabs button[aria-selected="true"] {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.map-draft-json {
+  width: 100%;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  margin: 0.5rem 0;
+}
+
+.map-draft-preview-map.minimap svg {
+  height: 180px;
+}
+
+.map-draft-repair {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.map-draft-repair input {
+  flex: 1;
+}
+
+.map-draft-cascade {
+  font-size: 13px;
+  margin: 0.5rem 0;
 }
 
 .map-overlay-body .minimap {

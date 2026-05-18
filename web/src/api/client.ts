@@ -238,6 +238,8 @@ export type SpatialGraph = {
     mapShape?: string;
     structureId?: string;
     levelIndex?: number;
+    mapZone?: string;
+    mapSize?: { w?: number; h?: number };
     exitAnchor?: string;
   }>;
   edges: Array<{
@@ -245,16 +247,28 @@ export type SpatialGraph = {
     sourceSceneId: string;
     targetSceneId: string;
     label: string;
+    kind?: string;
     exitAnchor?: string;
     travelSteps?: number;
+    direction?: string;
+    doorState?: string;
+    crossesStructure?: boolean;
   }>;
   structures?: Array<{
     structureId: string;
     displayName: string;
     kind?: string;
     containsActiveScene?: boolean;
+    boundary?: {
+      shape?: string;
+      vertices?: Array<{ x: number; y: number }>;
+      x?: number;
+      y?: number;
+      w?: number;
+      h?: number;
+    } | null;
   }>;
-  layout?: { coordinateSpace?: string; algorithm?: string };
+  layout?: { coordinateSpace?: string; algorithm?: string; architectureStyle?: string };
 };
 
 export const api = {
@@ -329,6 +343,16 @@ export const api = {
       `/worlds/${worldId}/layout-drafts/${draftId}/commit`,
       { method: "POST" }
     ),
+  patchLayoutDraft: (worldId: string, draftId: string, proposed: Record<string, unknown>) =>
+    request<LayoutDraft>(`/worlds/${worldId}/layout-drafts/${draftId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ proposed }),
+    }),
+  repairLayoutDraft: (worldId: string, draftId: string, feedback: string) =>
+    request<LayoutDraft>(`/worlds/${worldId}/layout-drafts/${draftId}/repair`, {
+      method: "POST",
+      body: JSON.stringify({ feedback }),
+    }),
   getDebate: (worldId: string, sceneId: string) =>
     request<{ activity: DebateActivity | null }>(`/worlds/${worldId}/scenes/${sceneId}/debate`),
   startDebate: (

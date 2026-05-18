@@ -36,7 +36,13 @@ from altrasia.approvals import list_approvals, resolve_approval
 from altrasia.briefing import set_briefing_fixture
 from altrasia.commons import list_commons, set_commons
 from altrasia.world_config import get_world_config, merge_world_policy
-from altrasia.map_authoring import commit_layout_draft, create_layout_draft, get_layout_draft
+from altrasia.map_authoring import (
+    commit_layout_draft,
+    create_layout_draft,
+    get_layout_draft,
+    repair_layout_draft,
+    update_draft_proposed,
+)
 from altrasia.character_authoring import (
     approve_character_draft,
     create_character_draft,
@@ -1274,6 +1280,50 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(400, str(exc)) from exc
         _emit(svc, world_id, "scene.changed", {"layoutDraftId": draft_id})
         return result
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/layout-drafts/{draft_id}/repair",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_layout_draft_repair(
+        world_id: str,
+        draft_id: str,
+        body: dict,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        row = get_layout_draft(svc, draft_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "draft not found")
+        feedback = (body.get("feedback") or body.get("brief") or "").strip()
+        if not feedback:
+            raise HTTPException(400, "feedback is required")
+        try:
+            return await repair_layout_draft(
+                svc, draft_id, feedback, mode=body.get("mode", "describe-change")
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.patch(
+        "/api/v1/worlds/{world_id}/layout-drafts/{draft_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def patch_layout_draft_route(
+        world_id: str,
+        draft_id: str,
+        body: dict,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        row = get_layout_draft(svc, draft_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "draft not found")
+        proposed = body.get("proposed")
+        if not isinstance(proposed, dict):
+            raise HTTPException(400, "proposed object required")
+        try:
+            return update_draft_proposed(svc, draft_id, proposed)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.get(
         "/api/v1/worlds/{world_id}/commissions",

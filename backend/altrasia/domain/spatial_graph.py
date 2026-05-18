@@ -44,19 +44,30 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
             if hints.get(key) is not None or scene.get(key) is not None:
                 node[key] = hints.get(key) if hints.get(key) is not None else scene.get(key)
         nodes.append(node)
+        src_struct = hints.get("structureId") or scene.get("structureId")
         for ex in json.loads(scene.get("exitsJson") or "[]"):
-            edges.append(
-                {
-                    "exitId": ex.get("exitId"),
-                    "sourceSceneId": scene["sceneId"],
-                    "targetSceneId": ex.get("targetSceneId"),
-                    "label": ex.get("label"),
-                    "kind": ex.get("kind", "door"),
-                    "travelSteps": ex.get("travelSteps", 1),
-                    "direction": ex.get("direction"),
-                    "doorState": ex.get("doorState"),
-                }
+            tgt = ex.get("targetSceneId")
+            tgt_scene = next((s for s in scenes if s["sceneId"] == tgt), None)
+            tgt_hints = _layout_hints(tgt_scene) if tgt_scene else {}
+            tgt_struct = tgt_hints.get("structureId") or (
+                tgt_scene.get("structureId") if tgt_scene else None
             )
+            crosses = bool(
+                src_struct and tgt_struct and src_struct != tgt_struct
+            ) or bool(src_struct and not tgt_struct)
+            edge: dict[str, Any] = {
+                "exitId": ex.get("exitId"),
+                "sourceSceneId": scene["sceneId"],
+                "targetSceneId": tgt,
+                "label": ex.get("label"),
+                "kind": ex.get("kind", "door"),
+                "travelSteps": ex.get("travelSteps", 1),
+                "direction": ex.get("direction"),
+                "doorState": ex.get("doorState"),
+                "exitAnchor": ex.get("exitAnchor"),
+                "crossesStructure": ex.get("crossesStructure", crosses),
+            }
+            edges.append(edge)
     struct_out = []
     for s in structures:
         struct_out.append(

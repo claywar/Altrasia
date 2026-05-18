@@ -1,4 +1,5 @@
 import { api } from "../api/client";
+import { RailSection } from "../ui/RailSection";
 
 export type RosterPerson = {
   characterId: string;
@@ -90,8 +91,7 @@ export function PeopleRail({
   };
 
   return (
-    <div className="rail-section">
-      <h3>People</h3>
+    <RailSection title="People" testId="people-rail">
       <ul className="rail-list">
         {roster.atLocation.map((p) => (
           <li key={p.characterId} className="people-row">
@@ -184,6 +184,6 @@ export function PeopleRail({
             <li style={{ color: "var(--muted)" }}>No cast</li>
           )}
       </ul>
-    </div>
+    </RailSection>
   );
 }

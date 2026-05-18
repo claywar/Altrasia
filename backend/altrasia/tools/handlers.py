@@ -182,6 +182,49 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
         services.store.update_scene(ctx.scene_id, fixturesJson=json.dumps(fixtures))
         return {"ok": True, "fixtureKey": key}
 
+    async def map_layout_generate(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.map_authoring import create_layout_draft
+
+        world_id = params.get("worldId") or ctx.world_id
+        scope = params.get("scope", "mini")
+        brief = params.get("brief") or params.get("description") or ""
+        if not brief.strip():
+            return {"ok": False, "error": "brief or description required"}
+        try:
+            draft = await create_layout_draft(services, world_id, brief.strip(), scope=scope)
+            return {
+                "ok": True,
+                "layoutDraftId": draft["layoutDraftId"],
+                "status": draft["status"],
+                "scope": draft["scope"],
+                "message": "Review and commit via MapDraft panel",
+            }
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def map_layout_patch(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.map_authoring import create_layout_draft, patch_layout_safe
+
+        world_id = params.get("worldId") or ctx.world_id
+        patch = params.get("patch") or {
+            k: v for k, v in params.items() if k not in ("worldId", "brief")
+        }
+        nodes = patch.get("nodes") or []
+        if len(nodes) == 1 and not patch.get("structures") and not patch.get("edges"):
+            result = patch_layout_safe(services, world_id, patch)
+            if result.get("autoApplied"):
+                return {"ok": True, **result}
+        try:
+            brief = params.get("brief") or f"Apply patch: {json.dumps(patch)}"
+            draft = await create_layout_draft(services, world_id, brief, scope="mini")
+            return {
+                "ok": True,
+                "layoutDraftId": draft["layoutDraftId"],
+                "status": "draft_opened",
+            }
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
     registry.register(
         ToolDef(
             name="memory_search",
@@ -331,5 +374,39 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["fixtureKey", "fixture"],
             },
             handler=scene_update_fixture,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="map_layout_generate",
+            description="Generate map layout draft (mini/site/stack). Requires operator commit.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "worldId": {"type": "string"},
+                    "scope": {"type": "string", "enum": ["mini", "site", "stack", "floor"]},
+                    "brief": {"type": "string"},
+                    "description": {"type": "string"},
+                    "referenceDiagramId": {"type": "string"},
+                },
+                "required": ["brief"],
+            },
+            handler=map_layout_generate,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="map_layout_patch",
+            description="Patch map layout (safe single-node moves auto-apply; else opens draft).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "worldId": {"type": "string"},
+                    "brief": {"type": "string"},
+                    "patch": {"type": "object"},
+                    "nodes": {"type": "array"},
+                },
+            },
+            handler=map_layout_patch,
         )
     )

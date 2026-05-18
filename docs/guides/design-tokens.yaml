@@ -57,6 +57,9 @@ message-state:
     markdown-pass: false
 
 typography:
+  font-ui: '"IBM Plex Sans", "Segoe UI", system-ui, sans-serif'
+  font-display: '"Instrument Serif", Georgia, serif'
+  font-mono: 'ui-monospace, "Cascadia Code", monospace'
   transcript-body: { size: 16, line-height: 1.6 }
   compose: { size: 16 }
   rail-label: { size: 12 }
@@ -73,6 +76,22 @@ layout:
   center-min-width: 640
   center-target-width: 768
   drawer-breakpoint: 1280
+
+elevation:
+  shadow-panel: "0 4px 24px hsl(220 30% 4% / 0.45)"
+  shadow-stage-inset: "inset 0 1px 0 hsl(220 20% 100% / 0.04)"
+  overlay-scrim: "hsl(220 20% 6% / 0.72)"
+
+radius:
+  sm: 4
+  md: 8
+  lg: 12
+
+z-index:
+  drawer: 40
+  overlay: 100
+  map: 110
+  settings: 120
 
 motion:
   overlay-duration-ms: 175

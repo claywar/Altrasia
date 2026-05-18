@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type EvidenceRecord } from "../api/client";
+import { ModalShell } from "../ui/ModalShell";
+import { FormSection } from "../ui/FormSection";
 
 type Props = {
   worldId: string;
@@ -33,67 +35,66 @@ export function MemoryInspector({ worldId, characterId, displayName, onClose }: 
   const evidenceFor = (key: string) => evidence.filter((e) => e.locusKey === key);
 
   return (
-    <div className="memory-inspector" role="dialog" aria-label={`Memory — ${displayName}`}>
-      <header className="memory-inspector-header">
-        <h2>Memory — {displayName}</h2>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </header>
-      {loading ? (
-        <p className="memory-muted">Loading…</p>
-      ) : (
-        <div className="memory-inspector-body">
-          <section>
-            <h3>Mind loci</h3>
-            {mind.length === 0 && <p className="memory-muted">No mind loci.</p>}
-            <ul className="memory-list">
-              {mind.map((row) => {
-                const ev = evidenceFor(row.locusKey);
-                return (
-                  <li key={row.locusKey}>
-                    <strong>{row.locusKey}</strong>
-                    {ev.length > 0 && (
-                      <button
-                        type="button"
-                        className="memory-evidence-toggle"
-                        onClick={() =>
-                          setExpanded(expanded === row.locusKey ? null : row.locusKey)
-                        }
-                      >
-                        {ev.length} source{ev.length === 1 ? "" : "s"}
-                      </button>
-                    )}
-                    <p>{row.value}</p>
-                    {expanded === row.locusKey && ev.length > 0 && (
-                      <ul className="memory-evidence-list">
-                        {ev.map((e) => (
-                          <li key={e.evidenceId}>
-                            <span className="memory-evidence-kind">{e.sourceKind}</span>
-                            <span className="memory-muted"> {e.sourceRef}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+    <ModalShell
+      title={`Memory — ${displayName}`}
+      side="right"
+      onClose={onClose}
+      testId="memory-inspector"
+    >
+      <div className="memory-inspector-body">
+        {loading ? (
+          <p className="memory-muted">Loading…</p>
+        ) : (
+          <>
+            <FormSection title="Mind loci">
+              {mind.length === 0 && <p className="memory-muted">No mind loci.</p>}
+              <ul className="memory-list">
+                {mind.map((row) => {
+                  const ev = evidenceFor(row.locusKey);
+                  return (
+                    <li key={row.locusKey}>
+                      <strong>{row.locusKey}</strong>
+                      {ev.length > 0 && (
+                        <button
+                          type="button"
+                          className="memory-evidence-toggle"
+                          onClick={() =>
+                            setExpanded(expanded === row.locusKey ? null : row.locusKey)
+                          }
+                        >
+                          {ev.length} source{ev.length === 1 ? "" : "s"}
+                        </button>
+                      )}
+                      <p>{row.value}</p>
+                      {expanded === row.locusKey && ev.length > 0 && (
+                        <ul className="memory-evidence-list">
+                          {ev.map((e) => (
+                            <li key={e.evidenceId}>
+                              <span className="memory-evidence-kind">{e.sourceKind}</span>
+                              <span className="memory-muted"> {e.sourceRef}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </FormSection>
+            <FormSection title="Diary (witnessed)">
+              {diary.length === 0 && <p className="memory-muted">No diary segments.</p>}
+              <ul className="memory-list">
+                {diary.slice(-12).map((row, i) => (
+                  <li key={`${row.createdAt}-${i}`}>
+                    <p>{row.text}</p>
+                    <time className="memory-muted">{row.createdAt}</time>
                   </li>
-                );
-              })}
-            </ul>
-          </section>
-          <section>
-            <h3>Diary (witnessed)</h3>
-            {diary.length === 0 && <p className="memory-muted">No diary segments.</p>}
-            <ul className="memory-list">
-              {diary.slice(-12).map((row, i) => (
-                <li key={`${row.createdAt}-${i}`}>
-                  <p>{row.text}</p>
-                  <time className="memory-muted">{row.createdAt}</time>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      )}
-    </div>
+                ))}
+              </ul>
+            </FormSection>
+          </>
+        )}
+      </div>
+    </ModalShell>
   );
 }

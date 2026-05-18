@@ -1,4 +1,5 @@
 import { api } from "../api/client";
+import { RailSection } from "../ui/RailSection";
 
 export type Signal = {
   signalId: string;
@@ -30,10 +31,9 @@ export function SignalsRail({
   const pending = signals.filter((s) => s.status !== "dismissed");
 
   return (
-    <div className="rail-section">
-      <h3>Signals</h3>
+    <RailSection title="Signals" testId="signals-rail">
       <ul className="rail-list signals-list">
-        {pending.length === 0 && <li style={{ color: "var(--muted)" }}>None</li>}
+        {pending.length === 0 && <li className="signals-empty">The house is quiet</li>}
         {pending.map((s) => {
           const forHere = s.targetSceneId === activeSceneId;
           const answerCast =
@@ -75,6 +75,6 @@ export function SignalsRail({
           );
         })}
       </ul>
-    </div>
+    </RailSection>
   );
 }

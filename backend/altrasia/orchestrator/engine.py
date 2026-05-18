@@ -96,6 +96,7 @@ class Orchestrator:
             t["function"]["name"]
             for t in all_tools
             if not t["function"]["name"].startswith("scene_")
+            and not t["function"]["name"].startswith("map_")
         }
         return self._filter_tools(all_tools, cast_tools)
 

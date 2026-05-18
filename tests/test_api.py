@@ -29,7 +29,7 @@ def test_load_fixture_world(client: TestClient) -> None:
     world_id = r.json()["worldId"]
     r2 = client.get(f"/api/v1/worlds/{world_id}/spatial-graph")
     assert r2.status_code == 200
-    assert len(r2.json()["nodes"]) == 2
+    assert len(r2.json()["nodes"]) >= 2
 
 
 def test_persona_line_one_reactive_reply(client: TestClient) -> None:

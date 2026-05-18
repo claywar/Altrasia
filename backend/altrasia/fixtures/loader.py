@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import json
 import uuid
 from datetime import datetime, timezone
@@ -20,64 +19,86 @@ def _row_exists(store: SqlitePersistence, table: str, column: str, value: str) -
     return cur.fetchone() is not None
 
 
-def _fixture_needs_id_remap(store: SqlitePersistence, data: dict[str, Any]) -> bool:
-    """Stable fixture ids collide across reloads on the persistent operator DB."""
-    for st in data.get("structures", []):
-        if _row_exists(store, "Structure", "structureId", st["structureId"]):
-            return True
-    for sc in data.get("scenes", []):
-        if _row_exists(store, "Scene", "sceneId", sc["sceneId"]):
-            return True
-    return False
-
-
-def _remap_id(old_id: str, prefix: str) -> str:
-    return f"{prefix}-{old_id}"
-
-
-def _remap_fixture_data(data: dict[str, Any], world_id: str) -> dict[str, Any]:
-    """Scope fixture entity ids to this world so demo can be loaded more than once."""
-    prefix = world_id.split("-", 1)[0]
-    out = copy.deepcopy(data)
-    id_map: dict[str, str] = {}
-
-    def map_id(old: str | None) -> str | None:
-        if not old:
-            return old
-        if old not in id_map:
-            id_map[old] = _remap_id(old, prefix)
-        return id_map[old]
-
-    for st in out.get("structures", []):
-        st["structureId"] = map_id(st["structureId"])
-    for ch in out.get("characters", []):
-        ch["characterId"] = map_id(ch["characterId"])
-    for sc in out.get("scenes", []):
-        sc["sceneId"] = map_id(sc["sceneId"])
-        if sc.get("structureId"):
-            sc["structureId"] = map_id(sc["structureId"])
-        sc["present"] = [map_id(cid) for cid in sc.get("present", [])]
-        for ex in sc.get("exits", []):
-            if ex.get("targetSceneId"):
-                ex["targetSceneId"] = map_id(ex["targetSceneId"])
-    out["activeSceneId"] = map_id(out["activeSceneId"])
-    if out.get("personaSceneId"):
-        out["personaSceneId"] = map_id(out["personaSceneId"])
-    return out
-
-
 def _delete_world(store: SqlitePersistence, world_id: str) -> None:
     store.conn.execute("DELETE FROM World WHERE worldId = ?", (world_id,))
     store.conn.commit()
 
 
+def _purge_fixture_entity_loci(store: SqlitePersistence, data: dict[str, Any]) -> None:
+    for sc in data.get("scenes", []):
+        store.conn.execute(
+            "DELETE FROM Locus WHERE pool = 'world' AND ownerId = ?",
+            (sc["sceneId"],),
+        )
+    for ch in data.get("characters", []):
+        store.conn.execute(
+            "DELETE FROM Locus WHERE pool = 'mind' AND ownerId = ?",
+            (ch["characterId"],),
+        )
+    store.conn.commit()
+
+
+def purge_fixture_installation(
+    store: SqlitePersistence, fixture_id: str, data: dict[str, Any]
+) -> None:
+    """Drop prior loads of this fixture so each load starts from a clean slate."""
+    to_delete: set[str] = set()
+    stable_wid = data.get("worldId")
+    if stable_wid:
+        to_delete.add(stable_wid)
+    fixture_demo = (data.get("config") or {}).get("demoMapShowcase")
+    for w in store.list_worlds():
+        cfg = json.loads(w.get("configJson") or "{}")
+        if cfg.get("loadedFixtureId") == fixture_id:
+            to_delete.add(w["worldId"])
+        elif fixture_demo and cfg.get("demoMapShowcase"):
+            to_delete.add(w["worldId"])
+    for wid in to_delete:
+        if store.get_world(wid):
+            _delete_world(store, wid)
+    _purge_fixture_entity_loci(store, data)
+
+
+def _upsert_fixture_character(
+    store: SqlitePersistence, ch: dict[str, Any], now: str
+) -> None:
+    cid = ch["characterId"]
+    row = {
+        "characterId": cid,
+        "displayName": ch["displayName"],
+        "definitionJson": json.dumps(ch.get("definition", {})),
+        "modelProfile": ch.get("modelProfile", "qwen3.6-35b-a3b"),
+        "speechWeight": ch.get("speechWeight", 0.5),
+        "createdAt": now,
+    }
+    if _row_exists(store, "Character", "characterId", cid):
+        store.conn.execute(
+            """UPDATE Character SET displayName = ?, definitionJson = ?,
+               modelProfile = ?, speechWeight = ? WHERE characterId = ?""",
+            (
+                row["displayName"],
+                row["definitionJson"],
+                row["modelProfile"],
+                row["speechWeight"],
+                cid,
+            ),
+        )
+        store.conn.commit()
+    else:
+        store.insert_character(row)
+
+
 def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]:
     raw = json.loads(fixture_path.read_text(encoding="utf-8"))
+    fixture_id = raw.get("fixtureId") or fixture_path.stem
+    purge_fixture_installation(store, fixture_id, raw)
+
     world_id = raw.get("worldId") or str(uuid.uuid4())
-    data = _remap_fixture_data(raw, world_id) if _fixture_needs_id_remap(store, raw) else raw
+    data = raw
     now = ISO()
     config = dict(data.get("config", {}))
     config.setdefault("layoutDesignMode", False)
+    config["loadedFixtureId"] = fixture_id
     active_scene_id = data["activeSceneId"]
     try:
         store.insert_world(
@@ -87,7 +108,9 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
                 "activeSceneId": active_scene_id,
                 "defaultModelProfile": data.get("defaultModelProfile", "qwen3.6-35b-a3b"),
                 "configJson": json.dumps(config),
-                "worldMapJson": None,
+                "worldMapJson": json.dumps(data["worldMap"])
+                if data.get("worldMap")
+                else None,
                 "eventSeq": 0,
                 "createdAt": now,
                 "updatedAt": now,
@@ -106,17 +129,7 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
             )
         for ch in data.get("characters", []):
             cid = ch["characterId"]
-            if not _row_exists(store, "Character", "characterId", cid):
-                store.insert_character(
-                    {
-                        "characterId": cid,
-                        "displayName": ch["displayName"],
-                        "definitionJson": json.dumps(ch.get("definition", {})),
-                        "modelProfile": ch.get("modelProfile", "qwen3.6-35b-a3b"),
-                        "speechWeight": ch.get("speechWeight", 0.5),
-                        "createdAt": now,
-                    }
-                )
+            _upsert_fixture_character(store, ch, now)
             store.add_world_member(world_id, cid, sceneRole=ch.get("sceneRole"))
             for loc in ch.get("mindLoci", []):
                 store.upsert_locus("mind", cid, loc["key"], loc["value"], now)

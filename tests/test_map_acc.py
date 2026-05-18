@@ -20,6 +20,13 @@ def test_spatial_graph_has_layout_fields(tmp_path: Path) -> None:
     graph = client.get(f"/api/v1/worlds/{w['worldId']}/spatial-graph").json()
     assert len(graph["nodes"]) >= 2
     assert graph["layout"]["coordinateSpace"] == "normalized-0-100"
+    edge = next(e for e in graph["edges"] if e.get("direction") == "N")
+    assert edge.get("travelSteps") == 1
+    assert edge.get("exitAnchor") == "N"
+    names = {s["displayName"] for s in graph["structures"]}
+    assert "Manor House" in names
+    assert "Round Keep" in names
+    assert len(graph["nodes"]) == 5
     fixtures_dir = Path(__file__).resolve().parent / "fixtures" / "map-layouts"
     if fixtures_dir.exists():
         for f in fixtures_dir.glob("*.json"):

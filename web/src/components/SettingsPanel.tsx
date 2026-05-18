@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type OperatorSettings, type Scene } from "../api/client";
+import { api, type OperatorSettings, type Scene, type SpatialGraph } from "../api/client";
 import { CharacterDraftPanel } from "./CharacterDraftPanel";
 import { SceneGeographyPanel } from "./SceneGeographyPanel";
 import { CastListPanel } from "./CastListPanel";
@@ -27,6 +27,7 @@ type Props = {
   onWorldImported: (world: { worldId: string; name: string; activeSceneId: string }) => void;
   onCastChanged?: () => void;
   scenes?: Scene[];
+  graph?: SpatialGraph | null;
   onScenesChanged?: () => void;
   activeSceneId?: string;
 };
@@ -38,6 +39,7 @@ export function SettingsPanel({
   onClose,
   onWorldImported,
   onCastChanged,
+  graph,
   scenes = [],
   onScenesChanged,
   activeSceneId = "",
@@ -90,6 +92,7 @@ export function SettingsPanel({
                 />
                 <MapDraftPanel
                   worldId={worldId}
+                  graph={graph}
                   onCommitted={() => onScenesChanged?.()}
                   embedded
                 />

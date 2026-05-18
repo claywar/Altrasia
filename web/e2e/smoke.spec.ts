@@ -12,5 +12,5 @@ test("compose public line", async ({ page }) => {
   await expect(page.getByPlaceholder(/speak as persona/i)).toBeVisible({ timeout: 15_000 });
   await page.getByPlaceholder(/speak as persona/i).fill("Hello from Playwright");
   await page.getByRole("button", { name: /send/i }).click();
-  await expect(page.locator(".bubble").first()).toBeVisible();
+  await expect(page.getByTestId("chronicle-entry").first()).toBeVisible();
 });

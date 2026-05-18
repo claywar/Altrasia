@@ -24,19 +24,24 @@ def test_migration_creates_world_table(store: SqlitePersistence) -> None:
 def test_load_demo_fixture(store: SqlitePersistence) -> None:
     fixtures = Path(__file__).resolve().parent / "fixtures"
     result = load_fixture_by_id(store, fixtures, "demo-spatial-v1")
-    assert result["worldId"]
+    assert result["worldId"] == "demo-spatial-v1"
     scenes = store.list_scenes(result["worldId"])
-    assert len(scenes) == 2
+    assert len(scenes) == 5
+    structures = store.list_structures(result["worldId"])
+    assert len(structures) == 3
     world = store.get_world(result["worldId"])
     assert world["activeSceneId"] == "scene-hall"
+    assert world.get("worldMapJson")
 
 
 def test_load_demo_fixture_twice_on_same_db(store: SqlitePersistence) -> None:
-    """Persistent operator DB reload: stable fixture ids must not 500."""
+    """Reload replaces the prior demo world instead of accumulating copies."""
     fixtures = Path(__file__).resolve().parent / "fixtures"
     first = load_fixture_by_id(store, fixtures, "demo-spatial-v1")
+    store.update_world(first["worldId"], name="Mutated demo")
     second = load_fixture_by_id(store, fixtures, "demo-spatial-v1")
-    assert first["worldId"] != second["worldId"]
-    assert len(store.list_scenes(first["worldId"])) == 2
-    assert len(store.list_scenes(second["worldId"])) == 2
-    assert second["activeSceneId"].endswith("scene-hall")
+    assert first["worldId"] == second["worldId"] == "demo-spatial-v1"
+    assert second["activeSceneId"] == "scene-hall"
+    assert len(store.list_worlds()) == 1
+    assert store.get_world(second["worldId"])["name"] == "Altrasia Manor — Demo"
+    assert len(store.list_scenes(second["worldId"])) == 5
