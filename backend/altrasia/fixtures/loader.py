@@ -142,6 +142,9 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
                     "mapShape",
                     "mapSize",
                     "structureId",
+                    "levelIndex",
+                    "mapLevel",
+                    "levelLabel",
                 )
                 if k in sc
             }

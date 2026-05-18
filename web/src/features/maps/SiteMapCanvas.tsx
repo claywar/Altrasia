@@ -1,8 +1,18 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { SpatialGraph } from "../../api/client";
+import {
+  activeLevel,
+  activeStructureId,
+  levelLabelFor,
+  levelsForStructure,
+  personaOffSitePlan,
+  type MapViewMode,
+  prepareGraphForView,
+} from "./floorLevels";
+import { LevelStackView } from "./LevelStackView";
 import { MapRenderer } from "./MapRenderer";
 import { structureEnvelope } from "./layoutGeometry";
-import type { MapNode } from "./types";
+import type { MapGraph, MapNode } from "./types";
 
 type Props = {
   graph: SpatialGraph | null;
@@ -11,12 +21,37 @@ type Props = {
 };
 
 const VB = 100;
+const MODES: { id: MapViewMode; label: string }[] = [
+  { id: "site", label: "Site" },
+  { id: "structure", label: "Structure" },
+  { id: "floor", label: "Floor" },
+  { id: "stack", label: "Stack" },
+];
+
+function toMapGraph(graph: SpatialGraph): MapGraph {
+  return graph as MapGraph;
+}
 
 export function SiteMapCanvas({ graph, onClose, onEnhanceLayout }: Props) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [viewMode, setViewMode] = useState<MapViewMode>("site");
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const mg = graph ? toMapGraph(graph) : null;
+  const focusStructId = mg ? activeStructureId(mg) : undefined;
+  const focusLevel = selectedLevel ?? (mg ? activeLevel(mg) : 0);
+  const levelOptions = useMemo(
+    () => (mg && focusStructId ? levelsForStructure(mg.nodes, focusStructId) : []),
+    [mg, focusStructId]
+  );
+
+  const prepared = useMemo(() => {
+    if (!mg) return null;
+    return prepareGraphForView(mg, viewMode, { selectedLevel: focusLevel });
+  }, [mg, viewMode, focusLevel]);
 
   const fitWorld = useCallback(() => {
     setPan({ x: 0, y: 0 });
@@ -78,6 +113,16 @@ export function SiteMapCanvas({ graph, onClose, onEnhanceLayout }: Props) {
     h: VB / zoom,
   };
 
+  const displayGraph =
+    prepared && graph
+      ? ({
+          ...graph,
+          nodes: prepared.graph.nodes,
+          edges: prepared.graph.edges,
+          structures: prepared.graph.structures,
+        } as SpatialGraph)
+      : graph;
+
   return (
     <div
       className="map-overlay map-canvas map-canvas--site"
@@ -86,18 +131,38 @@ export function SiteMapCanvas({ graph, onClose, onEnhanceLayout }: Props) {
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
       <header className="map-overlay-header">
-        <h2>World map</h2>
+        <div className="map-overlay-title">
+          <h2>World map</h2>
+          {viewMode === "site" && (
+            <p className="map-view-hint">
+              {personaOffSitePlan(mg!)
+                ? "Site plan shows ground floor. You are on another level — see badge or Stack view."
+                : "Site plan — ground floor of each building."}
+            </p>
+          )}
+          {viewMode === "floor" && focusStructId && (
+            <p className="map-view-hint">
+              {levelLabelFor(mg!.nodes, focusStructId, focusLevel)}
+            </p>
+          )}
+          {viewMode === "stack" && (
+            <p className="map-view-hint">Vertical stack — use Floor for a single level.</p>
+          )}
+        </div>
         <nav className="map-mode-tabs" aria-label="Map view mode">
-          <span className="map-mode-tabs__active">Site</span>
-          <span className="map-mode-tabs__disabled" title="Coming soon">
-            Structure
-          </span>
-          <span className="map-mode-tabs__disabled" title="Coming soon">
-            Floor
-          </span>
-          <span className="map-mode-tabs__disabled" title="Coming soon">
-            Stack
-          </span>
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={
+                viewMode === m.id ? "map-mode-tabs__active" : "map-mode-tabs__btn"
+              }
+              aria-current={viewMode === m.id ? "page" : undefined}
+              onClick={() => setViewMode(m.id)}
+            >
+              {m.label}
+            </button>
+          ))}
         </nav>
         <div className="map-overlay-actions">
           <button type="button" onClick={fitWorld}>
@@ -117,41 +182,71 @@ export function SiteMapCanvas({ graph, onClose, onEnhanceLayout }: Props) {
         </div>
       </header>
       <div className="map-canvas-body map-canvas-body--site">
+        {levelOptions.length > 1 &&
+          (viewMode === "floor" || viewMode === "structure") &&
+          focusStructId && (
+          <aside className="map-level-selector" aria-label="Floor selector">
+            <h3>Floors</h3>
+            <ul>
+              {levelOptions.map((lvl) => (
+                <li key={lvl}>
+                  <button
+                    type="button"
+                    className={
+                      focusLevel === lvl ? "map-level-selector__active" : undefined
+                    }
+                    onClick={() => setSelectedLevel(lvl)}
+                  >
+                    {levelLabelFor(mg!.nodes, focusStructId, lvl)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
         <div
           ref={containerRef}
-          className="site-map-viewport"
-          onWheel={onWheel}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerLeave={onPointerUp}
+          className={`site-map-viewport${viewMode === "stack" ? " site-map-viewport--stack" : ""}`}
+          onWheel={viewMode === "stack" ? undefined : onWheel}
+          onPointerDown={viewMode === "stack" ? undefined : onPointerDown}
+          onPointerMove={viewMode === "stack" ? undefined : onPointerMove}
+          onPointerUp={viewMode === "stack" ? undefined : onPointerUp}
+          onPointerLeave={viewMode === "stack" ? undefined : onPointerUp}
         >
-          <div
-            className="site-map-transform"
-            style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: "center center",
-            }}
-          >
-            <MapRenderer
-              graph={graph}
-              showCompass
-              showSiteUnderlay
-              showScaleBar
-              className="site-map-main"
-              viewFit="full"
-            />
-          </div>
+          {viewMode === "stack" ? (
+            <LevelStackView graph={graph} structureId={focusStructId} />
+          ) : (
+            <div
+              className="site-map-transform"
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: "center center",
+              }}
+            >
+              <MapRenderer
+                graph={displayGraph}
+                offPlanActive={prepared?.offPlanActive}
+                showCompass
+                showSiteUnderlay
+                showScaleBar
+                className="site-map-main"
+                viewFit="full"
+              />
+            </div>
+          )}
         </div>
-        <aside className="map-pip" aria-label="Mini-map inset">
-          <MapRenderer
-            graph={graph}
-            viewportRect={viewportRect}
-            className="map-pip-inner"
-            viewFit="neighborhood"
-            showZones={false}
-          />
-        </aside>
+        {viewMode !== "stack" && (
+          <aside className="map-pip" aria-label="Mini-map inset">
+            <MapRenderer
+              graph={displayGraph}
+              offPlanActive={prepared?.offPlanActive}
+              viewportRect={viewportRect}
+              className="map-pip-inner"
+              viewFit="neighborhood"
+              showZones={false}
+            />
+          </aside>
+        )}
         {graph?.structures && graph.structures.length > 0 && (
           <aside className="map-canvas-structures">
             <h3>Structures</h3>

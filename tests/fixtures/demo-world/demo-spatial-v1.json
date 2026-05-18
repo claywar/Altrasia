@@ -26,12 +26,16 @@
       "displayName": "Manor House",
       "kind": "building",
       "boundary": {
-        "shape": "roundedRect",
-        "x": 30,
-        "y": 24,
-        "w": 36,
-        "h": 34,
-        "cornerRadius": 6
+        "shape": "polygon",
+        "cornerRadius": 4,
+        "vertices": [
+          { "x": 28, "y": 22 },
+          { "x": 66, "y": 22 },
+          { "x": 66, "y": 35 },
+          { "x": 58, "y": 35 },
+          { "x": 58, "y": 58 },
+          { "x": 28, "y": 58 }
+        ]
       }
     },
     {
@@ -103,6 +107,9 @@
       "locationName": "Hall",
       "locationDescription": "A wide hall with hearth, oak doors north to the kitchen, east to the keep gate, and south to the bailey path.",
       "structureId": "manor",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
       "mapZone": "Ground floor",
       "mapShape": "rect",
       "mapSize": { "w": 13, "h": 9 },
@@ -144,6 +151,24 @@
           "direction": "S",
           "exitAnchor": "S",
           "crossesStructure": true
+        },
+        {
+          "exitId": "hall-stairs-up",
+          "label": "Stairs to upper gallery",
+          "targetSceneId": "scene-upper-gallery",
+          "kind": "stairs",
+          "travelSteps": 1,
+          "direction": "U",
+          "exitAnchor": "E"
+        },
+        {
+          "exitId": "hall-ladder-down",
+          "label": "Ladder to cellar",
+          "targetSceneId": "scene-cellar",
+          "kind": "ladder",
+          "travelSteps": 1,
+          "direction": "D",
+          "exitAnchor": "W"
         }
       ],
       "worldLoci": {
@@ -155,6 +180,9 @@
       "locationName": "Kitchen",
       "locationDescription": "Stone counters, herb racks, and the smell of bread from the oven.",
       "structureId": "manor",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
       "mapZone": "Ground floor",
       "mapShape": "rect",
       "mapSize": { "w": 11, "h": 7 },
@@ -191,6 +219,9 @@
       "locationName": "Pantry",
       "locationDescription": "A narrow storeroom lined with jars and cured goods.",
       "structureId": "manor",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
       "mapZone": "Ground floor",
       "mapShape": "rect",
       "mapSize": { "w": 6, "h": 5 },
@@ -207,6 +238,60 @@
           "kind": "path",
           "travelSteps": 1,
           "direction": "E",
+          "exitAnchor": "E"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-upper-gallery",
+      "locationName": "Upper Gallery",
+      "locationDescription": "A narrow gallery overlooking the hall below; moonlight through the clerestory.",
+      "structureId": "manor",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Upper gallery",
+      "mapShape": "rect",
+      "mapSize": { "w": 14, "h": 6 },
+      "mapPosition": { "x": 49, "y": 45 },
+      "present": [],
+      "fixtures": {
+        "rail": { "label": "Oak gallery rail", "kind": "fixture" }
+      },
+      "exits": [
+        {
+          "exitId": "gallery-stairs-down",
+          "label": "Stairs to hall",
+          "targetSceneId": "scene-hall",
+          "kind": "stairs",
+          "travelSteps": 1,
+          "direction": "D",
+          "exitAnchor": "W"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-cellar",
+      "locationName": "Cellar",
+      "locationDescription": "Cool stone vaults under the hall; casks along the west wall.",
+      "structureId": "manor",
+      "mapLevel": -1,
+      "levelIndex": -1,
+      "levelLabel": "Cellar",
+      "mapShape": "rect",
+      "mapSize": { "w": 10, "h": 8 },
+      "mapPosition": { "x": 49, "y": 45 },
+      "present": [],
+      "fixtures": {
+        "casks": { "label": "Wine casks", "kind": "fixture" }
+      },
+      "exits": [
+        {
+          "exitId": "cellar-ladder-up",
+          "label": "Ladder to hall",
+          "targetSceneId": "scene-hall",
+          "kind": "ladder",
+          "travelSteps": 1,
+          "direction": "U",
           "exitAnchor": "E"
         }
       ]

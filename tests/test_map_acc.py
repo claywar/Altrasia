@@ -27,7 +27,15 @@ def test_spatial_graph_has_layout_fields(tmp_path: Path) -> None:
     names = {s["displayName"] for s in graph["structures"]}
     assert "Manor House" in names
     assert "Round Keep" in names
-    assert len(graph["nodes"]) == 5
+    assert len(graph["nodes"]) == 7
+    manor_levels = {
+        n.get("levelIndex")
+        for n in graph["nodes"]
+        if n.get("structureId") == "manor" and n.get("levelIndex") is not None
+    }
+    assert manor_levels == {-1, 0, 1}
+    manor = next(s for s in graph["structures"] if s["structureId"] == "manor")
+    assert manor["boundary"]["shape"] == "polygon"
     fixtures_dir = Path(__file__).resolve().parent / "fixtures" / "map-layouts"
     if fixtures_dir.exists():
         for f in fixtures_dir.glob("*.json"):

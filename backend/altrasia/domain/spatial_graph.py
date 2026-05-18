@@ -39,10 +39,14 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
             "mapShape",
             "mapSize",
             "levelIndex",
+            "mapLevel",
+            "levelLabel",
             "exitAnchor",
         ):
             if hints.get(key) is not None or scene.get(key) is not None:
                 node[key] = hints.get(key) if hints.get(key) is not None else scene.get(key)
+        if node.get("levelIndex") is None and scene.get("mapLevel") is not None:
+            node["levelIndex"] = scene.get("mapLevel")
         nodes.append(node)
         src_struct = hints.get("structureId") or scene.get("structureId")
         for ex in json.loads(scene.get("exitsJson") or "[]"):

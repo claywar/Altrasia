@@ -138,20 +138,22 @@ export type ZoneBand = {
   nodes: MapNode[];
 };
 
-/** Zone bands scoped per structure (UI-MAP-R5). */
+/** Zone bands scoped per structure + level (UI-MAP-R5); needs 2+ rooms on same band. */
 export function zoneBandsFromNodes(nodes: MapNode[]): ZoneBand[] {
   const groups = new Map<string, MapNode[]>();
   for (const n of nodes) {
     const z = n.mapZone ?? "";
     if (!z) continue;
     const sid = n.structureId ?? "_none";
-    const key = `${sid}::${z}`;
+    const lvl = n.levelIndex ?? (n as MapNode & { mapLevel?: number }).mapLevel ?? 0;
+    const key = `${sid}::${lvl}::${z}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(n);
   }
   const bands: ZoneBand[] = [];
   for (const [key, zn] of groups) {
-    const [structureId, mapZone] = key.split("::");
+    if (zn.length < 2) continue;
+    const [structureId, , mapZone] = key.split("::");
     const fws = zn.map((n) => nodeFootprint(n));
     const minX = Math.min(...fws.map((f) => f.cx - f.w / 2)) - 2;
     const maxX = Math.max(...fws.map((f) => f.cx + f.w / 2)) + 2;

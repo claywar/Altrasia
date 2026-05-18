@@ -10,14 +10,20 @@ import {
   hasDirectionalEdges,
   hubEdgeIndex,
   nodeFootprint,
+  zoneBandsFromNodes,
 } from "./layoutGeometry";
-import { levelBadgeShort, structureLabels, zoneBadgesFromNodes } from "./labelLayout";
+import {
+  levelBadgeShort,
+  structureFloorCountLabel,
+  structureLabels,
+  zoneBadgesFromNodes,
+} from "./labelLayout";
 import { CorridorShape, MapNodeShape } from "./mapShapes";
 import { envelopeDashForKind, resolveArchitectureStyle, styleTokens } from "./mapStyle";
 import { DoorGlyph, GateGlyph, pathAngleAtPoint } from "./pathGlyphs";
 import { SiteUnderlay } from "./SiteUnderlay";
 import { getEnvelopePath, SmoothEnvelope } from "./SmoothEnvelope";
-import type { MapEdge, MapGraph, MapStructure, Point } from "./types";
+import type { MapEdge, MapGraph, MapNode, MapStructure, Point } from "./types";
 
 export type MapRendererProps = {
   graph: SpatialGraph | null;
@@ -32,6 +38,9 @@ export type MapRendererProps = {
   viewFit?: ViewFitMode;
   enablePan?: boolean;
   architectureStyle?: "diagram" | "blueprint" | "minimal";
+  /** Persona on another floor — mark structure shell, do not draw that room on plan. */
+  offPlanActive?: MapNode;
+  showZoneBands?: boolean;
 };
 
 function toMapGraph(graph: SpatialGraph): MapGraph {
@@ -51,6 +60,8 @@ export function MapRenderer({
   viewFit = "neighborhood",
   enablePan = false,
   architectureStyle: styleProp,
+  offPlanActive,
+  showZoneBands = true,
 }: MapRendererProps) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
@@ -76,6 +87,11 @@ export function MapRenderer({
   const zoneBadges = useMemo(
     () => (mg && showZones ? zoneBadgesFromNodes(mg.structures ?? [], mg.nodes) : []),
     [mg, showZones]
+  );
+
+  const zoneBands = useMemo(
+    () => (mg && showZoneBands ? zoneBandsFromNodes(mg.nodes) : []),
+    [mg, showZoneBands]
   );
 
   if (!graph || !mg) return <div className={`minimap ${className}`}>No map</div>;
@@ -154,6 +170,29 @@ export function MapRenderer({
         {showSiteUnderlay && <SiteUnderlay viewBox={viewBox} idPrefix="map-site" />}
 
         <g transform={panTransform}>
+          {/* 0. Zone bands (floor / ward rails) */}
+          {zoneBands.map((band) => (
+            <g key={`band-${band.key}`} className="map-zone-band-group">
+              <rect
+                x={band.minX}
+                y={band.bandY - 2}
+                width={band.maxX - band.minX}
+                height={3.5}
+                rx={0.8}
+                className="map-zone-band"
+              />
+              <text
+                x={band.minX + 1.5}
+                y={band.bandY}
+                fontSize={1.6}
+                className="map-zone-label"
+                fontFamily={tokens.labelFont}
+              >
+                {band.mapZone}
+              </text>
+            </g>
+          ))}
+
           {/* 1. Structure fills (smooth shells) */}
           {showEnvelopes &&
             (mg.structures ?? []).map((st) => {
@@ -311,21 +350,34 @@ export function MapRenderer({
             </g>
           ))}
 
-          {/* 7. Level badges on active structure */}
+          {/* 7. Level badges (ground on site; persona floor when upstairs) */}
           {showZones &&
             (mg.structures ?? []).map((st) => {
-              if (!st.containsActiveScene) return null;
-              const env = getEnvelopePath(st.structureId, nodes, st.boundary);
+              const env = getEnvelopePath(st.structureId, graph.nodes as MapNode[], st.boundary);
               if (!env) return null;
-              const zone = mg.nodes.find((n) => n.structureId === st.structureId)?.mapZone;
-              const short = levelBadgeShort(zone);
-              if (!short) return null;
+              const allNodes = graph.nodes as MapNode[];
+              const floorCount = structureFloorCountLabel(st.structureId, allNodes);
+              const personaHere =
+                offPlanActive?.structureId === st.structureId ? offPlanActive : null;
+              const onPlan = mg.nodes.find((n) => n.structureId === st.structureId && n.isActive);
+              let label: string | null = null;
+              if (personaHere) {
+                const short =
+                  levelBadgeShort(personaHere.levelLabel ?? personaHere.mapZone) ??
+                  personaHere.locationName;
+                label = `▲ ${short}`;
+              } else if (onPlan) {
+                label = levelBadgeShort(onPlan.mapZone) ?? "Ground";
+              } else if (floorCount) {
+                label = floorCount;
+              }
+              if (!label) return null;
               return (
                 <g key={`lvl-${st.structureId}`} className="map-level-badge">
                   <rect
-                    x={env.maxX - short.length * 1.2 - 3}
+                    x={env.maxX - label.length * 1.15 - 3}
                     y={env.maxY - 3.5}
-                    width={short.length * 1.2 + 2}
+                    width={label.length * 1.15 + 2}
                     height={3}
                     rx={0.4}
                     className="map-level-badge-bg"
@@ -338,13 +390,40 @@ export function MapRenderer({
                     className="map-level-badge-text"
                     fontFamily={tokens.labelFont}
                   >
-                    {short}
+                    {label}
                   </text>
                 </g>
               );
             })}
 
-          {/* 8. Nodes */}
+          {/* 8. Persona on another floor — pin on structure shell (site plan) */}
+          {offPlanActive?.structureId && (() => {
+            const st = mg.structures?.find((s) => s.structureId === offPlanActive.structureId);
+            const env = getEnvelopePath(
+              offPlanActive.structureId,
+              graph.nodes as MapNode[],
+              st?.boundary
+            );
+            if (!env) return null;
+            const cx = (env.minX + env.maxX) / 2;
+            const cy = (env.minY + env.maxY) / 2;
+            return (
+              <g className="map-off-plan-pin" aria-label={`You are in ${offPlanActive.locationName}`}>
+                <circle cx={cx} cy={cy} r={1.8} className="map-off-plan-pin__dot" />
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={2.8}
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth={0.45}
+                  opacity={0.7}
+                />
+              </g>
+            );
+          })()}
+
+          {/* 9. Nodes */}
           {nodes.map((n) => {
             const fp = nodeFootprint(n);
             const isDimmed = dimmed.get(n.sceneId);

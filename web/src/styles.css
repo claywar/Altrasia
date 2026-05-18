@@ -1422,6 +1422,142 @@
   opacity: 0.6;
 }
 
+.map-mode-tabs__btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.map-mode-tabs__btn:hover {
+  color: var(--fg);
+  border-color: var(--border);
+}
+
+.map-mode-tabs button.map-mode-tabs__active {
+  font-weight: 600;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+
+.map-level-selector {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.map-level-selector h3 {
+  margin: 0 0 0.35rem;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.map-level-selector ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.map-level-selector button {
+  font-size: 12px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.map-level-selector__active {
+  border-color: var(--accent) !important;
+  color: var(--accent);
+}
+
+.site-map-viewport--stack {
+  overflow: auto;
+  cursor: default;
+}
+
+.level-stack {
+  padding: 0.5rem 1rem;
+  height: 100%;
+  overflow: auto;
+}
+
+.level-stack__header h3 {
+  margin: 0 0 0.25rem;
+}
+
+.level-stack__note {
+  margin: 0 0 0.75rem;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.level-stack__svg {
+  width: 100%;
+  min-height: 240px;
+}
+
+.level-stack__plate-label {
+  fill: var(--muted);
+}
+
+.level-stack__connectors {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.level-stack__connectors li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.level-stack__link {
+  display: inline-flex;
+  width: 1.25rem;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.level-stack__link--ladder {
+  color: #c9a227;
+}
+
+.map-overlay-title h2 {
+  margin: 0;
+}
+
+.map-view-hint {
+  margin: 0.15rem 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 280px;
+}
+
+.map-off-plan-pin__dot {
+  fill: var(--accent);
+}
+
+.map-off-plan-pin {
+  pointer-events: none;
+}
+
 .map-overlay-body {
   width: min(520px, 100%);
   height: min(420px, 70vh);

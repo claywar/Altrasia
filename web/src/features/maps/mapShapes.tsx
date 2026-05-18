@@ -6,6 +6,7 @@ type ShapeProps = {
   fp: Footprint;
   active: boolean;
   dimmed?: boolean;
+  ghost?: boolean;
   label: string;
   tokens: MapStyleTokens;
 };
@@ -19,10 +20,11 @@ function truncate(name: string, maxLen: number): string {
   return name.length > maxLen ? `${name.slice(0, maxLen - 1)}…` : name;
 }
 
-export function MapNodeShape({ fp, active, dimmed, label, tokens }: ShapeProps) {
-  const fill = active ? tokens.roomFillActive : tokens.roomFill;
+export function MapNodeShape({ fp, active, dimmed, ghost, label, tokens }: ShapeProps) {
+  const fill = ghost ? "none" : active ? tokens.roomFillActive : tokens.roomFill;
   const stroke = active ? "var(--fg)" : tokens.roomStroke;
-  const opacity = dimmed ? 0.45 : tokens.roomFillOpacity;
+  const opacity = ghost ? 0.35 : dimmed ? 0.45 : tokens.roomFillOpacity;
+  const dash = ghost ? "1.2 0.8" : undefined;
   const scale = active ? 1.02 : 1;
   const fs = labelFontSize(fp);
   const labelInsideCircle = fp.shape === "circle";
@@ -42,6 +44,7 @@ export function MapNodeShape({ fp, active, dimmed, label, tokens }: ShapeProps) 
           fill={tokens.showStructureFill ? fill : active ? tokens.roomFillActive : "none"}
           stroke={stroke}
           strokeWidth={active ? tokens.roomStrokeWidth * 1.4 : tokens.roomStrokeWidth}
+          strokeDasharray={dash}
         />
         {tokens.doubleWall && (
           <circle
@@ -121,6 +124,7 @@ export function MapNodeShape({ fp, active, dimmed, label, tokens }: ShapeProps) 
         fill={fill}
         stroke={tokens.doubleWall ? "none" : stroke}
         strokeWidth={active ? tokens.roomStrokeWidth * 1.4 : tokens.roomStrokeWidth}
+        strokeDasharray={dash}
       />
       {tokens.doubleWall && (
         <WallRect

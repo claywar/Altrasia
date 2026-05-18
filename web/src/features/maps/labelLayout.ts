@@ -1,3 +1,4 @@
+import { levelsForStructure } from "./floorLevels";
 import { getEnvelopePath } from "./SmoothEnvelope";
 import { boxesOverlap, footprintBox } from "./layoutSpacing";
 import type { MapNode, MapStructure, Point } from "./types";
@@ -93,6 +94,15 @@ export function zoneBadgesFromNodes(
     });
   }
   return badges;
+}
+
+export function structureFloorCountLabel(
+  structureId: string,
+  nodes: MapNode[]
+): string | null {
+  const levels = levelsForStructure(nodes, structureId);
+  if (levels.length <= 1) return null;
+  return `${levels.length} fl`;
 }
 
 export function levelBadgeShort(mapZone?: string): string | null {

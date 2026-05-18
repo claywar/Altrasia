@@ -3,6 +3,8 @@ import type { SpatialGraph } from "../../api/client";
 export type MapNode = SpatialGraph["nodes"][number] & {
   mapZone?: string;
   mapSize?: { w?: number; h?: number };
+  mapLevel?: number;
+  levelLabel?: string;
   dimmed?: boolean;
 };
 
