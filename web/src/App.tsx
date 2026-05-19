@@ -108,7 +108,7 @@ export default function App() {
     const msgs = await api.listMessages(w.worldId, active.sceneId);
     if (seq !== refreshSeq.current) return;
     const split = splitSceneMessages(msgs);
-    setMessages(split.dialogueMessages);
+    setMessages(msgs);
     setAmbientActivity(split.ambientActivity);
   }, []);
 

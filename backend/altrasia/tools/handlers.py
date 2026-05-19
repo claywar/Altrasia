@@ -571,6 +571,54 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             handler=discussion_signal,
         )
     )
+
+    async def social_signal(params: dict, ctx: ToolContext) -> Any:
+        note = str(params.get("note") or "").strip()
+        target_id = str(params.get("targetCharacterId") or "").strip()
+        pool = str(params.get("pool") or "mind").strip().lower()
+        if not note:
+            return {"ok": False, "error": "note required"}
+        if pool not in ("mind", "world"):
+            pool = "mind"
+        if pool == "mind":
+            if not target_id:
+                return {"ok": False, "error": "targetCharacterId required for mind pool"}
+            key = f"relationship:{target_id}"
+            owner = ctx.character_id
+        else:
+            key = str(params.get("locusKey") or "culture:recent").strip()
+            if not key.startswith("culture:"):
+                key = f"culture:{key}"
+            owner = ctx.scene_id
+        services.memory.memory_store(
+            pool=pool,
+            owner_id=owner,
+            locus_key=key,
+            value=note[:2000],
+        )
+        return {"ok": True, "pool": pool, "locusKey": key}
+
+    registry.register(
+        ToolDef(
+            name="social_signal",
+            description=(
+                "After sidebar banter, record a brief relationship or culture note. "
+                "Use pool=mind with targetCharacterId for private relationship notes; "
+                "pool=world with locusKey culture:* for shared culture (sparingly)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "note": {"type": "string"},
+                    "targetCharacterId": {"type": "string"},
+                    "pool": {"type": "string", "enum": ["mind", "world"]},
+                    "locusKey": {"type": "string"},
+                },
+                "required": ["note"],
+            },
+            handler=social_signal,
+        )
+    )
     registry.register(
         ToolDef(
             name="scene_summon",

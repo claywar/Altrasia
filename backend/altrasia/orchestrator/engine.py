@@ -44,6 +44,12 @@ def _scene_message_meta(job: dict[str, Any]) -> dict[str, Any]:
             rationale = json.loads(job.get("selectionRationaleJson") or "{}")
         except (json.JSONDecodeError, TypeError):
             rationale = {}
+        if trigger in ("banter_turn", "idle_continue") or rationale.get("socialIdle"):
+            orch["socialIdle"] = True
+            if rationale.get("banterSessionId"):
+                orch["banterSessionId"] = rationale["banterSessionId"]
+            if rationale.get("participants"):
+                orch["participants"] = rationale["participants"]
         if trigger == "idle_timer" and rationale.get("idle_source"):
             orch["idleSource"] = rationale["idle_source"]
         if trigger == "discussion_deliverable":
@@ -721,11 +727,20 @@ class Orchestrator:
         deliverable_id: str | None = None,
         deliverable_kind: str | None = None,
         deliverable_instruction: str | None = None,
+        selection_rationale_json: str | None = None,
     ) -> dict[str, Any] | None:
         if world_id in self.svc.paused_worlds:
             return None
         job_id = str(uuid.uuid4())
-        rationale_obj: dict[str, Any] = {"pick": trigger, "characterId": character_id}
+        if selection_rationale_json:
+            try:
+                rationale_obj = json.loads(selection_rationale_json)
+                if not isinstance(rationale_obj, dict):
+                    rationale_obj = {"pick": trigger, "characterId": character_id}
+            except json.JSONDecodeError:
+                rationale_obj = {"pick": trigger, "characterId": character_id}
+        else:
+            rationale_obj = {"pick": trigger, "characterId": character_id}
         if commission_id:
             rationale_obj["commissionId"] = commission_id
         if deliverable_id:
@@ -736,12 +751,14 @@ class Orchestrator:
             rationale_obj["deliverableInstruction"] = deliverable_instruction
         if idle_source:
             rationale_obj["idle_source"] = idle_source
-        rationale = json.dumps(rationale_obj)
         priority = 10 - continue_depth
         if trigger == "commission_tick":
             priority = 7
         elif trigger == "commission_started":
             priority = 8
+        elif trigger in ("banter_turn", "idle_continue"):
+            priority = 3
+        rationale = json.dumps(rationale_obj)
         self.svc.store.insert_job(
             {
                 "jobId": job_id,
@@ -1156,6 +1173,51 @@ class Orchestrator:
                     system += (
                         "\nSynthesize positions for all debaters; your line is the public summary."
                     )
+        from altrasia.orchestrator.idle_social_state import get_floor_hold
+        from altrasia.orchestrator.idle_social_prompt import (
+            banter_system_addendum,
+            floor_focus_addendum,
+        )
+
+        if str(job.get("trigger", "")) in ("banter_turn", "idle_continue"):
+            from altrasia.debate_activity import get_active_banter
+
+            activity = get_active_banter(scene)
+            session_lines: list[str] = []
+            if activity:
+                sid = activity.get("sessionId")
+                for m in history_rows:
+                    try:
+                        meta = json.loads(m.get("metaJson") or "{}")
+                        orch = meta.get("orchestration") or {}
+                        if orch.get("banterSessionId") == sid and m.get("outputText"):
+                            session_lines.append(m["outputText"])
+                    except json.JSONDecodeError:
+                        continue
+                system += f"\n\n{banter_system_addendum(
+                    self.svc,
+                    world_id=job['worldId'],
+                    scene_id=job['sceneId'],
+                    speaker_id=job['characterId'],
+                    activity=activity,
+                    members=members,
+                    recent_session_lines=session_lines,
+                )}"
+            if cfg.get("socialSignalEnabled", True):
+                system += (
+                    "\n\nYou may call social_signal to note a relationship beat with "
+                    "your counterpart (mind pool) or a rare culture update (world pool)."
+                )
+            hold = get_floor_hold(scene)
+            if hold:
+                system += f"\n\n{floor_focus_addendum(hold, members, job['characterId'])}"
+        hold_reactive = get_floor_hold(scene)
+        if hold_reactive and str(job.get("trigger", "")) in (
+            "persona_message",
+            "agent_continue",
+            "operator_message",
+        ):
+            system += f"\n\n{floor_focus_addendum(hold_reactive, members, job['characterId'])}"
         from altrasia.orchestrator.chat_messages import scene_messages_for_llm
 
         messages = [{"role": "system", "content": system}]
@@ -1313,6 +1375,189 @@ class Orchestrator:
         )
         maybe_clear_ensemble_if_complete(self.svc.store, job["sceneId"])
 
+    async def _handle_cast_social_after_reply(
+        self,
+        job: dict[str, Any],
+        msg_id: str,
+        text: str,
+        *,
+        cfg: dict[str, Any],
+    ) -> None:
+        trigger = str(job.get("trigger") or "")
+        if trigger in ("banter_turn", "idle_continue", "idle_timer"):
+            return
+        if not job.get("characterId"):
+            return
+        from altrasia.domain.presence import PERSONA_ID
+        from altrasia.orchestrator.addressing_policy import (
+            cast_spoke_on_trigger,
+            latest_cast_directed_message,
+            scene_has_pending_cast_directed,
+        )
+        from altrasia.orchestrator.floor_cues import (
+            apply_floor_claim,
+            detect_floor_claim,
+            detect_floor_release,
+        )
+        from altrasia.orchestrator.idle_social_state import clear_floor_hold, get_floor_hold
+        from altrasia.orchestrator.operator_aliases import operator_alias_map
+        from altrasia.orchestrator.speaker_selection import (
+            addressee_ids_for,
+            parse_addressing,
+        )
+
+        scene_id = job["sceneId"]
+        world_id = job["worldId"]
+        if detect_floor_release(text):
+            clear_floor_hold(self.svc.store, scene_id)
+        scene = self.svc.store.get_scene(scene_id)
+        if not scene:
+            return
+        present = [c for c in json.loads(scene["presentJson"]) if c != PERSONA_ID]
+        chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
+        addressing = parse_addressing(
+            text,
+            present,
+            chars,
+            fuzzy_enabled=bool(cfg.get("addressingFuzzyEnabled", True)),
+            fuzzy_max_distance=int(cfg.get("addressingFuzzyMaxDistance", 2)),
+            operator_alias_map=operator_alias_map(self.svc.store, world_id),
+        )
+        self._persist_message_addressing(msg_id, addressing)
+        claim = detect_floor_claim(
+            text,
+            role="cast",
+            speaker_id=job["characterId"],
+            cast=present,
+            chars=chars,
+            addressing=addressing,
+        )
+        if claim:
+            apply_floor_claim(self.svc, scene_id, claim, source_message_id=msg_id)
+        hold = get_floor_hold(scene)
+        if hold and hold.get("reason") == "cast_directed":
+            awaiting = list(hold.get("awaitingAddressees") or [])
+            src = hold.get("sourceMessageId")
+            if src:
+                spoke = cast_spoke_on_trigger(self.svc.store, world_id, scene_id, src)
+                if all(aid in spoke for aid in awaiting):
+                    clear_floor_hold(self.svc.store, scene_id)
+        elif hold and job["characterId"] == hold.get("claimedBy"):
+            clear_floor_hold(self.svc.store, scene_id)
+        if addressing.mode == "directed" and trigger not in (
+            "banter_turn",
+            "idle_continue",
+            "idle_timer",
+        ):
+            ids = addressee_ids_for(addressing)
+            if ids and cfg.get("castFloorClaimReactive", False) is True:
+                primary = ids[0]
+                spoke = cast_spoke_on_trigger(self.svc.store, world_id, scene_id, msg_id)
+                if primary not in spoke and scene_id not in self._scene_chain_active:
+                    await self.enqueue_generation(
+                        world_id=world_id,
+                        scene_id=scene_id,
+                        character_id=primary,
+                        trigger="agent_continue",
+                        continue_depth=0,
+                        trigger_message_id=msg_id,
+                    )
+        if scene_has_pending_cast_directed(self.svc.store, world_id, scene_id):
+            msg_row, cast_addr = latest_cast_directed_message(
+                self.svc.store, world_id, scene_id
+            )
+            if msg_row and cast_addr:
+                ids = addressee_ids_for(cast_addr)
+                src_id = msg_row.get("messageId")
+                if src_id:
+                    spoke = cast_spoke_on_trigger(
+                        self.svc.store, world_id, scene_id, src_id
+                    )
+                    if all(aid in spoke for aid in ids):
+                        clear_floor_hold(self.svc.store, scene_id)
+                    elif trigger not in ("banter_turn", "idle_continue", "idle_timer"):
+                        missing = [aid for aid in ids if aid not in spoke]
+                        if missing and scene_id not in self._scene_chain_active:
+                            await self.enqueue_generation(
+                                world_id=world_id,
+                                scene_id=scene_id,
+                                character_id=missing[0],
+                                trigger="agent_continue",
+                                continue_depth=0,
+                                trigger_message_id=src_id,
+                            )
+
+    async def _handle_banter_chain_after_reply(
+        self,
+        job: dict[str, Any],
+        msg_id: str,
+        text: str,
+        *,
+        cfg: dict[str, Any],
+    ) -> None:
+        trigger = str(job.get("trigger") or "")
+        if trigger not in ("banter_turn", "idle_continue"):
+            return
+        from altrasia.banter_runner import enqueue_banter_turn, finish_banter_session_if_done
+        from altrasia.debate_activity import (
+            advance_banter_turn,
+            get_active_banter,
+            set_banter_current_speaker,
+        )
+        from altrasia.orchestrator.social_selection import pick_banter_next_speaker
+        from altrasia.world_config import get_idle_social_config
+
+        scene_id = job["sceneId"]
+        world_id = job["worldId"]
+        scene = self.svc.store.get_scene(scene_id)
+        if not scene:
+            return
+        activity = get_active_banter(scene)
+        if not activity:
+            self._scene_chain_active.discard(scene_id)
+            return
+        set_banter_current_speaker(self.svc.store, scene_id, job["characterId"])
+        activity = advance_banter_turn(self.svc.store, scene_id)
+        session_lines: list[str] = []
+        sid = activity.get("sessionId")
+        for m in self.svc.store.list_messages(world_id, scene_id=scene_id):
+            try:
+                meta = json.loads(m.get("metaJson") or "{}")
+                if (meta.get("orchestration") or {}).get("banterSessionId") == sid:
+                    if m.get("outputText"):
+                        session_lines.append(m["outputText"])
+            except json.JSONDecodeError:
+                continue
+        if finish_banter_session_if_done(
+            self.svc, scene_id, activity, recent_line_texts=session_lines
+        ):
+            return
+        depth = int(job.get("continueDepth") or 0)
+        max_depth = int(get_idle_social_config(self.svc.store, world_id).get("idleSocialMaxDepth", 3))
+        if depth + 1 >= max_depth:
+            finish_banter_session_if_done(self.svc, scene_id, activity, recent_line_texts=session_lines)
+            return
+        nxt = pick_banter_next_speaker(
+            activity,
+            last_speaker_id=job["characterId"],
+            services=self.svc,
+            world_id=world_id,
+        )
+        if not nxt:
+            finish_banter_session_if_done(self.svc, scene_id, activity, recent_line_texts=session_lines)
+            return
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+        except json.JSONDecodeError:
+            rationale = {}
+        await enqueue_banter_turn(
+            self.svc,
+            scene_id,
+            character_id=nxt,
+            continue_depth=depth + 1,
+            rationale=rationale,
+        )
+
     async def _after_reply(
         self,
         job: dict,
@@ -1406,6 +1651,9 @@ class Orchestrator:
             snippet=snippet,
             message_ids=[m["messageId"] for m in recent],
         )
+
+        await self._handle_cast_social_after_reply(job, msg_id, text, cfg=cfg)
+        await self._handle_banter_chain_after_reply(job, msg_id, text, cfg=cfg)
 
         if str(job.get("trigger", "")).startswith("commission"):
             try:
@@ -1703,6 +1951,25 @@ class Orchestrator:
                     operator_alias_map=op_map,
                 )
             self._persist_message_addressing(message_id, addressing)
+            from altrasia.orchestrator.floor_cues import (
+                apply_floor_claim,
+                detect_floor_claim,
+                detect_floor_release,
+            )
+            from altrasia.orchestrator.idle_social_state import clear_floor_hold
+
+            if detect_floor_release(text):
+                clear_floor_hold(self.svc.store, scene_id)
+            op_claim = detect_floor_claim(
+                text,
+                role="operator",
+                speaker_id=PERSONA_ID,
+                cast=cast,
+                chars=chars,
+                addressing=addressing,
+            )
+            if op_claim:
+                apply_floor_claim(self.svc, scene_id, op_claim, source_message_id=message_id)
             if alias_registered:
                 cid_reg, alias_reg = alias_registered
                 row = self.svc.store.fetchone(

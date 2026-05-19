@@ -89,11 +89,14 @@ class IdleScheduler:
         return False
 
     async def _tick_world(self, world_id: str, *, idle_source: str) -> None:
+        from altrasia.banter_runner import tick_banter_scenes
         from altrasia.commission_runner import tick_commissions
         from altrasia.debate_runner import tick_debate_scenes
 
         await tick_commissions(self.svc, world_id)
         if await tick_debate_scenes(self.svc, world_id):
+            return
+        if await tick_banter_scenes(self.svc, world_id):
             return
         orch = self.svc.orchestrator
         if self.svc.gpu_queue.busy:
@@ -111,13 +114,13 @@ class IdleScheduler:
         else:
             scenes = self.svc.store.list_scenes(world_id)
         for scene in scenes:
+            if not scene:
+                continue
             scene_id = scene["sceneId"]
             if scene_id in orch._scene_chain_active:
                 continue
-            from altrasia.orchestrator.addressing_policy import scene_has_pending_addressing
+            from altrasia.orchestrator.banter_gates import should_start_idle_banter
 
-            if scene_has_pending_addressing(self.svc.store, world_id, scene_id):
-                continue
             cast = [
                 c
                 for c in json.loads(scene["presentJson"])
@@ -125,7 +128,7 @@ class IdleScheduler:
             ]
             if len(cast) < 1:
                 continue
-            cid = self._pick_idle_character(scene, cast)
+            cid, rationale = self._pick_idle_character(scene, cast, world_id)
             if not cid:
                 continue
             await orch.enqueue_generation(
@@ -135,24 +138,27 @@ class IdleScheduler:
                 trigger="idle_timer",
                 continue_depth=0,
                 idle_source=idle_source,
+                selection_rationale_json=json.dumps(rationale),
             )
             return
 
-    def _pick_idle_character(self, scene: dict, cast: list[str]) -> str | None:
+    def _pick_idle_character(
+        self, scene: dict, cast: list[str], world_id: str
+    ) -> tuple[str | None, dict[str, Any]]:
         from altrasia.debate_activity import debate_current_speaker, parse_activity
+        from altrasia.orchestrator.social_selection import pick_idle_participant
+        from altrasia.world_config import get_idle_social_config
 
         activity = parse_activity(scene)
         if activity and activity.get("kind") == "debate":
             speaker = debate_current_speaker(activity)
             if speaker and speaker in cast:
-                return speaker
-        idx = int(scene.get("roundRobinIndex") or 0)
-        ordered = sorted(cast)
-        if not ordered:
-            return None
-        pick = ordered[idx % len(ordered)]
-        self.svc.store.update_scene(
-            scene["sceneId"],
-            roundRobinIndex=(idx + 1) % len(ordered),
+                return speaker, {"pick": "debate", "characterId": speaker}
+        cfg = get_idle_social_config(self.svc.store, world_id)
+        if cfg.get("idleSocialEnabled", True) and len(cast) >= int(
+            cfg.get("idleSocialMinCast", 2)
+        ):
+            return None, {"pick": "banter_preferred"}
+        return pick_idle_participant(
+            self.svc, world_id=world_id, scene=scene, cast=cast
         )
-        return pick

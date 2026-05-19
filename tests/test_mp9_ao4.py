@@ -55,13 +55,20 @@ def test_mp9_first_call_memory_tools_only(client: tuple[TestClient, object]) -> 
     assert "scene_update_fixture" not in first
 
 
-def test_ao4_idle_round_robin_three_npcs(client: tuple[TestClient, object]) -> None:
-    """docs/17 — AO-4: idle cursor visits jordan → sofia → priya in sorted order."""
+def test_ao4_weighted_idle_participant_pick(client: tuple[TestClient, object]) -> None:
+    """AO-4w: solo idle uses weighted participant selection (not round-robin cursor)."""
     client, services = client
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     world_id = r.json()["worldId"]
     hall = "scene-lobby"
     store = services.store
+    from altrasia.world_config import merge_world_policy
+
+    merge_world_policy(
+        store,
+        world_id,
+        {"idleSocialEnabled": False, "idleSocialMinCast": 2},
+    )
     store.update_scene(
         hall,
         presentJson=json.dumps(["char-jordan-reyes", "char-sofia-mendez", "char-priya-nair"]),
@@ -69,10 +76,13 @@ def test_ao4_idle_round_robin_three_npcs(client: tuple[TestClient, object]) -> N
     )
     sched = services.idle_scheduler
     assert sched is not None
-    cast = sorted(["char-jordan-reyes", "char-sofia-mendez", "char-priya-nair"])
+    cast = ["char-jordan-reyes", "char-sofia-mendez", "char-priya-nair"]
     picked: list[str] = []
-    for _ in range(3):
+    for _ in range(5):
         scene = store.get_scene(hall)
-        picked.append(sched._pick_idle_character(scene, cast))
-    assert picked == cast
+        cid, rationale = sched._pick_idle_character(scene, cast, world_id)
+        assert cid in cast
+        assert rationale.get("pick") == "idle_participant"
+        picked.append(cid)
+    assert len(set(picked)) >= 1
     assert int(store.get_scene(hall)["roundRobinIndex"]) == 0

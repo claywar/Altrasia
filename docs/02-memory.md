@@ -50,6 +50,15 @@ Research **commissions** default to **mind pool** storage (COM-1, COM-2 in [23-i
 | `commission:{commissionId}:` | mind | assignee `characterId` |
 | `debate:{sceneId}:` | mind | each debate participant |
 
+**Idle social (implemented):**
+
+| Prefix | Pool | Owner |
+|--------|------|-------|
+| `relationship:{characterId}` | mind | each NPC (notes about counterpart) |
+| `culture:norms`, `culture:recent` | world | scene (`ownerId` = `sceneId`) |
+
+Cast MAY write these via tool `social_signal` during `banter_turn` / `idle_continue` when `socialSignalEnabled` is true.
+
 ### 1.3 Diary (witnessed episodic memory)
 
 The **diary** is **witnessed episodic memory**: what a character could have heard or seen in play, captured automatically after each completed cast reply. It is **not** a log of that character's own monologue alone.

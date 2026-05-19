@@ -1,8 +1,11 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import type { Message } from "../api/client";
 import {
+  hideSocialBanterInTranscript,
   isAmbientMessage,
+  isSocialIdleMessage,
   parseToolCallsFromRationale,
+  setHideSocialBanterInTranscript,
   setShowAmbientInTranscript,
   splitSceneMessages,
 } from "./parse";
@@ -95,5 +98,35 @@ describe("splitSceneMessages", () => {
     const { dialogueMessages, ambientActivity } = splitSceneMessages([idle]);
     expect(dialogueMessages).toHaveLength(1);
     expect(ambientActivity).toHaveLength(1);
+  });
+
+  it("includes social banter in dialogue by default", () => {
+    setHideSocialBanterInTranscript(false);
+    const banter = msg({
+      messageId: "b1",
+      generationTrigger: "banter_turn",
+      metaJson: JSON.stringify({
+        orchestration: { trigger: "banter_turn", socialIdle: true },
+      }),
+    });
+    expect(isSocialIdleMessage(banter)).toBe(true);
+    expect(isAmbientMessage(banter)).toBe(true);
+    const { dialogueMessages } = splitSceneMessages([banter]);
+    expect(dialogueMessages).toHaveLength(1);
+  });
+
+  it("excludes social banter when hide toggle on", () => {
+    setHideSocialBanterInTranscript(true);
+    const banter = msg({
+      messageId: "b2",
+      generationTrigger: "banter_turn",
+      metaJson: JSON.stringify({
+        orchestration: { trigger: "banter_turn", socialIdle: true },
+      }),
+    });
+    const { dialogueMessages } = splitSceneMessages([banter]);
+    expect(dialogueMessages).toHaveLength(0);
+    expect(hideSocialBanterInTranscript()).toBe(true);
+    setHideSocialBanterInTranscript(false);
   });
 });

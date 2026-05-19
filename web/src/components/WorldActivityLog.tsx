@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MarkdownBody } from "./MarkdownBody";
 import { Button } from "../ui/Button";
 import type { Message } from "../api/client";
+import { isSocialIdleMessage, parseOrchestration } from "../lib/parse";
 
 type Props = {
   entries: Message[];
@@ -12,6 +13,18 @@ function idleSourceLabel(source: string | null | undefined): string {
   if (source === "server_heartbeat") return "heartbeat";
   if (source === "tab_visible") return "tab";
   return "idle";
+}
+
+function activityKindLabel(m: Message, charName: (id: string | null) => string): string {
+  if (isSocialIdleMessage(m)) {
+    const orch = parseOrchestration(m);
+    const parts = (orch.participants ?? [])
+      .map((id) => charName(id))
+      .filter(Boolean);
+    if (parts.length >= 2) return `banter (${parts[0]} · ${parts[1]})`;
+    return "banter";
+  }
+  return `idle (${idleSourceLabel(m.idleSource)})`;
 }
 
 function formatTime(createdAt: string | undefined): string {
@@ -115,7 +128,7 @@ export function WorldActivityLog({ entries, charName }: Props) {
                     <span className="world-activity-log__meta">
                       {formatTime(m.createdAt)}
                       {formatTime(m.createdAt) ? " · " : ""}
-                      {name} · idle ({idleSourceLabel(m.idleSource)})
+                      {name} · {activityKindLabel(m, charName)}
                       {rowStreaming ? " · …" : ""}
                     </span>
                     {!open && !rowStreaming && m.outputText && (

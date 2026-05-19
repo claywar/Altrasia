@@ -1,7 +1,7 @@
 import { MarkdownBody } from "../../components/MarkdownBody";
 import { MessageRationale } from "../../components/MessageRationale";
 import type { Message } from "../../api/client";
-import { parseGenerationError } from "../../lib/parse";
+import { isSocialIdleMessage, parseGenerationError } from "../../lib/parse";
 import { ScopeBadge } from "../../ui/ScopeBadge";
 
 type Props = {
@@ -21,13 +21,15 @@ export function ChronicleEntry({ message, scope, speakerLabel, perceived, worldI
     (interrupted
       ? generationError ?? "Generation was interrupted before a reply was produced."
       : "");
-  const ariaLabel = `${speakerLabel}, ${scope}${perceived ? "" : ", not perceived"}`;
+  const isBanter = isSocialIdleMessage(message);
+  const ariaLabel = `${speakerLabel}, ${scope}${isBanter ? ", sidebar banter" : ""}${perceived ? "" : ", not perceived"}`;
 
   return (
     <article
       className={[
         "chronicle-entry",
         `chronicle-entry--${scope}`,
+        isBanter ? "chronicle-entry--banter" : "",
         streaming ? "chronicle-entry--streaming" : "",
         interrupted ? "chronicle-entry--interrupted" : "",
         perceived ? "" : "chronicle-entry--dimmed",
@@ -41,6 +43,7 @@ export function ChronicleEntry({ message, scope, speakerLabel, perceived, worldI
       <header className="chronicle-entry__header">
         <span className="chronicle-entry__speaker">{speakerLabel}</span>
         <ScopeBadge scope={scope} />
+        {isBanter && <span className="chronicle-entry__banter-badge">Banter</span>}
         {message.role === "assistant" && message.generationJobId && (
           <MessageRationale worldId={worldId} jobId={message.generationJobId} />
         )}

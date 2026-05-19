@@ -2,6 +2,10 @@ import type { Message } from "../api/client";
 
 export const AMBIENT_ACTIVITY_LIMIT = 15;
 export const SHOW_AMBIENT_IN_TRANSCRIPT_KEY = "altrasia.showAmbientInTranscript";
+/** @deprecated use HIDE_SOCIAL_BANTER_IN_TRANSCRIPT_KEY — legacy opt-in key */
+export const SHOW_SOCIAL_IDLE_IN_TRANSCRIPT_KEY = "altrasia.showSocialIdleInTranscript";
+/** When "1", banter is hidden from the scene chronicle (default: show banter). */
+export const HIDE_SOCIAL_BANTER_IN_TRANSCRIPT_KEY = "altrasia.hideSocialBanterInTranscript";
 
 export function messageGenerationTrigger(m: Message): string | null {
   if (m.generationTrigger) return m.generationTrigger;
@@ -15,14 +19,50 @@ export function messageGenerationTrigger(m: Message): string | null {
   }
 }
 
+export function parseOrchestration(m: Message): {
+  trigger?: string;
+  socialIdle?: boolean;
+  banterSessionId?: string;
+  participants?: string[];
+} {
+  try {
+    const meta = JSON.parse(m.metaJson || "{}") as {
+      orchestration?: {
+        trigger?: string;
+        socialIdle?: boolean;
+        banterSessionId?: string;
+        participants?: string[];
+      };
+    };
+    return meta.orchestration ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export function isSocialIdleMessage(m: Message): boolean {
+  if (parseOrchestration(m).socialIdle === true) return true;
+  const t = messageGenerationTrigger(m);
+  return t === "banter_turn" || t === "idle_continue";
+}
+
 export function isAmbientMessage(m: Message): boolean {
-  return messageGenerationTrigger(m) === "idle_timer";
+  const t = messageGenerationTrigger(m);
+  return t === "idle_timer" || isSocialIdleMessage(m);
 }
 
 /** Messages shown in the scene chronicle (respects ambient transcript toggle). */
 export function chronicleMessages(msgs: Message[]): Message[] {
   if (showAmbientInTranscript()) return msgs;
-  return msgs.filter((m) => !isAmbientMessage(m));
+  return msgs.filter((m) => {
+    if (isAmbientMessage(m) && !isSocialIdleMessage(m)) return false;
+    if (isSocialIdleMessage(m) && hideSocialBanterInTranscript()) return false;
+    return true;
+  });
+}
+
+export function sceneHasSocialIdleMessages(msgs: Message[]): boolean {
+  return msgs.some(isSocialIdleMessage);
 }
 
 export function showAmbientInTranscript(): boolean {
@@ -39,6 +79,39 @@ export function setShowAmbientInTranscript(enabled: boolean): void {
   } catch {
     /* ignore */
   }
+}
+
+export function hideSocialBanterInTranscript(): boolean {
+  try {
+    const hide = sessionStorage.getItem(HIDE_SOCIAL_BANTER_IN_TRANSCRIPT_KEY);
+    if (hide === "1") return true;
+    if (hide === "0") return false;
+    const legacy = sessionStorage.getItem(SHOW_SOCIAL_IDLE_IN_TRANSCRIPT_KEY);
+    if (legacy === "0") return true;
+    if (legacy === "1") return false;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function setHideSocialBanterInTranscript(hide: boolean): void {
+  try {
+    sessionStorage.setItem(HIDE_SOCIAL_BANTER_IN_TRANSCRIPT_KEY, hide ? "1" : "0");
+    sessionStorage.removeItem(SHOW_SOCIAL_IDLE_IN_TRANSCRIPT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** @deprecated use hideSocialBanterInTranscript */
+export function showSocialIdleInTranscript(): boolean {
+  return !hideSocialBanterInTranscript();
+}
+
+/** @deprecated use setHideSocialBanterInTranscript */
+export function setShowSocialIdleInTranscript(enabled: boolean): void {
+  setHideSocialBanterInTranscript(!enabled);
 }
 
 export function splitSceneMessages(msgs: Message[]): {

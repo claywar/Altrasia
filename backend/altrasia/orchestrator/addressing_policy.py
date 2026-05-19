@@ -114,6 +114,37 @@ def latest_operator_addressing(
     return addressing_from_message_row(op), op.get("messageId")
 
 
+def latest_cast_directed_message(
+    store: Any, world_id: str, scene_id: str
+) -> tuple[dict[str, Any] | None, AddressingResult | None]:
+    """Most recent cast scene line with directed addressing metadata."""
+    for m in reversed(store.list_messages(world_id, scene_id=scene_id)):
+        if m.get("role") != "assistant" or not m.get("characterId"):
+            continue
+        if (m.get("streamStatus") or "final") != "final":
+            continue
+        addressing = addressing_from_message_row(m)
+        if addressing and addressing.mode == "directed":
+            return m, addressing
+    return None, None
+
+
+def scene_has_pending_cast_directed(
+    store: Any, world_id: str, scene_id: str
+) -> bool:
+    msg, addressing = latest_cast_directed_message(store, world_id, scene_id)
+    if not msg or not addressing:
+        return False
+    msg_id = msg.get("messageId")
+    if not msg_id:
+        return False
+    ids = addressee_ids_for(addressing)
+    if not ids:
+        return False
+    spoke = cast_spoke_on_trigger(store, world_id, scene_id, msg_id)
+    return any(aid not in spoke for aid in ids)
+
+
 def cast_spoke_on_trigger(
     store: Any, world_id: str, scene_id: str, operator_message_id: str | None
 ) -> set[str]:
@@ -203,6 +234,8 @@ def may_character_generate(
         return True, "commission"
     if trigger == "debate_turn":
         return True, "debate"
+    if trigger in ("banter_turn", "idle_continue"):
+        return True, "banter"
 
     world_id = job["worldId"]
     scene_id = job["sceneId"]
@@ -227,7 +260,7 @@ def may_character_generate(
         return True, "no_addressing"
 
     if addressing.mode == "clarification":
-        if trigger == "idle_timer":
+        if trigger in ("idle_timer", "banter_turn", "idle_continue"):
             return False, "clarification_blocks_idle"
         clarifier = addressing.clarifier_id
         if not clarifier:
@@ -248,7 +281,7 @@ def may_character_generate(
     if not addressees:
         return True, "directed_no_primary"
 
-    if trigger == "idle_timer":
+    if trigger in ("idle_timer", "banter_turn", "idle_continue"):
         return False, "directed_blocks_idle"
 
     spoke = cast_spoke_on_trigger(svc.store, world_id, scene_id, op_id)

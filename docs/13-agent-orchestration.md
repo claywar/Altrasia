@@ -80,16 +80,20 @@ A character MAY be scheduled when:
 
 **Debate (DEB-2, post-v1):** When `scene.activity.kind=debate`, only `speakingOrder[currentIndex]` is eligible for `debate_turn` jobs at that scene (overrides AO-4 round-robin and `agent_continue` until phase advances).
 
-## 5. Round-robin — idle only (AO-4)
+## 5. Weighted idle selection (AO-4 / AO-4w)
 
 | ID | Requirement |
 |----|-------------|
-| AO-4 | For **`idle_timer` only**, advance a scene-scoped round-robin cursor across eligible NPCs at that scene; optional static per-character weights. |
-| AO-4a | Round-robin MUST NOT select speakers for `operator_message` reactive jobs or `agent_continue` jobs. |
-| AO-4b | `Scene.roundRobinIndex` stores cursor; reset or wrap when eligible set changes. |
-| AO-4c | Idle selection ignores “reply to last line”; idle is time-driven ambient rotation, not dialogue rhythm. |
+| AO-4 | For **`idle_timer`** (solo ambient) and **`banter_turn` / `idle_continue`** (dyad banter), pick speakers via **weighted random** among scored candidates — not round-robin. |
+| AO-4a | Weighted idle MUST NOT select speakers for `operator_message` reactive jobs or `agent_continue` (except cast-directed follow-up enqueue). |
+| AO-4b | `Scene.roundRobinIndex` is legacy; implementations MUST NOT advance it for idle picks. |
+| AO-4c | Idle selection ignores reactive “reply to last line” scoring; banter uses relationship/culture hooks. |
 
-With exactly two eligible NPCs, idle RR alternates A→B→A→B. With three or more, the third tick reaches the next character in cursor order—**not** contextual reply selection.
+**Banter (AO-22 `kind=banter`):** When `idleSocialEnabled` and ≥2 NPCs present, idle tick MAY start a dyad session (`banter_turn` + `idle_continue` chain, depth capped by `idleSocialMaxDepth`). Gated by open discussion resolution, floor hold, and pending directed addressing.
+
+**Triggers:** `banter_turn`, `idle_continue` (social idle; `orchestration.socialIdle` on messages).
+
+**Floor hold:** Operator or cast floor/attention cues, cast-to-cast directed lines, and open unresolved discussions block or halt banter (`Scene.socialStateJson.floorHold`).
 
 ## 6. Reactive and continue chains
 

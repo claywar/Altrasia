@@ -14,7 +14,8 @@ OBSERVER_ONLY_SCENE_TOOLS = frozenset(
     {"scene_exit_set_state", "scene_update_fixture"}
 )
 # Ambient generations: no summoning others; self-move only via scene_join.
-AMBIENT_MOVEMENT_TRIGGERS = frozenset({"idle_timer"})
+AMBIENT_MOVEMENT_TRIGGERS = frozenset({"idle_timer", "banter_turn", "idle_continue"})
+BANTER_TRIGGERS = frozenset({"banter_turn", "idle_continue"})
 
 
 def narrative_presence_eligible(trigger: str | None) -> bool:
@@ -45,6 +46,8 @@ def cast_allowed_tool_names(
             allowed.add("scene_summon")
     if cfg.get("discussionSignalsEnabled", True):
         allowed.add("discussion_signal")
+    if trigger in BANTER_TRIGGERS and cfg.get("socialSignalEnabled", True):
+        allowed.add("social_signal")
     if not allowed:
         return None
     return allowed
