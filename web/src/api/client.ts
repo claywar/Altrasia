@@ -39,6 +39,8 @@ export type WorldPolicy = {
   maxContinueDepthCap?: number;
   conversationJudgementEnabled?: boolean;
   discussionSignalsEnabled?: boolean;
+  discussionDeliverablesEnabled?: boolean;
+  maxDeliverablesPerDiscussion?: number;
   citeProvenanceInPrompt?: boolean;
   commonsAccessIds?: string[];
   speakIntentOnTie?: boolean;

@@ -104,12 +104,52 @@ async def mock_chat_completion(
             "sufficient": not insufficient,
             "reason": "mock_judgement_insufficient" if insufficient else "mock_judgement_sufficient",
             "outstandingGaps": ["dependencies", "owners"] if insufficient else [],
+            "deliverablesOutstanding": [],
             "influencedByCharacters": "discussion_signal" in last_user.lower(),
         }
         return {
             "choices": [
                 {"message": {"role": "assistant", "content": json.dumps(payload)}}
             ]
+        }
+    if "post-discussion deliverable" in system_text.lower():
+        locus_match = re.search(r'locusKey\s+"([^"]+)"', system_text)
+        locus = locus_match.group(1) if locus_match else "discussion:mock:report"
+        report = (
+            "Jordan — here is my report on the discussion. The team aligned on lean "
+            "status reporting, 24-hour escalation for red items, and keeping program "
+            "management focused on blockers rather than ceremony."
+        )
+        tool_rounds = sum(1 for m in messages if m.get("role") == "tool")
+        if (
+            tools
+            and tool_rounds == 0
+            and any(t["function"]["name"] == "memory_store" for t in tools)
+        ):
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": report,
+                            "tool_calls": [
+                                {
+                                    "id": "call_deliverable_mem",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "memory_store",
+                                        "arguments": json.dumps(
+                                            {"locusKey": locus, "value": report}
+                                        ),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
+        return {
+            "choices": [{"message": {"role": "assistant", "content": report}}]
         }
     if tools and "commission errand" in system_text.lower():
         names = [t["function"]["name"] for t in tools]

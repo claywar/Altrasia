@@ -56,6 +56,7 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 | `whisper_target` | Yes | Character targeted by whisper |
 | `agent_tool` | Yes | Scene/comm tool initiated follow-up |
 | `agent_continue` | Yes | After cast scene line completes; optional NPC chain (AO-19) when enabled |
+| `discussion_deliverable` | Yes | After ensemble chain stops; named cast fulfill operator obligations (report, etc.) parsed from persona line |
 | `phone_target` | v1.1 | CC-12 |
 | `knock_answered` | v1.1 | Explicit operator answer action only (CC-11); not on knock create |
 | `commission_started` | Post-v1 | Operator/API started commission ([23-in-world-work.md](23-in-world-work.md)) |
@@ -117,6 +118,20 @@ When `agentContinueEnabled` is true (world or preset default on):
 | `personaArrivalMaxReplies` | 1 | 1 | 1 |
 
 Presets: [20-product-principles.md](20-product-principles.md) §6.
+
+### 6.3 Post-discussion deliverables
+
+When a persona line invites ensemble discussion **and** names a cast obligation (e.g. *"Liam, when finished, I expect a report from you"*):
+
+1. Parser stores pending deliverables on `scene.activityJson` (`kind: ensemble_discussion`).
+2. `agent_continue` runs until discussion sufficiency (depth + judgement) — **orthogonal** to deliverable fulfillment.
+3. On chain stop (`conversation_resolved`, depth cap, etc.), orchestrator enqueues `discussion_deliverable` jobs (one per assignee).
+4. Assignee posts a public report, `memory_store`s to mind (`discussion:{sceneId}:{characterId}:{kind}`), and a **done** commission row is recorded for the Commissions UI.
+
+| Config | Default |
+|--------|---------|
+| `discussionDeliverablesEnabled` | true |
+| `maxDeliverablesPerDiscussion` | 3 |
 
 ## 7. Speaker selection — `scoreSpeakers` (AO-18)
 

@@ -40,13 +40,17 @@ def _scene_message_meta(job: dict[str, Any]) -> dict[str, Any]:
     trigger = job.get("trigger")
     if trigger:
         orch: dict[str, Any] = {"trigger": trigger}
-        if trigger == "idle_timer":
-            try:
-                rationale = json.loads(job.get("selectionRationaleJson") or "{}")
-            except (json.JSONDecodeError, TypeError):
-                rationale = {}
-            if rationale.get("idle_source"):
-                orch["idleSource"] = rationale["idle_source"]
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+        except (json.JSONDecodeError, TypeError):
+            rationale = {}
+        if trigger == "idle_timer" and rationale.get("idle_source"):
+            orch["idleSource"] = rationale["idle_source"]
+        if trigger == "discussion_deliverable":
+            if rationale.get("deliverableKind"):
+                orch["deliverableKind"] = rationale["deliverableKind"]
+            if rationale.get("deliverableId"):
+                orch["deliverableId"] = rationale["deliverableId"]
         meta["orchestration"] = orch
     return meta
 
@@ -286,6 +290,8 @@ class Orchestrator:
             rationale = json.loads(job.get("selectionRationaleJson") or "{}")
         except json.JSONDecodeError:
             rationale = {}
+        if str(job.get("trigger", "")) == "discussion_deliverable":
+            return self._filter_tools(all_tools, memory_only)
         com_id = rationale.get("commissionId")
         if com_id and str(job.get("trigger", "")).startswith("commission"):
             from altrasia.commissions import parse_allowed_tools
@@ -467,6 +473,9 @@ class Orchestrator:
         observer_mode: str | None = None,
         idle_source: str | None = None,
         commission_id: str | None = None,
+        deliverable_id: str | None = None,
+        deliverable_kind: str | None = None,
+        deliverable_instruction: str | None = None,
     ) -> dict[str, Any] | None:
         if world_id in self.svc.paused_worlds:
             return None
@@ -474,6 +483,12 @@ class Orchestrator:
         rationale_obj: dict[str, Any] = {"pick": trigger, "characterId": character_id}
         if commission_id:
             rationale_obj["commissionId"] = commission_id
+        if deliverable_id:
+            rationale_obj["deliverableId"] = deliverable_id
+        if deliverable_kind:
+            rationale_obj["deliverableKind"] = deliverable_kind
+        if deliverable_instruction:
+            rationale_obj["deliverableInstruction"] = deliverable_instruction
         if idle_source:
             rationale_obj["idle_source"] = idle_source
         rationale = json.dumps(rationale_obj)
@@ -763,6 +778,27 @@ class Orchestrator:
                     f"When finished, call memory_store on your mind pool with key "
                     f'"{summary_key}" containing your findings.'
                 )
+        if str(job.get("trigger", "")) == "discussion_deliverable":
+            from altrasia.orchestrator.discussion_judgement import _transcript_excerpt
+
+            kind = str(rationale.get("deliverableKind") or "report")
+            instruction = str(rationale.get("deliverableInstruction") or op_trigger)
+            locus = (
+                f"discussion:{job['sceneId']}:{job['characterId']}:{kind}"
+            )
+            transcript = _transcript_excerpt(
+                self.svc.store, job["worldId"], job["sceneId"], limit=20
+            )
+            system += (
+                f"\n\nPost-discussion deliverable — operator asked:\n{instruction}\n\n"
+                f"You are {ch['displayName']}. The group discussion has concluded. "
+                f"Deliver a single public {kind} to the operator synthesizing the discussion. "
+                "Speak directly to the operator; do not re-enact the full debate or write "
+                "lines for other cast members.\n"
+                f"You MUST call memory_store on your mind pool with locusKey "
+                f'"{locus}" containing the full {kind} text.\n\n'
+                f"## Discussion transcript (recent)\n{transcript[:8000]}"
+            )
         if str(job.get("trigger", "")) == "debate_turn":
             from altrasia.debate_activity import parse_activity
 
@@ -845,6 +881,93 @@ class Orchestrator:
             return enforce_single_speaker_output(raw, ch["displayName"], other_names)
         return ""
 
+    async def _fulfill_discussion_deliverable(
+        self,
+        job: dict[str, Any],
+        msg_id: str,
+        text: str,
+        tool_log: list[dict[str, Any]],
+    ) -> None:
+        from altrasia.commissions import create_commission, patch_commission
+        from altrasia.orchestrator.discussion_deliverables import (
+            mark_deliverable_done,
+            maybe_clear_ensemble_if_complete,
+            mind_locus_for_deliverable,
+        )
+
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+        except json.JSONDecodeError:
+            rationale = {}
+        deliverable_id = rationale.get("deliverableId")
+        kind = str(rationale.get("deliverableKind") or "report")
+        instruction = str(rationale.get("deliverableInstruction") or "")
+        locus = mind_locus_for_deliverable(job["sceneId"], job["characterId"], kind)
+
+        if not any(t.get("name") == "memory_store" for t in tool_log):
+            cleaned = (text or "").strip()
+            if cleaned:
+                self.svc.memory.memory_store(
+                    pool="mind",
+                    owner_id=job["characterId"],
+                    locus_key=locus,
+                    value=cleaned[:4000],
+                )
+                self.svc.embeddings.schedule_embed(
+                    owner_scope="mind",
+                    owner_id=job["characterId"],
+                    source_type="locus",
+                    source_ref=locus,
+                    text=cleaned[:4000],
+                )
+
+        commission_id: str | None = None
+        try:
+            com = create_commission(
+                self.svc.store,
+                job["worldId"],
+                assignee_character_id=job["characterId"],
+                target_scene_id=job["sceneId"],
+                brief=instruction or f"Post-discussion {kind} for the operator",
+            )
+            commission_id = com["commissionId"]
+            patch_commission(
+                self.svc.store,
+                commission_id,
+                status="done",
+                deliverable_locus_keys=[locus],
+                force_complete_reason="discussion_deliverable",
+            )
+            self._emit(
+                job["worldId"],
+                "commission.updated",
+                {"commissionId": commission_id, "status": "done"},
+            )
+        except Exception as exc:
+            log.warning("discussion deliverable commission record failed: %s", exc)
+
+        if deliverable_id:
+            mark_deliverable_done(
+                self.svc.store,
+                job["sceneId"],
+                str(deliverable_id),
+                fulfillment_message_id=msg_id,
+                commission_id=commission_id,
+            )
+
+        self._emit(
+            job["worldId"],
+            "conversation.deliverable_done",
+            {
+                "sceneId": job["sceneId"],
+                "characterId": job["characterId"],
+                "messageId": msg_id,
+                "commissionId": commission_id,
+                "kind": kind,
+            },
+        )
+        maybe_clear_ensemble_if_complete(self.svc.store, job["sceneId"])
+
     async def _after_reply(
         self,
         job: dict,
@@ -860,15 +983,22 @@ class Orchestrator:
             detect_narrative_presence,
         )
         from altrasia.orchestrator.briefing_chain import movement_tools_ran
-        from altrasia.orchestrator.discussion_judgement import (
-            apply_tool_log_signals,
-            clear_ensemble_discussion,
-            ensure_ensemble_discussion,
+        from altrasia.orchestrator.discussion_deliverables import (
+            bootstrap_ensemble_discussion,
+            enqueue_pending_deliverables,
+            mark_deliverable_done,
+            maybe_clear_ensemble_if_complete,
+            mind_locus_for_deliverable,
         )
+        from altrasia.orchestrator.discussion_judgement import apply_tool_log_signals
         from altrasia.orchestrator.single_speaker import (
             operator_trigger_text,
             trigger_invites_ensemble,
         )
+
+        if str(job.get("trigger") or "") == "discussion_deliverable":
+            await self._fulfill_discussion_deliverable(job, msg_id, text, tool_log)
+            return
 
         apply_tool_log_signals(
             self.svc.store,
@@ -993,13 +1123,20 @@ class Orchestrator:
                     )
 
         if movement_tools_ran(tool_log):
+            from altrasia.orchestrator.discussion_judgement import clear_ensemble_discussion
+
             clear_ensemble_discussion(self.svc.store, job["sceneId"])
         elif str(job.get("trigger") or "") == "persona_message":
             history = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
-            if trigger_invites_ensemble(operator_trigger_text(history)):
-                trigger_mid = job.get("triggerMessageId")
-                ensure_ensemble_discussion(
-                    self.svc.store, job["sceneId"], operator_message_id=trigger_mid
+            op_text = operator_trigger_text(history)
+            if trigger_invites_ensemble(op_text):
+                bootstrap_ensemble_discussion(
+                    self.svc.store,
+                    job["sceneId"],
+                    operator_text=op_text,
+                    operator_message_id=job.get("triggerMessageId"),
+                    world_id=job["worldId"],
+                    cfg=cfg,
                 )
 
         depth = int(job.get("continueDepth") or 0)
@@ -1045,8 +1182,8 @@ class Orchestrator:
                 stop_reason,
                 limit,
             )
-            if stop_reason == "conversation_resolved":
-                clear_ensemble_discussion(self.svc.store, job["sceneId"])
+            await enqueue_pending_deliverables(self, job, stop_reason)
+            maybe_clear_ensemble_if_complete(self.svc.store, job["sceneId"])
             self._emit(
                 job["worldId"],
                 "conversation.chain_stopped",

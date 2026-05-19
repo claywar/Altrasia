@@ -184,6 +184,7 @@ async def run_orchestrator_judgement(
     operator_prompt: str,
     character_signals: list[dict[str, Any]],
     transcript: str,
+    deliverables_note: str = "",
 ) -> dict[str, Any]:
     """LLM pass: is the group discussion informationally sufficient?"""
     system = (
@@ -191,12 +192,16 @@ async def run_orchestrator_judgement(
         "Given the operator request, cast discussion signals, and transcript excerpt, "
         "decide if enough has been surfaced for the operator to act — not whether "
         "everyone agrees, but whether major gaps are still unaddressed.\n"
+        "Discussion sufficiency is separate from post-discussion deliverables "
+        "(e.g. a named report still owed to the operator).\n"
         "Respond with ONLY JSON:\n"
         '{"sufficient": true|false, "reason": "...", "outstandingGaps": ["..."], '
-        '"influencedByCharacters": true|false}'
+        '"deliverablesOutstanding": ["..."], "influencedByCharacters": true|false}'
     )
+    deliverables_block = deliverables_note or "No post-discussion deliverables pending."
     user = (
         f"## Operator request\n{operator_prompt[:1200]}\n\n"
+        f"## Post-discussion deliverables (informational)\n{deliverables_block}\n\n"
         f"## Cast discussion_signal filings\n{_character_influence_summary(character_signals)}\n\n"
         f"## Transcript (recent)\n{transcript[:8000]}"
     )
@@ -223,6 +228,9 @@ async def run_orchestrator_judgement(
         "reason": str(parsed.get("reason") or "")[:500],
         "outstandingGaps": [
             str(g)[:200] for g in (parsed.get("outstandingGaps") or [])[:8]
+        ],
+        "deliverablesOutstanding": [
+            str(g)[:200] for g in (parsed.get("deliverablesOutstanding") or [])[:8]
         ],
         "influencedByCharacters": bool(parsed.get("influencedByCharacters", character_signals)),
         "at": ISO(),
@@ -302,6 +310,10 @@ async def assess_discussion_continuation(
         ]
     ) >= max(base, 6)
 
+    from altrasia.orchestrator.discussion_deliverables import deliverables_summary_for_judge
+
+    deliverables_note = deliverables_summary_for_judge(ensemble)
+
     if run_llm and (at_soft_cap or long_thread or signals):
         try:
             judgement = await run_orchestrator_judgement(
@@ -311,6 +323,7 @@ async def assess_discussion_continuation(
                 operator_prompt=op_line,
                 character_signals=signals,
                 transcript=_transcript_excerpt(svc.store, world_id, scene_id),
+                deliverables_note=deliverables_note,
             )
             if ensemble is not None:
                 activity = dict(ensemble)

@@ -21,6 +21,8 @@ POLICY_KEYS = (
     "maxContinueDepthCap",
     "conversationJudgementEnabled",
     "discussionSignalsEnabled",
+    "discussionDeliverablesEnabled",
+    "maxDeliverablesPerDiscussion",
     "citeProvenanceInPrompt",
     "commonsAccessIds",
     "speakIntentOnTie",

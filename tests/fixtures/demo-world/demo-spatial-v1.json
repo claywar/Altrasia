@@ -11,6 +11,8 @@
     "continueUntilResolved": true,
     "conversationJudgementEnabled": true,
     "discussionSignalsEnabled": true,
+    "discussionDeliverablesEnabled": true,
+    "maxDeliverablesPerDiscussion": 3,
     "maxContinueDepthExtended": 20,
     "maxContinueDepthCap": 24,
     "generationMaxRetries": 2,
