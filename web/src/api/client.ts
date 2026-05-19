@@ -93,7 +93,10 @@ export type Message = {
   streamStatus: string;
   metaJson: string;
   generationJobId?: string | null;
+  generationTrigger?: string | null;
+  idleSource?: string | null;
   perceivedByPersona?: boolean;
+  createdAt?: string;
 };
 
 export type GenerationJob = {

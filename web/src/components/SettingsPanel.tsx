@@ -11,6 +11,7 @@ import { SettingsCategoryPane } from "./settings/SettingsCategoryPane";
 import type { SettingsCategoryId } from "./settings/settingsNav";
 import { WorldPackageSection } from "./settings/WorldPackageSection";
 import { WorldStatusSection } from "./settings/WorldStatusSection";
+import { AmbientDisplaySection } from "./settings/AmbientDisplaySection";
 import { ServerPluginsSection } from "./settings/ServerPluginsSection";
 import { ServerInferenceSection } from "./settings/ServerInferenceSection";
 import { ServerHeartbeatSection } from "./settings/ServerHeartbeatSection";
@@ -28,6 +29,7 @@ type Props = {
   scenes?: Scene[];
   onScenesChanged?: () => void;
   activeSceneId?: string;
+  onAmbientTranscriptChange?: () => void;
 };
 
 export function SettingsPanel({
@@ -40,6 +42,7 @@ export function SettingsPanel({
   scenes = [],
   onScenesChanged,
   activeSceneId = "",
+  onAmbientTranscriptChange,
 }: Props) {
   const [settings, setSettings] = useState<OperatorSettings | null>(null);
   const [activeCategory, setActiveCategory] = useState<SettingsCategoryId>("world");
@@ -56,6 +59,7 @@ export function SettingsPanel({
           <SettingsCategoryPane categoryId="world">
             <SettingsGroup>
               <WorldStatusSection worldPaused={worldPaused} />
+              <AmbientDisplaySection onChanged={onAmbientTranscriptChange} />
               <WorldPolicyPanel worldId={worldId} embedded />
               <WorldPackageSection
                 worldId={worldId}

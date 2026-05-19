@@ -1,3 +1,58 @@
+import type { Message } from "../api/client";
+
+export const AMBIENT_ACTIVITY_LIMIT = 15;
+export const SHOW_AMBIENT_IN_TRANSCRIPT_KEY = "altrasia.showAmbientInTranscript";
+
+export function messageGenerationTrigger(m: Message): string | null {
+  if (m.generationTrigger) return m.generationTrigger;
+  try {
+    const meta = JSON.parse(m.metaJson || "{}") as {
+      orchestration?: { trigger?: string };
+    };
+    return meta.orchestration?.trigger ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function isAmbientMessage(m: Message): boolean {
+  return messageGenerationTrigger(m) === "idle_timer";
+}
+
+/** Messages shown in the scene chronicle (respects ambient transcript toggle). */
+export function chronicleMessages(msgs: Message[]): Message[] {
+  if (showAmbientInTranscript()) return msgs;
+  return msgs.filter((m) => !isAmbientMessage(m));
+}
+
+export function showAmbientInTranscript(): boolean {
+  try {
+    return sessionStorage.getItem(SHOW_AMBIENT_IN_TRANSCRIPT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setShowAmbientInTranscript(enabled: boolean): void {
+  try {
+    sessionStorage.setItem(SHOW_AMBIENT_IN_TRANSCRIPT_KEY, enabled ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function splitSceneMessages(msgs: Message[]): {
+  dialogueMessages: Message[];
+  ambientActivity: Message[];
+} {
+  const ambient = msgs.filter(isAmbientMessage);
+  const dialogue = chronicleMessages(msgs);
+  return {
+    dialogueMessages: dialogue,
+    ambientActivity: ambient.slice(-AMBIENT_ACTIVITY_LIMIT),
+  };
+}
+
 export function parseScope(metaJson: string): string {
   try {
     return JSON.parse(metaJson).communication?.scope ?? "public";

@@ -222,6 +222,16 @@ Wireframe: [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-17.
 
 Per-world **pause** remains UI-C1; distinct from global heartbeat.
 
+## 11.1 Ambient activity display (idle_timer)
+
+| ID | Requirement |
+|----|-------------|
+| UI-AMB-1 | `idle_timer` messages (tab-visible and server heartbeat) MUST be hidden from the scene transcript by default. |
+| UI-AMB-2 | Recent ambient activity MUST appear in top chrome (`WorldActivityLog`); operator MAY expand an entry for full text. |
+| UI-AMB-3 | Operator MAY enable “Show ambient lines in transcript” (session preference) to restore full chronicle bubbles. |
+
+In-flight idle jobs continue to use the queue strip (UI-H2, UI-Q1).
+
 ## 12. Character authoring (Phase 3 UI)
 
 | ID | Requirement |

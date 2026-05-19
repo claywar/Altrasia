@@ -10,6 +10,7 @@ from typing import Any
 
 from altrasia.domain.presence import PERSONA_ID
 from altrasia.inference.queue import TokenStream
+from altrasia.inference.tool_calls import normalize_assistant_message
 from altrasia.memory.strip_reasoning import strip_from_message_payload
 from altrasia.tools.registry import ToolContext
 from altrasia.world_geography import lock_geography_on_first_play
@@ -17,6 +18,23 @@ from altrasia.world_geography import lock_geography_on_first_play
 ISO = lambda: datetime.now(timezone.utc).isoformat()
 
 log = logging.getLogger(__name__)
+
+
+def _scene_message_meta(job: dict[str, Any]) -> dict[str, Any]:
+    """Communication + orchestration metadata stored on scene messages (UI-AMB)."""
+    meta: dict[str, Any] = {"communication": {"scope": "public"}}
+    trigger = job.get("trigger")
+    if trigger:
+        orch: dict[str, Any] = {"trigger": trigger}
+        if trigger == "idle_timer":
+            try:
+                rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+            except (json.JSONDecodeError, TypeError):
+                rationale = {}
+            if rationale.get("idle_source"):
+                orch["idleSource"] = rationale["idle_source"]
+        meta["orchestration"] = orch
+    return meta
 
 
 class Orchestrator:
@@ -287,7 +305,7 @@ class Orchestrator:
                 "reasoning": None,
                 "streamStatus": "streaming",
                 "generationJobId": job_id,
-                "metaJson": json.dumps({"communication": {"scope": "public"}}),
+                "metaJson": json.dumps(_scene_message_meta(job)),
                 "createdAt": ISO(),
             }
         )
@@ -407,10 +425,11 @@ class Orchestrator:
                     system += (
                         "\nSynthesize positions for all debaters; your line is the public summary."
                     )
+        from altrasia.orchestrator.chat_messages import scene_messages_for_llm
+
         messages = [{"role": "system", "content": system}]
-        for m in self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-12:]:
-            role = "assistant" if m["role"] == "assistant" else "user"
-            messages.append({"role": role, "content": m["outputText"]})
+        history = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
+        messages.extend(scene_messages_for_llm(history))
         all_tools = self.svc.tools.list_openai_tools()
         memory_only = self._memory_tool_names()
         job_tools = self._tools_for_job(job, all_tools, memory_only)
@@ -430,7 +449,7 @@ class Orchestrator:
             else:
                 tools_payload = job_tools if depth == 0 else None
             resp = await self.svc.llm.chat(messages, tools_payload)
-            msg = resp["choices"][0]["message"]
+            msg = normalize_assistant_message(resp["choices"][0]["message"])
             tool_calls = msg.get("tool_calls")
             if tool_calls:
                 messages.append(msg)

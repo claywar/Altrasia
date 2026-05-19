@@ -1,5 +1,5 @@
 import type { Message } from "../../api/client";
-import { parseScope } from "../../lib/parse";
+import { chronicleMessages, parseScope } from "../../lib/parse";
 import { ChronicleEntry } from "./ChronicleEntry";
 
 type Props = {
@@ -14,12 +14,14 @@ function speakerLabel(m: Message): string {
 }
 
 export function ChronicleFeed({ messages, worldId }: Props) {
+  const visible = chronicleMessages(messages);
+
   return (
     <div className="chronicle-feed" data-testid="chronicle-feed">
-      {messages.length === 0 && (
+      {visible.length === 0 && (
         <p className="chronicle-feed__empty">The scene is quiet. Speak as persona to begin.</p>
       )}
-      {messages.map((m) => {
+      {visible.map((m) => {
         const sc = parseScope(m.metaJson);
         const perceived = m.perceivedByPersona !== false;
         return (

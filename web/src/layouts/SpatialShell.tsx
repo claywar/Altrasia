@@ -26,6 +26,8 @@ type Props = {
   scene: Scene | null;
   scenes: Scene[];
   messages: Message[];
+  ambientActivity: Message[];
+  ambientCharName: (characterId: string | null) => string;
   graph: SpatialGraph | null;
   queue: QueueSnapshot;
   worldPaused: boolean;
@@ -69,6 +71,8 @@ export function SpatialShell({
   scene,
   scenes,
   messages,
+  ambientActivity,
+  ambientCharName,
   graph,
   queue,
   worldPaused,
@@ -139,6 +143,8 @@ export function SpatialShell({
         worldName={world.name}
         worldPaused={worldPaused}
         queue={queue}
+        ambientActivity={ambientActivity}
+        ambientCharName={ambientCharName}
         currentJobId={currentJobId}
         onPauseToggle={onPauseToggle}
         onMap={onMapOpen}

@@ -1,11 +1,14 @@
 import { GpuQueueStrip } from "../components/GpuQueueStrip";
-import type { QueueSnapshot } from "../api/client";
+import { WorldActivityLog } from "../components/WorldActivityLog";
+import type { Message, QueueSnapshot } from "../api/client";
 import { Button } from "../ui/Button";
 
 type Props = {
   worldName: string;
   worldPaused: boolean;
   queue: QueueSnapshot;
+  ambientActivity: Message[];
+  ambientCharName: (characterId: string | null) => string;
   currentJobId: string | null;
   onPauseToggle: () => void;
   onMap: () => void;
@@ -20,6 +23,8 @@ export function TopBar({
   worldName,
   worldPaused,
   queue,
+  ambientActivity,
+  ambientCharName,
   currentJobId,
   onPauseToggle,
   onMap,
@@ -35,6 +40,7 @@ export function TopBar({
         <span className="top-bar__dot" aria-hidden title="Connected" />
         <h1>Altrasia — {worldName}</h1>
       </div>
+      <WorldActivityLog entries={ambientActivity} charName={ambientCharName} />
       <GpuQueueStrip
         busy={queue.busy}
         depth={queue.depth}

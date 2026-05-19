@@ -67,6 +67,44 @@ from altrasia.world_package import export_world_package, import_world_package
 ISO = lambda: datetime.now(timezone.utc).isoformat()
 
 
+def _idle_source_from_rationale(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    try:
+        return json.loads(raw).get("idle_source")
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _trigger_from_meta(meta_json: str | None) -> str | None:
+    try:
+        return (json.loads(meta_json or "{}").get("orchestration") or {}).get("trigger")
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _idle_source_from_meta(meta_json: str | None) -> str | None:
+    try:
+        return (json.loads(meta_json or "{}").get("orchestration") or {}).get("idleSource")
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _enrich_message_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Attach generationTrigger and idleSource; strip join-only fields."""
+    out = dict(row)
+    rationale = out.pop("jobRationaleJson", None)
+    trigger = out.get("generationTrigger") or _trigger_from_meta(out.get("metaJson"))
+    if trigger:
+        out["generationTrigger"] = trigger
+    idle = _idle_source_from_rationale(rationale) or _idle_source_from_meta(out.get("metaJson"))
+    if trigger == "idle_timer":
+        out["idleSource"] = idle
+    else:
+        out["idleSource"] = None
+    return out
+
+
 class CreateWorldBody(BaseModel):
     name: str | None = None
     fixtureId: str | None = None
@@ -592,7 +630,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         channels = {c["channelId"]: c for c in svc.phone.list_active(world_id)}
         out = []
         for m in svc.store.list_messages(world_id, scene_id=scene_id):
-            row = dict(m)
+            row = _enrich_message_row(m)
             comm = json.loads(m.get("metaJson") or "{}").get("communication", {})
             ch_id = comm.get("channelId")
             ch = channels.get(ch_id) if ch_id else None
@@ -941,7 +979,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/v1/worlds/{world_id}/spatial-graph", dependencies=[Depends(verify_auth)])
     def spatial_graph(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
-        return build_spatial_graph(svc.store, world_id)
+        try:
+            return build_spatial_graph(svc.store, world_id)
+        except ValueError as exc:
+            if "world not found" in str(exc).lower():
+                raise HTTPException(404, "world not found") from exc
+            raise
 
     @app.get("/api/v1/worlds/{world_id}/navigation/summary", dependencies=[Depends(verify_auth)])
     def navigation_summary_route(

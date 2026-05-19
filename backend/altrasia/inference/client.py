@@ -7,6 +7,7 @@ import httpx
 
 from altrasia.inference.mock_llm import mock_chat_completion
 from altrasia.inference.openai_compat import chat_completions_url
+from altrasia.inference.tool_calls import normalize_assistant_message
 
 
 class LlmClient:
@@ -27,16 +28,20 @@ class LlmClient:
         tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         if self.mock:
-            return await mock_chat_completion(messages, tools)
-        assert self.base_url
-        payload: dict[str, Any] = {"model": self.model, "messages": messages}
-        if tools:
-            payload["tools"] = tools
-            payload["tool_choice"] = "auto"
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            r = await client.post(chat_completions_url(self.base_url), json=payload)
-            r.raise_for_status()
-            return r.json()
+            data = await mock_chat_completion(messages, tools)
+        else:
+            assert self.base_url
+            payload: dict[str, Any] = {"model": self.model, "messages": messages}
+            if tools:
+                payload["tools"] = tools
+                payload["tool_choice"] = "auto"
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                r = await client.post(chat_completions_url(self.base_url), json=payload)
+                r.raise_for_status()
+                data = r.json()
+        choice = data["choices"][0]
+        choice["message"] = normalize_assistant_message(choice.get("message") or {})
+        return data
 
     async def stream_chat(
         self,

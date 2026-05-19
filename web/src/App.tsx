@@ -23,12 +23,14 @@ import { LauncherView } from "./layouts/LauncherView";
 import { SpatialShell } from "./layouts/SpatialShell";
 import { Button } from "./ui/Button";
 import type { ExitItem } from "./features/spatial/ExitList";
+import { splitSceneMessages } from "./lib/parse";
 
 export default function App() {
   const [world, setWorld] = useState<World | null>(null);
   const [scene, setScene] = useState<Scene | null>(null);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [ambientActivity, setAmbientActivity] = useState<Message[]>([]);
   const [graph, setGraph] = useState<SpatialGraph | null>(null);
   const [roster, setRoster] = useState<Awaited<ReturnType<typeof api.roster>> | null>(null);
   const [signals, setSignals] = useState<Awaited<ReturnType<typeof api.signals>>>([]);
@@ -94,8 +96,24 @@ export default function App() {
     const active = scList.find((s) => s.sceneId === w.activeSceneId) ?? scList[0];
     setScene(active);
     const msgs = await api.listMessages(w.worldId, active.sceneId);
-    setMessages(msgs);
+    const split = splitSceneMessages(msgs);
+    setMessages(split.dialogueMessages);
+    setAmbientActivity(split.ambientActivity);
   }, []);
+
+  const ambientCharName = useCallback(
+    (characterId: string | null) => {
+      if (!characterId) return "—";
+      const all = [
+        ...(roster?.atLocation ?? []),
+        ...(roster?.elsewhere ?? []),
+        ...(roster?.unplaced ?? []),
+      ];
+      const c = all.find((p) => p.characterId === characterId);
+      return c?.displayName ?? characterId.replace(/^char-/, "");
+    },
+    [roster]
+  );
 
   const openWorld = async (w: World) => {
     setLoading(true);
@@ -353,6 +371,8 @@ export default function App() {
         scene={scene}
         scenes={scenes}
         messages={messages}
+        ambientActivity={ambientActivity}
+        ambientCharName={ambientCharName}
         graph={graph}
         queue={queue}
         worldPaused={worldPaused}
@@ -468,6 +488,7 @@ export default function App() {
           worldId={world.worldId}
           worldName={world.name}
           worldPaused={worldPaused}
+          onAmbientTranscriptChange={() => refresh(world)}
           onClose={() => setSettingsOpen(false)}
           onWorldImported={async (w) => {
             const full = await api.getWorld(w.worldId);

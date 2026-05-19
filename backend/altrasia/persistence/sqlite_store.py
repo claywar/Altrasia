@@ -184,16 +184,20 @@ class SqlitePersistence:
     def list_messages(
         self, world_id: str, *, scene_id: str | None = None, channel_kind: str = "scene"
     ) -> list[dict[str, Any]]:
+        join = """LEFT JOIN GenerationJob j ON j.jobId = m.generationJobId"""
+        cols = "m.*, j.trigger AS generationTrigger, j.selectionRationaleJson AS jobRationaleJson"
         if scene_id:
             cur = self.conn.execute(
-                """SELECT * FROM Message WHERE worldId = ? AND channelKind = ? AND sceneId = ?
-                   ORDER BY createdAt""",
+                f"""SELECT {cols} FROM Message m {join}
+                   WHERE m.worldId = ? AND m.channelKind = ? AND m.sceneId = ?
+                   ORDER BY m.createdAt""",
                 (world_id, channel_kind, scene_id),
             )
         else:
             cur = self.conn.execute(
-                """SELECT * FROM Message WHERE worldId = ? AND channelKind = ?
-                   ORDER BY createdAt""",
+                f"""SELECT {cols} FROM Message m {join}
+                   WHERE m.worldId = ? AND m.channelKind = ?
+                   ORDER BY m.createdAt""",
                 (world_id, channel_kind),
             )
         return self._rows(cur.fetchall())
