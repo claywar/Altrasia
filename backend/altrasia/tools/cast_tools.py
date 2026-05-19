@@ -13,10 +13,21 @@ CAST_SCENE_SUMMON_TOOLS = frozenset({"scene_summon"})
 OBSERVER_ONLY_SCENE_TOOLS = frozenset(
     {"scene_exit_set_state", "scene_update_fixture"}
 )
+# Ambient generations: no summoning others; self-move only via scene_join.
+AMBIENT_MOVEMENT_TRIGGERS = frozenset({"idle_timer"})
+
+
+def narrative_presence_eligible(trigger: str | None) -> bool:
+    """Narrative auto-move applies only on reactive play, not ambient idle ticks."""
+    return str(trigger or "") not in AMBIENT_MOVEMENT_TRIGGERS
 
 
 def cast_allowed_tool_names(
-    store: Any, world_id: str, character_id: str
+    store: Any,
+    world_id: str,
+    character_id: str,
+    *,
+    trigger: str | None = None,
 ) -> set[str] | None:
     """Return allowed tool names for cast generation, or None for default memory-only filter."""
     cfg = get_world_config(store, world_id)
@@ -27,7 +38,10 @@ def cast_allowed_tool_names(
     allowed: set[str] = set()
     if cfg.get("castSummonEnabled", True):
         allowed |= {"character_list", "scene_location_list", "scene_join"}
-        if can_summon_others(cfg, scene_role):
+        if (
+            trigger not in AMBIENT_MOVEMENT_TRIGGERS
+            and can_summon_others(cfg, scene_role)
+        ):
             allowed.add("scene_summon")
     if cfg.get("discussionSignalsEnabled", True):
         allowed.add("discussion_signal")

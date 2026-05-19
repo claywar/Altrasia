@@ -77,15 +77,8 @@ def detect_narrative_presence(
         if m2:
             target_scene_id = _match_scene_by_name(scenes, m2.group(0))
 
+    # Only explicitly named cast may be summoned; no bulk "team/everyone" inference.
     summon_ids = _names_in_text(text, members)
-    if not summon_ids and re.search(r"\b(team|directors?|members?|everyone|staff)\b", text, re.I):
-        if can_summon_others(cfg, scene_role):
-            roster = services.presence.roster(world_id)
-            summon_ids = [
-                e["characterId"]
-                for e in roster.get("elsewhere", []) + roster.get("unplaced", [])
-                if e["characterId"] != speaker_id
-            ][:MAX_SUMMON_PER_LINE]
 
     self_move = bool(
         re.search(r"\b(i'll|i will|meet you|heading to|on my way)\b", text, re.I)
@@ -93,19 +86,12 @@ def detect_narrative_presence(
     )
 
     actions: list[dict[str, Any]] = []
+    # Summon only when both named people and an explicit destination are stated.
     if summon_ids and target_scene_id and can_summon_others(cfg, scene_role):
         actions.append(
             {
                 "kind": "summon",
                 "targetSceneId": target_scene_id,
-                "characterIds": summon_ids,
-            }
-        )
-    elif summon_ids and can_summon_others(cfg, scene_role):
-        actions.append(
-            {
-                "kind": "summon",
-                "targetSceneId": scene_id,
                 "characterIds": summon_ids,
             }
         )

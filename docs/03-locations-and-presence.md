@@ -30,6 +30,8 @@ If `present` is empty, `getPresentCharacters` MAY default to all world members (
 
 When `presenceAnnounce` is true (default), batch **summon** appends scene chronicle lines with `communication.scope: presence` so operators see who requested assistance and who was called. NPC tool/narrative summons post after the summoner’s line completes; operator REST/UI summons post immediately at the target scene.
 
+**Movement policy:** Cast move only when (1) another character with summon authority calls `scene_summon`, (2) they explicitly call `scene_join` for themselves, or (3) narrative auto-apply fires on **reactive** lines (not `idle_timer`) with **named** people and an explicit destination. Ambient idle jobs may use `scene_join` for self-travel only; they cannot summon others. Narrative fallback does not bulk-summon on words like “team” or “everyone”.
+
 ### 2.2 Presence buckets
 
 For roster UI and APIs:

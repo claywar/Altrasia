@@ -342,7 +342,10 @@ class Orchestrator:
         )
 
         cast_scene = cast_allowed_tool_names(
-            self.svc.store, job["worldId"], job["characterId"]
+            self.svc.store,
+            job["worldId"],
+            job["characterId"],
+            trigger=str(job.get("trigger") or ""),
         )
         cast_tools = {
             t["function"]["name"]
@@ -981,10 +984,23 @@ class Orchestrator:
             )
             if framing:
                 system += f"\n\n{framing}"
+        job_trigger = str(job.get("trigger") or "")
         cast_scene_tools = cast_allowed_tool_names(
-            self.svc.store, job["worldId"], job["characterId"]
+            self.svc.store,
+            job["worldId"],
+            job["characterId"],
+            trigger=job_trigger,
         )
-        if cast_scene_tools:
+        from altrasia.tools.cast_tools import AMBIENT_MOVEMENT_TRIGGERS
+
+        if job_trigger in AMBIENT_MOVEMENT_TRIGGERS:
+            if cast_scene_tools and "scene_join" in cast_scene_tools:
+                system += (
+                    "\n\nAmbient world activity: stay where you are unless you "
+                    "genuinely decide to go elsewhere. You may call scene_join for "
+                    "yourself only if you commit to travel. Do not summon others."
+                )
+        elif cast_scene_tools:
             system += (
                 "\n\nWhen you commit to gathering people or moving to a meeting, "
                 "you MUST call scene_summon or scene_join with real characterIds from "
@@ -1331,7 +1347,11 @@ class Orchestrator:
             message_id=msg_id,
         )
 
-        if not movement_tools_ran(tool_log):
+        from altrasia.tools.cast_tools import narrative_presence_eligible
+
+        if not movement_tools_ran(tool_log) and narrative_presence_eligible(
+            str(job.get("trigger") or "")
+        ):
             detection = detect_narrative_presence(
                 self.svc,
                 world_id=job["worldId"],
