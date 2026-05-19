@@ -31,6 +31,8 @@ flowchart TB
 
 Implementations MUST enqueue `GpuRequest { kind, jobId, priority }` and MUST NOT call llama/ComfyUI ports directly from scattered call sites.
 
+**Chat history with thinking enabled:** llama.cpp servers with `enable_thinking` reject prior `assistant` turns in the prompt. Scene history for cast generation MUST send earlier NPC lines as user `[Scene] …` context (see `scene_messages_for_llm`); only the in-flight reply uses the assistant role.
+
 ## 2. Configuration
 
 | Key | Description |

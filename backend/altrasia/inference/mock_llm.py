@@ -174,6 +174,91 @@ async def mock_chat_completion(
         if "memory_store" in names:
             return _memory_store_response()
     if tools and "commission errand" not in system_text.lower():
+        names = [t["function"]["name"] for t in tools]
+        tool_rounds = sum(1 for m in messages if m.get("role") == "tool")
+        briefing_line = any(
+            k in lower
+            for k in (
+                "conference room",
+                "briefing",
+                "assemble",
+                "gather",
+                "members into",
+                "call the members",
+            )
+        )
+        if briefing_line:
+            summon_done = any(
+                tc.get("function", {}).get("name") == "scene_summon"
+                for m in messages
+                if m.get("role") == "assistant"
+                for tc in (m.get("tool_calls") or [])
+            )
+            memory_only = not any(n.startswith("scene_") for n in names)
+            if tool_rounds == 0 and memory_only and "memory_search" in names:
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_mem_brief",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "memory_search",
+                                            "arguments": json.dumps({"query": "team directors"}),
+                                        },
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            if not summon_done and (not memory_only or "scene_summon" in names):
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_summon",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "scene_summon",
+                                            "arguments": json.dumps(
+                                                {
+                                                    "targetSceneId": "scene-conference-room",
+                                                    "characterIds": [
+                                                        "char-sofia-mendez",
+                                                        "char-liam-park",
+                                                    ],
+                                                }
+                                            ),
+                                        },
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            if summon_done:
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": (
+                                    "Understood. I've asked Sofia Mendez and Liam Park to meet "
+                                    "us in the main conference room for the briefing."
+                                ),
+                            }
+                        }
+                    ]
+                }
         if re.search(r"\bremember\b", lower) or re.search(r"\bcapital\b", lower):
             return {
                 "choices": [

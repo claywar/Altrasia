@@ -103,6 +103,19 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 - Mermaid diagram displays or shows explicit error fallback (UI-R2, UI-R5)
 - Streaming shows plain text until finalize (UI-R3)
 
+### 7b. CTO briefing assembly (leadership summon)
+
+**Operator action:** In the Lobby with Jordan Reyes (CTO), send a public line such as: *Call the members into your conference room so I may observe your briefing and their thoughts. I will meet you there.*
+
+**Expected:**
+
+- Jordan names **real** cast from the Vertex roster (directors such as Sofia Mendez, Liam Park)—not invented names.
+- **People** / roster shows summoned members in **Conference Room** (`scene-conference-room`) without manual WorldRail summon.
+- Jordan’s generation tool trace includes `scene_summon` (or narrative-presence fallback when prose-only).
+- Travel to Conference Room (map or Places) to hear follow-up lines from summoned directors (briefing chain, capped by `briefingMaxReplies`).
+
+**Automated check:** `tests/test_cast_summon.py`.
+
 ### 8. Restart continuity
 
 **Operator action:** Restart server or reload world.

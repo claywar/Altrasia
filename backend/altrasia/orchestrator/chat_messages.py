@@ -2,22 +2,71 @@ from __future__ import annotations
 
 from typing import Any
 
+from altrasia.perception.scope import can_perceive
 
-def scene_messages_for_llm(rows: list[dict[str, Any]], *, limit: int = 12) -> list[dict[str, str]]:
+
+_SCENE_PREFIX = "[Scene] "
+
+
+def thinking_safe_chat_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rewrite prior assistant *content* turns so enable_thinking servers accept the payload.
+
+    Tool-call-only assistant messages (content empty, tool_calls set) are left intact.
+    """
+    out: list[dict[str, Any]] = []
+    for m in messages:
+        role = m.get("role")
+        if role == "system":
+            out.append(m)
+            continue
+        if role == "assistant":
+            content = (m.get("content") or "").strip()
+            if content:
+                if content.startswith(_SCENE_PREFIX):
+                    out.append({"role": "user", "content": content})
+                else:
+                    out.append({"role": "user", "content": f"{_SCENE_PREFIX}{content}"})
+                continue
+            out.append(m)
+            continue
+        out.append(m)
+    return out
+
+
+def scene_messages_for_llm(
+    rows: list[dict[str, Any]],
+    *,
+    limit: int = 12,
+    viewer_id: str | None = None,
+    present: list[str] | None = None,
+    viewer_scene_id: str | None = None,
+) -> list[dict[str, str]]:
     """Build OpenAI chat turns from scene history.
 
-    Skips empty interrupted generation stubs (failed/cancelled jobs) and merges
-    consecutive same-role lines so llama.cpp accepts the payload.
+    Skips empty interrupted generation stubs. Prior cast lines are sent as user
+    ``[Scene] …`` context (thinking-safe for llama.cpp enable_thinking); persona
+    lines stay user without the prefix.
     """
     turns: list[dict[str, str]] = []
+    present_list = present or []
     for m in rows[-limit:]:
+        if viewer_id and present is not None:
+            if not can_perceive(
+                viewer_id=viewer_id,
+                message=m,
+                present=present_list,
+                viewer_scene_id=viewer_scene_id,
+            ):
+                continue
         if m.get("streamStatus") == "interrupted" and not (m.get("outputText") or "").strip():
             continue
-        role = "assistant" if m.get("role") == "assistant" else "user"
         content = (m.get("outputText") or "").strip()
         if not content:
             continue
-        turns.append({"role": role, "content": content})
+        if m.get("role") == "assistant":
+            turns.append({"role": "user", "content": f"{_SCENE_PREFIX}{content}"})
+        else:
+            turns.append({"role": "user", "content": content})
     return _collapse_trailing_same_role(turns, "assistant")
 
 

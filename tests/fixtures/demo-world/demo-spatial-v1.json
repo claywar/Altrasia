@@ -7,9 +7,16 @@
   "defaultModelProfile": "qwen3.6-35b-a3b",
   "config": {
     "agentContinueEnabled": true,
-    "maxContinueDepth": 2,
+    "maxContinueDepth": 5,
     "demoMapShowcase": true,
-    "architectureStyle": "blueprint"
+    "architectureStyle": "blueprint",
+    "orgRecallEnabled": true,
+    "orgRecallMaxChars": 4000,
+    "sceneFramingEnabled": true,
+    "castSummonEnabled": true,
+    "summonRoles": ["cto", "director"],
+    "narrativePresenceMode": "auto",
+    "briefingMaxReplies": 2
   },
   "worldMap": {
     "schemaVersion": 1,

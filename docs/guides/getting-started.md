@@ -52,6 +52,8 @@ altrasia serve
 
 Model profile: [config/models/qwen3.6-35b-a3b.yaml](../../config/models/qwen3.6-35b-a3b.yaml)
 
+**Thinking mode (Qwen / llama.cpp):** If your server runs with `enable_thinking`, it cannot accept prior assistant turns in the chat prompt (“assistant prefill”). Altrasia sends completed cast lines as user `[Scene] …` context; only the live NPC generation is assistant. Keep thinking enabled on the router—no server change required.
+
 ## 4. API quick test
 
 ```bash

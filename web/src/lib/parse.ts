@@ -81,6 +81,15 @@ export function parseScope(metaJson: string): string {
   }
 }
 
+export function parseGenerationError(metaJson: string): string | null {
+  try {
+    const err = JSON.parse(metaJson || "{}").generationError;
+    return typeof err === "string" && err.trim() ? err.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function parsePresent(raw: string): string[] {
   try {
     return JSON.parse(raw);

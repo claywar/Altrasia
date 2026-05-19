@@ -41,16 +41,17 @@ class MemoryService:
 
         from altrasia.memory.embeddings import vector_from_blob
 
-        rows = self.store.conn.execute(
+        rows = self.store.fetchall(
             """SELECT sourceId, vectorBlob FROM EmbeddingRecord
                WHERE ownerScope = ? AND sourceId LIKE ? LIMIT 200""",
             (pool, f"{owner_id}:%"),
-        ).fetchall()
+        )
         if not rows:
             return hits[:limit]
         qvec = _hash_embed(query)
         emb_map: dict[str, list[float]] = {}
-        for sid, blob in rows:
+        for row in rows:
+            sid, blob = row["sourceId"], row["vectorBlob"]
             vec = vector_from_blob(blob)
             if vec:
                 key = sid.split(":", 1)[-1] if ":" in sid else sid
@@ -88,34 +89,48 @@ class MemoryService:
             parts.append("## Recent diary (witnessed)")
             for seg in diary[-8:]:
                 parts.append(f"- {seg['text']}")
-        mind = self.store.conn.execute(
+        mind = self.store.fetchall(
             "SELECT locusKey, value FROM Locus WHERE pool = 'mind' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 20",
             (character_id,),
-        ).fetchall()
+        )
         if mind:
             parts.append("## Mind loci")
             for row in mind:
-                parts.append(f"- {row[0]}: {row[1]}")
-        world = self.store.conn.execute(
+                parts.append(f"- {row['locusKey']}: {row['value']}")
+        world = self.store.fetchall(
             "SELECT locusKey, value FROM Locus WHERE pool = 'world' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 10",
             (scene_id,),
-        ).fetchall()
+        )
         if world:
             parts.append("## Scene world pool")
             for row in world:
-                parts.append(f"- {row[0]}: {row[1]}")
+                parts.append(f"- {row['locusKey']}: {row['value']}")
         if world_id:
             cfg = get_world_config(self.store, world_id)
+            if cfg.get("orgRecallEnabled", True):
+                from altrasia.domain.presence import PresenceService
+                from altrasia.memory.org_recall import build_org_recall
+
+                org_max = int(cfg.get("orgRecallMaxChars", 4000))
+                org = build_org_recall(
+                    self.store,
+                    PresenceService(self.store),
+                    world_id=world_id,
+                    character_id=character_id,
+                    max_chars=org_max,
+                )
+                if org:
+                    parts.append(org)
             if character_has_commons_access(cfg, character_id):
-                commons = self.store.conn.execute(
+                commons = self.store.fetchall(
                     """SELECT locusKey, value FROM Locus
                        WHERE pool = 'commons' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 12""",
                     (world_id,),
-                ).fetchall()
+                )
                 if commons:
                     parts.append("## Institutional records (commons)")
                     for row in commons:
-                        parts.append(f"- {row[0]}: {row[1]}")
+                        parts.append(f"- {row['locusKey']}: {row['value']}")
         text = "\n".join(parts)
         return text[:max_chars]
 

@@ -2,6 +2,7 @@ profileId: qwen3.6-35b-a3b
 routerModelId: Qwen3.6-35B-A3B
 qualityAddendum: |
   Stay in character. Prefer concrete, brief replies. Do not repeat the same phrase.
+  Speak only as yourself—never script lines for other cast members in the same message.
 stripReasoningTags:
   - ""
   - ""

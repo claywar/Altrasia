@@ -50,6 +50,19 @@ def _scene_message_meta(job: dict[str, Any]) -> dict[str, Any]:
     return meta
 
 
+_GENERATION_FAILED_TEXT = (
+    "Generation failed. Check inference logs or the ⓘ job details."
+)
+
+_AGENT_CONTINUE_TRIGGERS = frozenset({"persona_message", "agent_continue"})
+
+
+def _message_meta_with_generation_error(job: dict[str, Any], exc: Exception) -> str:
+    meta = _scene_message_meta(job)
+    meta["generationError"] = str(exc)[:200]
+    return json.dumps(meta)
+
+
 class Orchestrator:
     def __init__(self, services: Any) -> None:
         self.svc = services
@@ -79,6 +92,22 @@ class Orchestrator:
             task.cancel()
         if job:
             self.svc.store.update_job(job_id, status="cancelled")
+            row = self.svc.store.fetchone(
+                "SELECT messageId, metaJson FROM Message WHERE generationJobId = ?",
+                (job_id,),
+            )
+            if row:
+                try:
+                    meta = json.loads(row["metaJson"] or "{}")
+                except json.JSONDecodeError:
+                    meta = {}
+                meta["generationError"] = "Generation cancelled."
+                self.svc.store.update_message(
+                    row["messageId"],
+                    streamStatus="interrupted",
+                    outputText=_GENERATION_FAILED_TEXT,
+                    metaJson=json.dumps(meta),
+                )
             self._emit_queue(job["worldId"])
             return True
         return False
@@ -91,6 +120,32 @@ class Orchestrator:
 
     def _max_continue_depth(self, world_id: str) -> int:
         return int(self._world_config(world_id).get("maxContinueDepth", 2))
+
+    def _agent_continue_enabled(self, world_id: str) -> bool:
+        return bool(self._world_config(world_id).get("agentContinueEnabled", True))
+
+    def _should_enqueue_agent_continue(
+        self,
+        job: dict[str, Any],
+        *,
+        debate_active: bool,
+        tool_log: list[dict[str, Any]],
+        max_depth: int,
+    ) -> bool:
+        if not self._agent_continue_enabled(job["worldId"]):
+            return False
+        if str(job.get("trigger") or "") not in _AGENT_CONTINUE_TRIGGERS:
+            return False
+        depth = int(job.get("continueDepth") or 0)
+        if depth + 1 > max_depth:
+            return False
+        if debate_active:
+            return False
+        from altrasia.orchestrator.briefing_chain import movement_tools_ran
+
+        if movement_tools_ran(tool_log):
+            return False
+        return True
 
     def _mandatory_recall_blocking(self, world_id: str) -> bool:
         cfg = self._world_config(world_id)
@@ -123,12 +178,33 @@ class Orchestrator:
             if allowed is not None:
                 allowed = set(allowed) | memory_only
                 return self._filter_tools(all_tools, allowed)
+        from altrasia.tools.cast_tools import (
+            OBSERVER_ONLY_SCENE_TOOLS,
+            cast_allowed_tool_names,
+        )
+
+        cast_scene = cast_allowed_tool_names(
+            self.svc.store, job["worldId"], job["characterId"]
+        )
         cast_tools = {
             t["function"]["name"]
             for t in all_tools
-            if not t["function"]["name"].startswith("scene_")
-            and not t["function"]["name"].startswith("map_")
+            if not t["function"]["name"].startswith("map_")
+            and t["function"]["name"] not in OBSERVER_ONLY_SCENE_TOOLS
+            and (
+                not t["function"]["name"].startswith("scene_")
+                or (cast_scene and t["function"]["name"] in cast_scene)
+            )
         }
+        if cast_scene:
+            cast_tools |= memory_only
+        else:
+            cast_tools = {
+                t["function"]["name"]
+                for t in all_tools
+                if not t["function"]["name"].startswith("scene_")
+                and not t["function"]["name"].startswith("map_")
+            }
         return self._filter_tools(all_tools, cast_tools)
 
     def pick_reactive_character(
@@ -222,6 +298,18 @@ class Orchestrator:
             return resolved, rationale
         return cid, rationale
 
+    def _cast_spoke_in_scene(self, world_id: str, scene_id: str) -> set[str]:
+        spoke: set[str] = set()
+        for m in self.svc.store.list_messages(world_id, scene_id=scene_id):
+            if (
+                m.get("role") == "assistant"
+                and m.get("characterId")
+                and m.get("streamStatus") == "final"
+                and (m.get("outputText") or "").strip()
+            ):
+                spoke.add(m["characterId"])
+        return spoke
+
     def _pick_continue_character(
         self,
         world_id: str,
@@ -246,6 +334,7 @@ class Orchestrator:
             exclude_id=exclude_id,
             last_speaker_id=exclude_id,
             trigger_message_id=trigger_message_id,
+            session_spoke=self._cast_spoke_in_scene(world_id, scene_id),
         )
         return pick.character_id if pick else None
 
@@ -362,9 +451,28 @@ class Orchestrator:
                 {"jobId": job_id, "messageId": msg_id},
             )
             self.svc.store.update_job(job_id, status="done")
-            await self._after_reply(job, msg_id, cleaned)
+            if not (cleaned or "").strip():
+                raise ValueError("Model returned empty content")
+            await self._after_reply(job, msg_id, cleaned, tool_log=tool_log)
+        except asyncio.CancelledError:
+            self.svc.store.update_message(
+                msg_id,
+                streamStatus="interrupted",
+                outputText=_GENERATION_FAILED_TEXT,
+                metaJson=_message_meta_with_generation_error(
+                    job, RuntimeError("Generation cancelled")
+                ),
+            )
+            self.svc.store.update_job(job_id, status="cancelled")
+            raise
         except Exception as exc:
-            self.svc.store.update_message(msg_id, streamStatus="interrupted")
+            log.warning("generation failed job=%s character=%s: %s", job_id, job.get("characterId"), exc)
+            self.svc.store.update_message(
+                msg_id,
+                streamStatus="interrupted",
+                outputText=_GENERATION_FAILED_TEXT,
+                metaJson=_message_meta_with_generation_error(job, exc),
+            )
             self.svc.store.update_job(job_id, status="cancelled")
             await stream.push("generation.error", {"jobId": job_id, "error": str(exc)})
             self._emit(
@@ -382,11 +490,11 @@ class Orchestrator:
         for j in self.svc.store.list_queued_jobs(world_id):
             if j["sceneId"] == scene_id:
                 return True
-        row = self.svc.store.conn.execute(
+        row = self.svc.store.fetchone(
             """SELECT 1 FROM GenerationJob WHERE worldId = ? AND sceneId = ?
                AND status = 'running' LIMIT 1""",
             (world_id, scene_id),
-        ).fetchone()
+        )
         return row is not None
 
     async def _generate_text(
@@ -403,24 +511,78 @@ class Orchestrator:
         )
         scene = self.svc.store.get_scene(job["sceneId"])
         from altrasia.inference.profiles import quality_addendum
+        from altrasia.prompt.scene_framing import build_scene_framing
+        from altrasia.tools.cast_tools import cast_allowed_tool_names
 
         addendum = quality_addendum(self.svc.settings, ch.get("modelProfile", "qwen3.6-35b-a3b"))
+        try:
+            definition = json.loads(ch.get("definitionJson") or "{}")
+        except json.JSONDecodeError:
+            definition = {}
+        persona = (definition.get("persona") or "").strip()
+        instructions = (definition.get("instructions") or "").strip()
         system = (
             f"You are {ch['displayName']}. Stay in character.\n\n"
             f"Scene: {scene['locationName']}\n\n{recall}"
         )
+        if persona:
+            system += f"\n\nPersona: {persona}"
+        if instructions:
+            system += f"\n\nInstructions: {instructions}"
+        if cfg.get("sceneFramingEnabled", True):
+            framing = build_scene_framing(
+                self.svc.store,
+                self.svc.presence,
+                world_id=job["worldId"],
+                character_id=job["characterId"],
+                scene_id=job["sceneId"],
+            )
+            if framing:
+                system += f"\n\n{framing}"
+        cast_scene_tools = cast_allowed_tool_names(
+            self.svc.store, job["worldId"], job["characterId"]
+        )
+        if cast_scene_tools:
+            system += (
+                "\n\nWhen you commit to gathering people or moving to a meeting, "
+                "you MUST call scene_summon or scene_join with real characterIds from "
+                "character_list. Do not claim people are coming without those tool calls."
+            )
         if addendum:
             system += f"\n\n{addendum}"
+        present_ids = [
+            c for c in json.loads(scene["presentJson"]) if c not in (PERSONA_ID,)
+        ]
+        members = {m["characterId"]: m for m in self.svc.store.list_world_characters(job["worldId"])}
+        other_names = [
+            members[c]["displayName"]
+            for c in present_ids
+            if c != job["characterId"] and c in members
+        ]
+        from altrasia.orchestrator.single_speaker import (
+            operator_trigger_text,
+            single_speaker_system_addendum,
+            trigger_invites_ensemble,
+        )
+
+        history_rows = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
+        op_trigger = operator_trigger_text(history_rows)
+        system += f"\n\n{single_speaker_system_addendum(
+            ch['displayName'],
+            other_names=other_names,
+            ensemble_invited=trigger_invites_ensemble(op_trigger),
+        )}"
         if cfg.get("citeProvenanceInPrompt"):
-            prov = self.svc.store.conn.execute(
+            prov = self.svc.store.fetchall(
                 """SELECT locusKey, sourceKind, sourceRef FROM EvidenceRecord
                    WHERE pool = 'mind' AND ownerId = ? ORDER BY retrievedAt DESC LIMIT 8""",
                 (job["characterId"],),
-            ).fetchall()
+            )
             if prov:
                 system += "\n\n## Source provenance (cite when using these facts)"
                 for row in prov:
-                    system += f"\n- {row[0]} ({row[1]}: {row[2][:120]})"
+                    ref = row["sourceRef"] or ""
+                    system += f"\n- {row['locusKey']} ({row['sourceKind']}: {ref[:120]})"
         try:
             rationale = json.loads(job.get("selectionRationaleJson") or "{}")
         except json.JSONDecodeError:
@@ -452,8 +614,16 @@ class Orchestrator:
         from altrasia.orchestrator.chat_messages import scene_messages_for_llm
 
         messages = [{"role": "system", "content": system}]
-        history = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
-        messages.extend(scene_messages_for_llm(history))
+        history = history_rows
+        present = present_ids
+        messages.extend(
+            scene_messages_for_llm(
+                history,
+                viewer_id=job["characterId"],
+                present=present,
+                viewer_scene_id=job["sceneId"],
+            )
+        )
         all_tools = self.svc.tools.list_openai_tools()
         memory_only = self._memory_tool_names()
         job_tools = self._tools_for_job(job, all_tools, memory_only)
@@ -469,17 +639,12 @@ class Orchestrator:
         depth = 0
         is_commission = str(job.get("trigger", "")).startswith("commission")
         while depth < 5:
-            if (
-                depth == 0
-                and blocking
-                and not memory_gate_open
-                and not is_commission
-            ):
-                tools_payload = self._filter_tools(job_tools, memory_only)
-            elif is_commission:
+            if is_commission:
                 tools_payload = job_tools
+            elif depth == 0 and blocking and not memory_gate_open:
+                tools_payload = self._filter_tools(job_tools, memory_only)
             else:
-                tools_payload = job_tools if depth == 0 else None
+                tools_payload = job_tools
             resp = await self.svc.llm.chat(messages, tools_payload)
             msg = normalize_assistant_message(resp["choices"][0]["message"])
             tool_calls = msg.get("tool_calls")
@@ -506,10 +671,54 @@ class Orchestrator:
                     )
                 depth += 1
                 continue
-            return msg.get("content") or ""
+            from altrasia.orchestrator.single_speaker import enforce_single_speaker_output
+
+            raw = msg.get("content") or ""
+            return enforce_single_speaker_output(raw, ch["displayName"], other_names)
         return ""
 
-    async def _after_reply(self, job: dict, msg_id: str, text: str) -> None:
+    async def _after_reply(
+        self,
+        job: dict,
+        msg_id: str,
+        text: str,
+        *,
+        tool_log: list[dict[str, Any]] | None = None,
+    ) -> None:
+        tool_log = tool_log or []
+        cfg = self._world_config(job["worldId"])
+        from altrasia.domain.narrative_presence import (
+            apply_narrative_presence,
+            detect_narrative_presence,
+        )
+        from altrasia.orchestrator.briefing_chain import movement_tools_ran
+
+        if not movement_tools_ran(tool_log):
+            detection = detect_narrative_presence(
+                self.svc,
+                world_id=job["worldId"],
+                speaker_id=job["characterId"],
+                scene_id=job["sceneId"],
+                output_text=text,
+                cfg=cfg,
+            )
+            if detection:
+                await apply_narrative_presence(
+                    self.svc, world_id=job["worldId"], detection=detection
+                )
+                for act in detection.get("actions") or []:
+                    if act.get("kind") == "summon":
+                        tool_log.append(
+                            {
+                                "name": "scene_summon",
+                                "arguments": {
+                                    "targetSceneId": act["targetSceneId"],
+                                    "characterIds": act["characterIds"],
+                                },
+                                "result": "narrative_presence",
+                            }
+                        )
+
         scene = self.svc.store.get_scene(job["sceneId"])
         present = [c for c in json.loads(scene["presentJson"]) if c != PERSONA_ID]
         recent = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-6:]
@@ -600,7 +809,6 @@ class Orchestrator:
 
         depth = int(job.get("continueDepth") or 0)
         max_depth = self._max_continue_depth(job["worldId"])
-        # AO-19: reactive (depth 0) → one agent_continue (depth 1) when another cast present
         scene_for_continue = self.svc.store.get_scene(job["sceneId"])
         from altrasia.debate_activity import parse_activity as _parse_act
 
@@ -608,11 +816,15 @@ class Orchestrator:
             scene_for_continue and _parse_act(scene_for_continue)
             and _parse_act(scene_for_continue).get("kind") == "debate"
         )
-        if (
-            depth == 0
-            and job["trigger"] == "persona_message"
-            and depth + 1 <= max_depth
-            and not debate_active
+        from altrasia.orchestrator.briefing_chain import maybe_enqueue_briefing_followups
+
+        await maybe_enqueue_briefing_followups(self, job, tool_log)
+
+        if self._should_enqueue_agent_continue(
+            job,
+            debate_active=debate_active,
+            tool_log=tool_log,
+            max_depth=max_depth,
         ):
             nxt = self._pick_continue_character(
                 job["worldId"],
@@ -664,15 +876,15 @@ class Orchestrator:
         )
 
     def _persona_message_job(self, world_id: str, message_id: str) -> dict[str, Any] | None:
-        row = self.svc.store.conn.execute(
+        row = self.svc.store.fetchone(
             """SELECT jobId, status FROM GenerationJob
                WHERE worldId = ? AND triggerMessageId = ? AND trigger = 'persona_message'
                LIMIT 1""",
             (world_id, message_id),
-        ).fetchone()
+        )
         if not row:
             return None
-        return {"jobId": row[0], "status": row[1]}
+        return {"jobId": row["jobId"], "status": row["status"]}
 
     async def on_persona_message(
         self, world_id: str, scene_id: str, message_id: str, text: str

@@ -1,7 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
+from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.fixtures.loader import load_fixture_by_id, reset_fixture_world
 from altrasia.memory.service import MemoryService
 from altrasia.persistence.sqlite_store import SqlitePersistence
@@ -16,10 +18,10 @@ def store(tmp_path: Path) -> SqlitePersistence:
 
 
 def test_migration_creates_world_table(store: SqlitePersistence) -> None:
-    cur = store.conn.execute(
+    row = store.fetchone(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='World'"
     )
-    assert cur.fetchone() is not None
+    assert row is not None
 
 
 def test_load_demo_fixture(store: SqlitePersistence) -> None:
@@ -90,10 +92,24 @@ def test_reset_demo_clears_chat_and_runtime_memory(store: SqlitePersistence) -> 
 
     assert store.list_messages(wid, scene_id="scene-lobby") == []
     assert store.list_diary("char-jordan-reyes") == []
-    cur = store.conn.execute(
+    rows = store.fetchall(
         "SELECT locusKey, value FROM Locus WHERE pool = 'mind' AND ownerId = ?",
         ("char-jordan-reyes",),
     )
-    loci = {dict(r)["locusKey"]: dict(r)["value"] for r in cur.fetchall()}
+    loci = {r["locusKey"]: r["value"] for r in rows}
     assert "test_extra" not in loci
     assert loci.get("role", "").startswith("Chief Technology Officer")
+
+
+def test_concurrent_spatial_graph_reads(store: SqlitePersistence) -> None:
+    """Regression: shared sqlite conn must not raise InterfaceError under thread pool load."""
+    fixtures = Path(__file__).resolve().parent / "fixtures"
+    load_fixture_by_id(store, fixtures, "demo-spatial-v1")
+
+    def _read() -> int:
+        graph = build_spatial_graph(store, "demo-spatial-v1")
+        return len(graph["nodes"])
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        counts = list(pool.map(lambda _: _read(), range(24)))
+    assert all(c == 20 for c in counts)

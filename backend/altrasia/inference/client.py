@@ -8,6 +8,9 @@ import httpx
 from altrasia.inference.mock_llm import mock_chat_completion
 from altrasia.inference.openai_compat import chat_completions_url
 from altrasia.inference.tool_calls import normalize_assistant_message
+from altrasia.orchestrator.chat_messages import thinking_safe_chat_messages
+
+_THINKING_PREFILL_MARKERS = ("enable_thinking", "assistant response prefill")
 
 
 class LlmClient:
@@ -31,12 +34,18 @@ class LlmClient:
             data = await mock_chat_completion(messages, tools)
         else:
             assert self.base_url
-            payload: dict[str, Any] = {"model": self.model, "messages": messages}
+            safe_messages = thinking_safe_chat_messages(messages)
+            payload: dict[str, Any] = {"model": self.model, "messages": safe_messages}
             if tools:
                 payload["tools"] = tools
                 payload["tool_choice"] = "auto"
             async with httpx.AsyncClient(timeout=120.0) as client:
                 r = await client.post(chat_completions_url(self.base_url), json=payload)
+                if r.status_code == 400 and any(
+                    m in (r.text or "").lower() for m in _THINKING_PREFILL_MARKERS
+                ):
+                    payload["messages"] = thinking_safe_chat_messages(messages)
+                    r = await client.post(chat_completions_url(self.base_url), json=payload)
                 r.raise_for_status()
                 data = r.json()
         choice = data["choices"][0]

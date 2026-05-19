@@ -15,6 +15,13 @@ POLICY_KEYS = (
     "citeProvenanceInPrompt",
     "commonsAccessIds",
     "speakIntentOnTie",
+    "orgRecallEnabled",
+    "orgRecallMaxChars",
+    "sceneFramingEnabled",
+    "castSummonEnabled",
+    "summonRoles",
+    "narrativePresenceMode",
+    "briefingMaxReplies",
 )
 
 

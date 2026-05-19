@@ -78,13 +78,13 @@ class EmbeddingService:
         source_id = f"{owner_id}:{source_ref}"
         blob = struct.pack(f"{len(vec)}f", *vec)
         content_hash = hashlib.sha256(text.encode()).hexdigest()
-        self.svc.store.conn.execute(
+        self.svc.store.run(
             """INSERT OR REPLACE INTO EmbeddingRecord
                (recordId, sourceType, sourceId, ownerScope, vectorBlob, textHash)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (record_id, source_type, source_id, owner_scope, blob, content_hash),
         )
-        self.svc.store.conn.commit()
+        self.svc.store.commit()
 
     async def _fetch_vector(self, text: str) -> list[float] | None:
         eff = self._effective()

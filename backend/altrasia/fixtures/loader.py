@@ -13,47 +13,47 @@ ISO = lambda: datetime.now(timezone.utc).isoformat()
 
 
 def _row_exists(store: SqlitePersistence, table: str, column: str, value: str) -> bool:
-    cur = store.conn.execute(
-        f"SELECT 1 FROM {table} WHERE {column} = ? LIMIT 1", (value,)
+    return (
+        store.fetchone(f"SELECT 1 FROM {table} WHERE {column} = ? LIMIT 1", (value,))
+        is not None
     )
-    return cur.fetchone() is not None
 
 
 def _delete_world(store: SqlitePersistence, world_id: str) -> None:
     # MapArtifact/MediaAsset migrations omit ON DELETE CASCADE (004_map_artifacts.sql).
-    store.conn.execute("DELETE FROM MapArtifact WHERE worldId = ?", (world_id,))
-    store.conn.execute("DELETE FROM MediaAsset WHERE worldId = ?", (world_id,))
-    store.conn.execute("DELETE FROM World WHERE worldId = ?", (world_id,))
-    store.conn.commit()
+    with store.transaction() as conn:
+        conn.execute("DELETE FROM MapArtifact WHERE worldId = ?", (world_id,))
+        conn.execute("DELETE FROM MediaAsset WHERE worldId = ?", (world_id,))
+        conn.execute("DELETE FROM World WHERE worldId = ?", (world_id,))
 
 
 def _purge_fixture_entity_loci(store: SqlitePersistence, data: dict[str, Any]) -> None:
-    for sc in data.get("scenes", []):
-        sid = sc["sceneId"]
-        store.conn.execute(
-            "DELETE FROM Locus WHERE pool = 'world' AND ownerId = ?",
-            (sid,),
-        )
-        store.conn.execute(
-            "DELETE FROM EvidenceRecord WHERE pool = 'world' AND ownerId = ?",
-            (sid,),
-        )
-    for ch in data.get("characters", []):
-        cid = ch["characterId"]
-        store.conn.execute(
-            "DELETE FROM Locus WHERE pool = 'mind' AND ownerId = ?",
-            (cid,),
-        )
-        store.conn.execute("DELETE FROM DiarySegment WHERE characterId = ?", (cid,))
-        store.conn.execute(
-            "DELETE FROM EvidenceRecord WHERE pool = 'mind' AND ownerId = ?",
-            (cid,),
-        )
-        store.conn.execute(
-            "DELETE FROM EmbeddingRecord WHERE ownerScope = 'mind' AND sourceId LIKE ?",
-            (f"{cid}:%",),
-        )
-    store.conn.commit()
+    with store.transaction() as conn:
+        for sc in data.get("scenes", []):
+            sid = sc["sceneId"]
+            conn.execute(
+                "DELETE FROM Locus WHERE pool = 'world' AND ownerId = ?",
+                (sid,),
+            )
+            conn.execute(
+                "DELETE FROM EvidenceRecord WHERE pool = 'world' AND ownerId = ?",
+                (sid,),
+            )
+        for ch in data.get("characters", []):
+            cid = ch["characterId"]
+            conn.execute(
+                "DELETE FROM Locus WHERE pool = 'mind' AND ownerId = ?",
+                (cid,),
+            )
+            conn.execute("DELETE FROM DiarySegment WHERE characterId = ?", (cid,))
+            conn.execute(
+                "DELETE FROM EvidenceRecord WHERE pool = 'mind' AND ownerId = ?",
+                (cid,),
+            )
+            conn.execute(
+                "DELETE FROM EmbeddingRecord WHERE ownerScope = 'mind' AND sourceId LIKE ?",
+                (f"{cid}:%",),
+            )
 
 
 def purge_fixture_installation(
@@ -77,6 +77,36 @@ def purge_fixture_installation(
     _purge_fixture_entity_loci(store, data)
 
 
+def _seed_cto_team_locus(
+    store: SqlitePersistence,
+    world_id: str,
+    characters: list[dict[str, Any]],
+    now: str,
+) -> None:
+    """Belt-and-suspenders team roster for CTO mind recall."""
+    cto = next((c for c in characters if c.get("sceneRole") == "cto"), None)
+    if not cto:
+        return
+    directors = [
+        c["displayName"]
+        for c in characters
+        if c.get("sceneRole") == "director"
+    ]
+    leads = [
+        c["displayName"]
+        for c in characters
+        if c.get("sceneRole") not in ("cto", "director", None)
+        and "reports to Jordan" in " ".join(
+            loc.get("value", "") for loc in c.get("mindLoci", []) if loc.get("key") == "role"
+        )
+    ][:6]
+    names = directors + leads
+    if not names:
+        return
+    value = "Key reports and directors: " + ", ".join(sorted(set(names)))
+    store.upsert_locus("mind", cto["characterId"], "team", value, now)
+
+
 def _upsert_fixture_character(
     store: SqlitePersistence, ch: dict[str, Any], now: str
 ) -> None:
@@ -90,7 +120,7 @@ def _upsert_fixture_character(
         "createdAt": now,
     }
     if _row_exists(store, "Character", "characterId", cid):
-        store.conn.execute(
+        store.run(
             """UPDATE Character SET displayName = ?, definitionJson = ?,
                modelProfile = ?, speechWeight = ? WHERE characterId = ?""",
             (
@@ -101,7 +131,7 @@ def _upsert_fixture_character(
                 cid,
             ),
         )
-        store.conn.commit()
+        store.commit()
     else:
         store.insert_character(row)
 
@@ -151,6 +181,7 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
             store.add_world_member(world_id, cid, sceneRole=ch.get("sceneRole"))
             for loc in ch.get("mindLoci", []):
                 store.upsert_locus("mind", cid, loc["key"], loc["value"], now)
+        _seed_cto_team_locus(store, world_id, data.get("characters", []), now)
         for sc in data.get("scenes", []):
             hints = {
                 k: sc[k]

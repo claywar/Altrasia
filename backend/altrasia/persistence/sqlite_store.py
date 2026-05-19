@@ -2,10 +2,22 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
+from contextlib import contextmanager
+from functools import wraps
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 _MIGRATIONS_DIR = Path(__file__).parent / "sqlite" / "migrations"
+
+
+def _uses_db_lock(fn):  # type: ignore[no-untyped-def]
+    @wraps(fn)
+    def wrapper(self: SqlitePersistence, *args, **kwargs):  # type: ignore[no-untyped-def]
+        with self._lock:
+            return fn(self, *args, **kwargs)
+
+    return wrapper
 
 
 class SqlitePersistence:
@@ -13,14 +25,45 @@ class SqlitePersistence:
 
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
+        self._lock = threading.RLock()
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
 
+    @contextmanager
+    def transaction(self) -> Iterator[sqlite3.Connection]:
+        with self._lock:
+            try:
+                yield self.conn
+                self.conn.commit()
+            except Exception:
+                self.conn.rollback()
+                raise
+
+    @_uses_db_lock
+    def fetchone(self, sql: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
+        cur = self.conn.execute(sql, params)
+        return self._row(cur.fetchone())
+
+    @_uses_db_lock
+    def fetchall(self, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
+        cur = self.conn.execute(sql, params)
+        return self._rows(cur.fetchall())
+
+    @_uses_db_lock
+    def run(self, sql: str, params: tuple[Any, ...] = ()) -> None:
+        self.conn.execute(sql, params)
+
+    @_uses_db_lock
+    def commit(self) -> None:
+        self.conn.commit()
+
+    @_uses_db_lock
     def migrate(self) -> None:
         for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
             self.conn.executescript(path.read_text(encoding="utf-8"))
         self.conn.commit()
 
+    @_uses_db_lock
     def close(self) -> None:
         self.conn.close()
 
@@ -32,14 +75,17 @@ class SqlitePersistence:
     def _rows(self, rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
         return [dict(r) for r in rows]
 
+    @_uses_db_lock
     def list_worlds(self) -> list[dict[str, Any]]:
         cur = self.conn.execute("SELECT * FROM World ORDER BY createdAt DESC")
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def get_world(self, world_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute("SELECT * FROM World WHERE worldId = ?", (world_id,))
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def insert_world(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO World (worldId, name, activeSceneId, defaultModelProfile, configJson,
@@ -50,6 +96,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def update_world(self, world_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -58,6 +105,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE World SET {cols} WHERE worldId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def bump_event_seq(self, world_id: str) -> int:
         self.conn.execute(
             "UPDATE World SET eventSeq = eventSeq + 1, updatedAt = datetime('now') WHERE worldId = ?",
@@ -67,16 +115,19 @@ class SqlitePersistence:
         w = self.get_world(world_id)
         return int(w["eventSeq"]) if w else 0
 
+    @_uses_db_lock
     def list_scenes(self, world_id: str) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             "SELECT * FROM Scene WHERE worldId = ? ORDER BY locationName", (world_id,)
         )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def get_scene(self, scene_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute("SELECT * FROM Scene WHERE sceneId = ?", (scene_id,))
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def insert_scene(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO Scene (sceneId, worldId, structureId, mapLevel, levelLabel,
@@ -89,6 +140,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def update_scene(self, scene_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -97,6 +149,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE Scene SET {cols} WHERE sceneId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def insert_character(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO Character (characterId, displayName, definitionJson, modelProfile,
@@ -106,10 +159,12 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def get_character(self, character_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute("SELECT * FROM Character WHERE characterId = ?", (character_id,))
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def insert_character_draft(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO CharacterDraft (draftId, operatorBrief, definitionJson, status,
@@ -120,12 +175,14 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def get_character_draft(self, draft_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute(
             "SELECT * FROM CharacterDraft WHERE draftId = ?", (draft_id,)
         )
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def update_character_draft(self, draft_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -134,6 +191,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE CharacterDraft SET {cols} WHERE draftId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def insert_layout_draft(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO LayoutDraft (layoutDraftId, worldId, operatorBrief, scope,
@@ -144,12 +202,14 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def get_layout_draft(self, draft_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute(
             "SELECT * FROM LayoutDraft WHERE layoutDraftId = ?", (draft_id,)
         )
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def update_layout_draft(self, draft_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -158,6 +218,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE LayoutDraft SET {cols} WHERE layoutDraftId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def add_world_member(self, world_id: str, character_id: str, **kw: Any) -> None:
         self.conn.execute(
             """INSERT OR IGNORE INTO WorldMember (worldId, characterId, muted, disabled, sceneRole)
@@ -172,6 +233,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def list_world_characters(self, world_id: str) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """SELECT c.*, wm.muted, wm.disabled, wm.sceneRole FROM Character c
@@ -181,6 +243,7 @@ class SqlitePersistence:
         )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def list_messages(
         self, world_id: str, *, scene_id: str | None = None, channel_kind: str = "scene"
     ) -> list[dict[str, Any]]:
@@ -202,6 +265,7 @@ class SqlitePersistence:
             )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def insert_message(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO Message (messageId, worldId, channelKind, sceneId, role, characterId,
@@ -212,6 +276,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def update_message(self, message_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -220,6 +285,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE Message SET {cols} WHERE messageId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def upsert_locus(self, pool: str, owner_id: str, locus_key: str, value: str, updated_at: str) -> None:
         self.conn.execute(
             """INSERT INTO Locus (locusKey, pool, ownerId, value, updatedAt)
@@ -230,6 +296,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def search_loci(self, pool: str, owner_id: str, query: str, limit: int = 10) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """SELECT l.locusKey, l.pool, l.ownerId, l.value, l.updatedAt
@@ -241,6 +308,7 @@ class SqlitePersistence:
         )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def append_diary(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO DiarySegment (segmentId, characterId, text, sourceSceneId,
@@ -251,6 +319,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def list_diary(self, character_id: str, limit: int = 20) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """SELECT * FROM DiarySegment WHERE characterId = ?
@@ -259,6 +328,7 @@ class SqlitePersistence:
         )
         return list(reversed(self._rows(cur.fetchall())))
 
+    @_uses_db_lock
     def search_diary(self, character_id: str, query: str, limit: int = 10) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """SELECT d.* FROM DiaryFts f
@@ -269,6 +339,7 @@ class SqlitePersistence:
         )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def list_channels(self, world_id: str, *, active_only: bool = True) -> list[dict[str, Any]]:
         if active_only:
             cur = self.conn.execute(
@@ -281,12 +352,14 @@ class SqlitePersistence:
             )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def get_channel(self, channel_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute(
             "SELECT * FROM CommChannel WHERE channelId = ?", (channel_id,)
         )
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def insert_channel(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO CommChannel (channelId, worldId, endpointsJson, participantsJson, active)
@@ -295,6 +368,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def update_channel(self, channel_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -303,12 +377,14 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE CommChannel SET {cols} WHERE channelId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def get_signal(self, signal_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute(
             "SELECT * FROM CrossSceneSignal WHERE signalId = ?", (signal_id,)
         )
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def list_signals(self, world_id: str, *, status: str | None = None) -> list[dict[str, Any]]:
         if status:
             cur = self.conn.execute(
@@ -322,6 +398,7 @@ class SqlitePersistence:
             )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def insert_signal(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO CrossSceneSignal (signalId, worldId, kind, sourceSceneId, targetSceneId,
@@ -332,6 +409,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def update_signal(self, signal_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -340,6 +418,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE CrossSceneSignal SET {cols} WHERE signalId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def insert_job(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO GenerationJob (jobId, worldId, characterId, sceneId, trigger, priority,
@@ -351,10 +430,12 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def get_job(self, job_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute("SELECT * FROM GenerationJob WHERE jobId = ?", (job_id,))
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def update_job(self, job_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -363,6 +444,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE GenerationJob SET {cols} WHERE jobId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def list_queued_jobs(self, world_id: str) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """SELECT * FROM GenerationJob WHERE worldId = ? AND status IN ('queued', 'running')
@@ -371,10 +453,12 @@ class SqlitePersistence:
         )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def list_structures(self, world_id: str) -> list[dict[str, Any]]:
         cur = self.conn.execute("SELECT * FROM Structure WHERE worldId = ?", (world_id,))
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def insert_structure(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO Structure (structureId, worldId, displayName, kind, boundaryJson, updatedAt)
@@ -383,6 +467,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def insert_commission(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO Commission (commissionId, worldId, assigneeCharacterId, targetSceneId,
@@ -395,12 +480,14 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def get_commission(self, commission_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute(
             "SELECT * FROM Commission WHERE commissionId = ?", (commission_id,)
         )
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def list_commissions(
         self, world_id: str, *, status: str | None = None
     ) -> list[dict[str, Any]]:
@@ -417,6 +504,7 @@ class SqlitePersistence:
             )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def update_commission(self, commission_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -425,6 +513,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE Commission SET {cols} WHERE commissionId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def insert_approval(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO Approval (approvalId, worldId, toolName, paramsJson, state, createdAt)
@@ -433,12 +522,14 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def get_approval(self, approval_id: str) -> dict[str, Any] | None:
         cur = self.conn.execute(
             "SELECT * FROM Approval WHERE approvalId = ?", (approval_id,)
         )
         return self._row(cur.fetchone())
 
+    @_uses_db_lock
     def list_approvals(
         self, world_id: str | None = None, *, state: str | None = None
     ) -> list[dict[str, Any]]:
@@ -462,6 +553,7 @@ class SqlitePersistence:
             cur = self.conn.execute("SELECT * FROM Approval ORDER BY createdAt DESC")
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
     def update_approval(self, approval_id: str, **fields: Any) -> None:
         if not fields:
             return
@@ -470,6 +562,7 @@ class SqlitePersistence:
         self.conn.execute(f"UPDATE Approval SET {cols} WHERE approvalId = ?", vals)
         self.conn.commit()
 
+    @_uses_db_lock
     def insert_evidence(self, row: dict[str, Any]) -> None:
         self.conn.execute(
             """INSERT INTO EvidenceRecord (evidenceId, locusKey, pool, ownerId,
@@ -480,6 +573,7 @@ class SqlitePersistence:
         )
         self.conn.commit()
 
+    @_uses_db_lock
     def list_evidence_for_locus(
         self, pool: str, owner_id: str, locus_key: str
     ) -> list[dict[str, Any]]:

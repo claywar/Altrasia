@@ -103,7 +103,14 @@ class IdleScheduler:
             return
         if queued:
             return
-        for scene in self.svc.store.list_scenes(world_id):
+        world = self.svc.store.get_world(world_id)
+        active_scene_id = (world or {}).get("activeSceneId")
+        if idle_source == "tab_visible" and active_scene_id:
+            scene = self.svc.store.get_scene(active_scene_id)
+            scenes = [scene] if scene else []
+        else:
+            scenes = self.svc.store.list_scenes(world_id)
+        for scene in scenes:
             scene_id = scene["sceneId"]
             if scene_id in orch._scene_chain_active:
                 continue

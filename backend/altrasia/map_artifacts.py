@@ -11,26 +11,26 @@ ISO = lambda: datetime.now(timezone.utc).isoformat()
 
 
 def get_scene_artifact(store: Any, world_id: str, scene_id: str) -> dict[str, Any] | None:
-    row = store.conn.execute(
+    row = store.fetchone(
         """SELECT jsonBlob FROM MapArtifact
            WHERE worldId = ? AND sceneId = ? ORDER BY version DESC LIMIT 1""",
         (world_id, scene_id),
-    ).fetchone()
+    )
     if not row:
         return None
-    return json.loads(row[0])
+    return json.loads(row["jsonBlob"])
 
 
 def get_world_site_artifact(store: Any, world_id: str) -> dict[str, Any] | None:
-    row = store.conn.execute(
+    row = store.fetchone(
         """SELECT jsonBlob FROM MapArtifact
            WHERE worldId = ? AND sceneId IS NULL AND kind = 'site'
            ORDER BY version DESC LIMIT 1""",
         (world_id,),
-    ).fetchone()
+    )
     if not row:
         return None
-    return json.loads(row[0])
+    return json.loads(row["jsonBlob"])
 
 
 def put_artifact(
@@ -42,11 +42,11 @@ def put_artifact(
     scene_id: str | None = None,
 ) -> str:
     aid = str(uuid.uuid4())
-    store.conn.execute(
+    store.run(
         """INSERT INTO MapArtifact
            (artifactId, worldId, sceneId, kind, version, jsonBlob, createdAt)
            VALUES (?, ?, ?, ?, 1, ?, ?)""",
         (aid, world_id, scene_id, kind, json.dumps(payload), ISO()),
     )
-    store.conn.commit()
+    store.commit()
     return aid

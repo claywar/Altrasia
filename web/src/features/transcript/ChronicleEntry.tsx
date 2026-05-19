@@ -1,6 +1,7 @@
 import { MarkdownBody } from "../../components/MarkdownBody";
 import { MessageRationale } from "../../components/MessageRationale";
 import type { Message } from "../../api/client";
+import { parseGenerationError } from "../../lib/parse";
 import { ScopeBadge } from "../../ui/ScopeBadge";
 
 type Props = {
@@ -14,6 +15,12 @@ type Props = {
 export function ChronicleEntry({ message, scope, speakerLabel, perceived, worldId }: Props) {
   const streaming = message.streamStatus === "streaming";
   const interrupted = message.streamStatus === "interrupted";
+  const generationError = parseGenerationError(message.metaJson);
+  const bodyText =
+    message.outputText?.trim() ||
+    (interrupted
+      ? generationError ?? "Generation was interrupted before a reply was produced."
+      : "");
   const ariaLabel = `${speakerLabel}, ${scope}${perceived ? "" : ", not perceived"}`;
 
   return (
@@ -46,7 +53,7 @@ export function ChronicleEntry({ message, scope, speakerLabel, perceived, worldI
             <span className="chronicle-entry__caret" aria-hidden />
           </p>
         ) : (
-          <MarkdownBody>{message.outputText}</MarkdownBody>
+          <MarkdownBody>{bodyText}</MarkdownBody>
         )}
       </div>
     </article>

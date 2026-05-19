@@ -14,6 +14,7 @@ Living index of normative requirements **not yet fully accomplished** vs docs `0
 | ComfyUI | [19](19-comfyui-media.md) | Stub + workflows + tests | Live ComfyUI server integration |
 | Phase 6 maps | [18](18-location-maps.md), [25](25-map-authoring.md) | MapArtifact API + tests | MAP-ACC-1–6 full UI (LevelStack, FloorPlan) |
 | Orchestration polish | [13](13-agent-orchestration.md) | speak_intent, embed rerank | AO-22 full activity overlays |
+| Scene framing / cast summon | [03](03-locations-and-presence.md), [10](10-prompt-injection.md), [05](05-tool-calling.md) | org recall, scene framing, `scene_summon`, narrative presence auto | Full scene tool suite (harvest, inventory); narrative `llm` mode |
 
 ## Phases (T-100+)
 

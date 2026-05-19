@@ -695,14 +695,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def character_mind(
         world_id: str, character_id: str, svc: AppServices = Depends(get_services)
     ) -> list[dict]:
-        cur = svc.store.conn.execute(
+        rows = svc.store.fetchall(
             """SELECT locusKey, value, updatedAt FROM Locus
                WHERE pool = 'mind' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 40""",
             (character_id,),
         )
         return [
-            {"locusKey": row[0], "value": row[1], "updatedAt": row[2]}
-            for row in cur.fetchall()
+            {"locusKey": row["locusKey"], "value": row["value"], "updatedAt": row["updatedAt"]}
+            for row in rows
         ]
 
     @app.get(
@@ -718,12 +718,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if locusKey:
             rows = svc.store.list_evidence_for_locus("mind", character_id, locusKey)
         else:
-            cur = svc.store.conn.execute(
+            rows = svc.store.fetchall(
                 """SELECT * FROM EvidenceRecord WHERE pool = 'mind' AND ownerId = ?
                    ORDER BY retrievedAt DESC LIMIT 40""",
                 (character_id,),
             )
-            rows = [dict(r) for r in cur.fetchall()]
         return rows
 
     @app.post(
@@ -1853,8 +1852,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not sc or sc["worldId"] != world_id:
             raise HTTPException(404, "scene not found")
         world = svc.store.get_world(world_id)
-        svc.store.conn.execute("DELETE FROM Scene WHERE sceneId = ?", (scene_id,))
-        svc.store.conn.commit()
+        svc.store.run("DELETE FROM Scene WHERE sceneId = ?", (scene_id,))
+        svc.store.commit()
         if world and world.get("activeSceneId") == scene_id:
             remaining = [s for s in scenes if s["sceneId"] != scene_id]
             svc.store.update_world(world_id, activeSceneId=remaining[0]["sceneId"])

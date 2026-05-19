@@ -182,6 +182,90 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
         services.store.update_scene(ctx.scene_id, fixturesJson=json.dumps(fixtures))
         return {"ok": True, "fixtureKey": key}
 
+    async def character_list(params: dict, ctx: ToolContext) -> Any:
+        world_id = params.get("worldId") or ctx.world_id
+        roster = services.presence.roster(world_id)
+        loc: dict[str, dict] = {}
+        for bucket in ("atLocation", "elsewhere", "unplaced"):
+            for e in roster.get(bucket, []):
+                loc[e["characterId"]] = e
+        chars = []
+        for m in services.store.list_world_characters(world_id):
+            cid = m["characterId"]
+            entry = loc.get(cid, {})
+            chars.append(
+                {
+                    "characterId": cid,
+                    "displayName": m.get("displayName", cid),
+                    "sceneRole": m.get("sceneRole"),
+                    "presentSceneId": entry.get("sceneId"),
+                    "locationName": entry.get("locationName"),
+                }
+            )
+        return {"characters": chars}
+
+    async def scene_location_list(params: dict, ctx: ToolContext) -> Any:
+        world_id = params.get("worldId") or ctx.world_id
+        scenes = []
+        for sc in services.store.list_scenes(world_id):
+            present = services.presence.parse_present(sc.get("presentJson", "[]"))
+            scenes.append(
+                {
+                    "sceneId": sc["sceneId"],
+                    "locationName": sc["locationName"],
+                    "presentCount": len([c for c in present if c != "__persona__"]),
+                }
+            )
+        return {"scenes": scenes}
+
+    async def scene_join(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.presence_ops import presence_join
+
+        target = params.get("sceneId") or params.get("targetSceneId") or ctx.scene_id
+        cid = params.get("characterId") or ctx.character_id
+        if cid != ctx.character_id:
+            return {"ok": False, "error": "cast may only scene_join for self"}
+        members = {m["characterId"] for m in services.store.list_world_characters(ctx.world_id)}
+        if cid not in members:
+            return {"ok": False, "error": "unknown character"}
+        if not services.store.get_scene(target):
+            return {"ok": False, "error": "scene not found"}
+        await presence_join(
+            services,
+            world_id=ctx.world_id,
+            scene_id=target,
+            character_id=cid,
+            action="join",
+        )
+        return {"ok": True, "sceneId": target, "characterId": cid}
+
+    async def scene_summon(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.presence_ops import presence_summon_batch
+        from altrasia.memory.org_recall import can_summon_others
+        from altrasia.world_config import get_world_config
+
+        cfg = get_world_config(services.store, ctx.world_id)
+        members = services.store.list_world_characters(ctx.world_id)
+        speaker = next((m for m in members if m["characterId"] == ctx.character_id), None)
+        if not can_summon_others(cfg, speaker.get("sceneRole") if speaker else None):
+            return {"ok": False, "error": "not authorized to summon others"}
+        target = params.get("targetSceneId") or params.get("sceneId")
+        if not target or not services.store.get_scene(target):
+            return {"ok": False, "error": "target scene not found"}
+        ids = params.get("characterIds") or []
+        if not ids:
+            return {"ok": False, "error": "characterIds required"}
+        member_ids = {m["characterId"] for m in members}
+        for cid in ids:
+            if cid not in member_ids:
+                return {"ok": False, "error": f"unknown character {cid}"}
+        return await presence_summon_batch(
+            services,
+            world_id=ctx.world_id,
+            target_scene_id=target,
+            character_ids=ids,
+        )
+
     async def map_layout_generate(params: dict, ctx: ToolContext) -> Any:
         from altrasia.map_authoring import create_layout_draft
 
@@ -397,6 +481,60 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["fixtureKey", "fixture"],
             },
             handler=scene_update_fixture,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="character_list",
+            description="List all characters in this world with current location.",
+            parameters={
+                "type": "object",
+                "properties": {"worldId": {"type": "string"}},
+            },
+            handler=character_list,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_location_list",
+            description="List scenes in this world with location names.",
+            parameters={
+                "type": "object",
+                "properties": {"worldId": {"type": "string"}},
+            },
+            handler=scene_location_list,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_join",
+            description="Move yourself to another scene (existing locations only).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "sceneId": {"type": "string"},
+                    "targetSceneId": {"type": "string"},
+                },
+            },
+            handler=scene_join,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_summon",
+            description="Summon other cast members to a scene (leadership roles).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "targetSceneId": {"type": "string"},
+                    "characterIds": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["targetSceneId", "characterIds"],
+            },
+            handler=scene_summon,
         )
     )
     registry.register(
