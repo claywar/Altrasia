@@ -57,7 +57,7 @@ const graph: MapGraph = {
   structures: [
     {
       structureId: "manor",
-      displayName: "Manor House",
+      displayName: "Vertex Labs HQ",
       kind: "building",
       boundary: {
         vertices: [

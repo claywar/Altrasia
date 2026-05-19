@@ -12,43 +12,41 @@ from altrasia.config import Settings
 
 
 def test_commission_tick_enqueues_while_running(tmp_path: Path) -> None:
-    settings = Settings(
-        db_path=tmp_path / "ctick.db",
-        mock_llm=True,
-        fixtures_dir=Path(__file__).resolve().parent / "fixtures",
-    )
-    app = create_app(settings)
-    client = TestClient(app)
-    svc = app.state.services
-    world_id = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()[
-        "worldId"
-    ]
-    kitchen = "scene-kitchen"
+    from tests.conftest import make_test_settings, wait_for_jobs
 
-    created = client.post(
-        f"/api/v1/worlds/{world_id}/commissions",
-        json={
-            "assigneeCharacterId": "char-alice",
-            "targetSceneId": kitchen,
-            "brief": "Inventory the spice rack.",
-        },
-    ).json()
-    assert created["status"] == "blocked"
-    cid = created["commissionId"]
+    app = create_app(make_test_settings(tmp_path, "ctick.db"))
+    with TestClient(app) as client:
+        svc = app.state.services
+        world_id = client.post(
+            "/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}
+        ).json()["worldId"]
+        kitchen = "scene-conference-room"
 
-    client.post(
-        f"/api/v1/worlds/{world_id}/scenes/{kitchen}/presence/join",
-        json={"characterId": "char-alice"},
-    )
-    svc.store.update_commission(cid, status="running", updatedAt=ISO())
+        created = client.post(
+            f"/api/v1/worlds/{world_id}/commissions",
+            json={
+                "assigneeCharacterId": "char-jordan-reyes",
+                "targetSceneId": kitchen,
+                "brief": "Inventory sprint retro supplies in the conference room.",
+            },
+        ).json()
+        assert created["status"] == "blocked"
+        cid = created["commissionId"]
 
-    result = asyncio.run(tick_running_commissions(svc, world_id))
-    assert result is not None
-    assert result["commissionId"] == cid
+        client.post(
+            f"/api/v1/worlds/{world_id}/scenes/{kitchen}/presence/join",
+            json={"characterId": "char-jordan-reyes"},
+        )
+        wait_for_jobs(client, world_id)
+        svc.store.update_commission(cid, status="running", updatedAt=ISO())
 
-    row = svc.store.conn.execute(
-        "SELECT trigger FROM GenerationJob WHERE worldId = ? ORDER BY createdAt DESC LIMIT 1",
-        (world_id,),
-    ).fetchone()
-    assert row is not None
-    assert row[0] == "commission_tick"
+        result = asyncio.run(tick_running_commissions(svc, world_id))
+        assert result is not None
+        assert result["commissionId"] == cid
+
+        row = svc.store.conn.execute(
+            "SELECT trigger FROM GenerationJob WHERE worldId = ? ORDER BY createdAt DESC LIMIT 1",
+            (world_id,),
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "commission_tick"

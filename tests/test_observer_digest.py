@@ -1,7 +1,6 @@
 """Observer digest (CC-6) and first-run API walkthrough."""
 
 import json
-import time
 from pathlib import Path
 
 import pytest
@@ -9,33 +8,22 @@ from fastapi.testclient import TestClient
 
 from altrasia.api.app import create_app
 from altrasia.config import Settings
+from tests.conftest import wait_for_jobs as _wait_jobs
 
 
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
-    settings = Settings(
-        db_path=tmp_path / "digest.db",
-        mock_llm=True,
-        fixtures_dir=Path(__file__).resolve().parent / "fixtures",
-    )
-    return TestClient(create_app(settings))
+    from tests.conftest import make_test_settings
 
-
-def _wait_jobs(client: TestClient, world_id: str, timeout: float = 8.0) -> None:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        q = client.get(f"/api/v1/worlds/{world_id}/queue").json()
-        if not q.get("busy") and q.get("depth", 0) == 0:
-            return
-        time.sleep(0.1)
-    raise TimeoutError("generation did not finish")
+    with TestClient(create_app(make_test_settings(tmp_path, "digest.db"))) as tc:
+        yield tc
 
 
 def test_observer_digest_cc6(client: TestClient) -> None:
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     world_id = r.json()["worldId"]
-    hall = "scene-hall"
-    kitchen = "scene-kitchen"
+    hall = "scene-lobby"
+    kitchen = "scene-conference-room"
 
     d0 = client.get(f"/api/v1/worlds/{world_id}/observer/digest").json()
     assert d0["worldId"] == world_id
@@ -56,21 +44,21 @@ def test_first_run_experience_api(client: TestClient) -> None:
     """Automates docs/guides/first-run-experience.md core API steps."""
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     world_id = r.json()["worldId"]
-    hall = "scene-hall"
-    kitchen = "scene-kitchen"
+    hall = "scene-lobby"
+    kitchen = "scene-conference-room"
 
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
-        json={"text": "Hello Alice?", "scope": "public"},
+        json={"text": "Hello Jordan?", "scope": "public"},
     )
     _wait_jobs(client, world_id)
 
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
         json={
-            "text": "Alice, this is just for you.",
+            "text": "Jordan, this is just for you.",
             "scope": "whisper",
-            "targetCharacterId": "char-alice",
+            "targetCharacterId": "char-jordan-reyes",
         },
     )
     _wait_jobs(client, world_id)
@@ -86,7 +74,7 @@ def test_first_run_experience_api(client: TestClient) -> None:
 
     client.patch(f"/api/v1/worlds/{world_id}", json={"activeSceneId": kitchen})
     roster = client.get(f"/api/v1/worlds/{world_id}/roster").json()
-    assert "char-alice" in {e["characterId"] for e in roster["elsewhere"]}
+    assert "char-jordan-reyes" in {e["characterId"] for e in roster["elsewhere"]}
 
     depth_before = client.get(f"/api/v1/worlds/{world_id}/queue").json()["depth"]
     client.post(

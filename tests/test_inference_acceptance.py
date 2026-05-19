@@ -79,25 +79,23 @@ async def test_inf5d_idle_skipped_when_queue_full(tmp_path: Path) -> None:
 
 def test_str1_stream_finalize_strip(tmp_path: Path) -> None:
     """STR-1: streaming message finalizes with stripped output."""
-    settings = Settings(
-        db_path=tmp_path / "str.db",
-        mock_llm=True,
-        fixtures_dir=Path(__file__).resolve().parent / "fixtures",
-    )
-    app = create_app(settings)
-    client = TestClient(app)
-    w = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()
-    world_id = w["worldId"]
-    scene_id = w["activeSceneId"]
-    client.post(
-        f"/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",
-        json={"text": "Hello hall", "scope": "public"},
-    )
-    msgs = client.get(
-        f"/api/v1/worlds/{world_id}/scenes/{scene_id}/messages"
-    ).json()
-    npc = [m for m in msgs if m.get("role") == "assistant"]
-    if npc:
+    from tests.conftest import make_test_settings, wait_for_jobs
+
+    app = create_app(make_test_settings(tmp_path, "str.db"))
+    with TestClient(app) as client:
+        w = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()
+        world_id = w["worldId"]
+        scene_id = w["activeSceneId"]
+        client.post(
+            f"/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",
+            json={"text": "Hello Jordan", "scope": "public"},
+        )
+        wait_for_jobs(client, world_id)
+        msgs = client.get(
+            f"/api/v1/worlds/{world_id}/scenes/{scene_id}/messages"
+        ).json()
+        npc = [m for m in msgs if m.get("role") == "assistant"]
+        assert npc
         assert npc[-1].get("streamStatus") == "final"
         assert len(npc[-1].get("outputText") or "") > 0
 

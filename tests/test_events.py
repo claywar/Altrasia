@@ -19,8 +19,8 @@ def test_event_seq_increments(tmp_path: Path) -> None:
         f"/api/v1/worlds/{w['worldId']}/signals",
         json={
             "kind": "knock",
-            "sourceSceneId": "scene-hall",
-            "targetSceneId": "scene-kitchen",
+            "sourceSceneId": "scene-lobby",
+            "targetSceneId": "scene-conference-room",
         },
     )
     world = client.get(f"/api/v1/worlds/{w['worldId']}").json()

@@ -91,7 +91,7 @@ def validate_layout(
         if sid not in scenes_db:
             errors.append(f"unknown sceneId: {sid}")
         pos = item.get("layout") or item.get("mapPosition")
-        if pos:
+        if isinstance(pos, dict):
             for k in ("x", "y"):
                 v = pos.get(k)
                 if v is not None and not (0 <= float(v) <= 100):

@@ -73,11 +73,14 @@ def test_step_travel_adjacent(demo_world):
     store, wid = demo_world
     g = _graph(store, wid)
     start = g["activeSceneId"]
-    reach = reachable_from(g, start)
-    if not reach:
-        pytest.skip("no reachable")
-    target = next(iter(reach))
-    if not are_adjacent(g, start, target):
+    target = None
+    for edge in g["edges"]:
+        if edge.get("sourceSceneId") == start and edge.get("travelSteps", 1) == 1:
+            candidate = edge["targetSceneId"]
+            if are_adjacent(g, start, candidate):
+                target = candidate
+                break
+    if not target:
         pytest.skip("need adjacent pair")
     result = execute_travel(
         store, wid, from_scene_id=start, to_scene_id=target, mode="step"

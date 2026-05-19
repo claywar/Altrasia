@@ -20,6 +20,9 @@ def _row_exists(store: SqlitePersistence, table: str, column: str, value: str) -
 
 
 def _delete_world(store: SqlitePersistence, world_id: str) -> None:
+    # MapArtifact/MediaAsset migrations omit ON DELETE CASCADE (004_map_artifacts.sql).
+    store.conn.execute("DELETE FROM MapArtifact WHERE worldId = ?", (world_id,))
+    store.conn.execute("DELETE FROM MediaAsset WHERE worldId = ?", (world_id,))
     store.conn.execute("DELETE FROM World WHERE worldId = ?", (world_id,))
     store.conn.commit()
 

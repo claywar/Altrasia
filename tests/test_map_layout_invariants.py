@@ -22,7 +22,7 @@ def test_demo_site_layout_passes_invariants(tmp_path: Path) -> None:
     store = SqlitePersistence(tmp_path / "inv.db")
     store.migrate()
     load_fixture_by_id(store, WORLD_FIXTURES, "demo-spatial-v1")
-    layout = _load_layout("site-valid.json")
+    layout = _load_layout("mini-valid.json")
     result = validate_layout(layout, store, "demo-spatial-v1")
     assert result["valid"], result["errors"]
     inv = check_invariants(layout, store, "demo-spatial-v1")

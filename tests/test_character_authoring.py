@@ -11,12 +11,10 @@ from altrasia.config import Settings
 
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
-    settings = Settings(
-        db_path=tmp_path / "char.db",
-        mock_llm=True,
-        fixtures_dir=Path(__file__).resolve().parent / "fixtures",
-    )
-    return TestClient(create_app(settings))
+    from tests.conftest import make_test_settings
+
+    with TestClient(create_app(make_test_settings(tmp_path, "char.db"))) as tc:
+        yield tc
 
 
 def test_character_draft_and_approve(client: TestClient) -> None:

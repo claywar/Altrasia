@@ -3,30 +3,30 @@ import { ensurePlanPositions, mergeDraftToGraph } from "./layoutDraftMerge";
 import type { SpatialGraph } from "../../api/client";
 
 const baseGraph: SpatialGraph = {
-  activeSceneId: "scene-hall",
+  activeSceneId: "scene-lobby",
   nodes: [
     {
-      sceneId: "scene-hall",
-      locationName: "Hall",
+      sceneId: "scene-lobby",
+      locationName: "Lobby",
       isActive: true,
       layout: { x: 40, y: 50 },
       presentCount: 1,
-      structureId: "manor",
+      structureId: "hq",
     },
     {
-      sceneId: "scene-kitchen",
-      locationName: "Kitchen",
+      sceneId: "scene-conference-room",
+      locationName: "Conference Room",
       isActive: false,
       layout: { x: 60, y: 40 },
       presentCount: 0,
-      structureId: "manor",
+      structureId: "hq",
     },
   ],
   edges: [],
   structures: [
     {
-      structureId: "manor",
-      displayName: "Manor",
+      structureId: "hq",
+      displayName: "Vertex Labs HQ",
       boundary: { shape: "rect", x: 20, y: 20, w: 60, h: 60 },
     },
   ],
@@ -37,14 +37,14 @@ describe("layoutDraftMerge", () => {
     const merged = mergeDraftToGraph(
       {
         nodes: [
-          { sceneId: "scene-hall", mapPosition: { x: 10, y: 20 } },
-          { sceneId: "scene-kitchen", mapPosition: { x: 80, y: 30 } },
+          { sceneId: "scene-lobby", mapPosition: { x: 10, y: 20 } },
+          { sceneId: "scene-conference-room", mapPosition: { x: 80, y: 30 } },
         ],
       },
       baseGraph
     );
     expect(merged?.nodes).toHaveLength(2);
-    expect(merged?.nodes.find((n) => n.sceneId === "scene-hall")?.layout).toEqual({
+    expect(merged?.nodes.find((n) => n.sceneId === "scene-lobby")?.layout).toEqual({
       x: 10,
       y: 20,
     });
@@ -52,12 +52,12 @@ describe("layoutDraftMerge", () => {
 
   it("ensurePlanPositions copies layout to planPosition", () => {
     const merged = mergeDraftToGraph(
-      { nodes: [{ sceneId: "scene-hall", mapPosition: { x: 33, y: 44 } }] },
+      { nodes: [{ sceneId: "scene-lobby", mapPosition: { x: 33, y: 44 } }] },
       baseGraph
     );
     const withPlan = ensurePlanPositions(merged!);
-    const hall = withPlan.nodes.find((n) => n.sceneId === "scene-hall");
-    expect(hall?.planPosition).toEqual({ x: 33, y: 44 });
+    const lobby = withPlan.nodes.find((n) => n.sceneId === "scene-lobby");
+    expect(lobby?.planPosition).toEqual({ x: 33, y: 44 });
   });
 
   it("merges worldMap from site draft", () => {
@@ -65,7 +65,7 @@ describe("layoutDraftMerge", () => {
       {
         worldMap: {
           structurePlacements: [
-            { structureId: "manor", origin: { x: 48, y: 38 } },
+            { structureId: "hq", origin: { x: 48, y: 38 } },
           ],
         },
         nodes: [],

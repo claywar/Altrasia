@@ -38,8 +38,8 @@ def test_webtools_requires_approval_when_configured(tmp_path: Path) -> None:
             {"query": "library hours"},
             ToolContext(
                 world_id=world_id,
-                scene_id="scene-hall",
-                character_id="char-alice",
+                scene_id="scene-lobby",
+                character_id="char-jordan-reyes",
                 services=svc,
             ),
         )

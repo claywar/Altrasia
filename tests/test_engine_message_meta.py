@@ -11,7 +11,7 @@ def test_idle_timer_meta_includes_orchestration() -> None:
     job = {
         "trigger": "idle_timer",
         "selectionRationaleJson": json.dumps(
-            {"pick": "idle_timer", "characterId": "char-alice", "idle_source": "tab_visible"}
+            {"pick": "idle_timer", "characterId": "char-jordan-reyes", "idle_source": "tab_visible"}
         ),
     }
     meta = _scene_message_meta(job)
@@ -28,7 +28,7 @@ def test_reactive_meta_has_trigger_only() -> None:
 def test_merge_tool_calls_into_rationale() -> None:
     merged = json.loads(
         _merge_tool_calls_rationale(
-            json.dumps({"pick": "reactive", "characterId": "char-alice"}),
+            json.dumps({"pick": "reactive", "characterId": "char-jordan-reyes"}),
             [{"name": "memory_search", "arguments": {"query": "keys"}, "result": "ok"}],
         )
     )

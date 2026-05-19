@@ -1,6 +1,6 @@
 # Demo world fixture `demo-spatial-v1`
 
-**Altrasia Manor — Demo** — showcase map for the spatial UI: manor envelope (hall, kitchen, pantry), **Round Keep** (circle), **Outer Bailey** (courtyard), compass-aligned exits, mixed `travelSteps`, and `worldMap` site placements.
+**Vertex Labs HQ — Demo** — modern software-company showcase for the spatial UI: lobby hub, team studios, engineering garage and tech lab, engineering wing with twelve private engineer offices, compass-aligned exits, mixed `travelSteps`, and `worldMap` site placement.
 
 Load via API:
 
@@ -15,6 +15,8 @@ Or Web UI **Load demo world**, or CLI:
 altrasia load-demo
 ```
 
-**Map highlights:** structure boundaries, `mapShape` rect/circle/corridor, north-aligned edges, 1-step vs 2-step travel, cross-structure gates (knock), ground-floor zones.
+**Cast:** 27 characters (CTO, four directors, product/program ICs, cloud/QA/mobile/embedded/systems/validation engineers). **Scenes:** 20 (shared workspaces + engineering corridor + offices).
 
-Spec: [demo-spatial-v1.json](demo-spatial-v1.json). Target load time: under 2s on reference dev hardware.
+**Map highlights:** single HQ structure envelope, ground floor + engineering wing levels, blueprint style, 1-step vs 2-step travel, stairs to engineering offices.
+
+Spec: [demo-spatial-v1.json](demo-spatial-v1.json). Regenerate with `python tests/fixtures/demo-world/build_vertex_demo.py`. Target load time: under 2s on reference dev hardware.

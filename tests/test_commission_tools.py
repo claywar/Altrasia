@@ -1,46 +1,27 @@
 """Commission allowedTools + mock webtools_invoke."""
 
-import time
-from pathlib import Path
-
 from fastapi.testclient import TestClient
 
-from altrasia.api.app import create_app
-from altrasia.config import Settings
+from tests.conftest import wait_for_jobs
 
 
-def _wait_jobs(client: TestClient, world_id: str, timeout: float = 12.0) -> None:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        q = client.get(f"/api/v1/worlds/{world_id}/queue").json()
-        if not q.get("busy") and q.get("depth", 0) == 0:
-            return
-        time.sleep(0.1)
-    raise TimeoutError("generation did not finish")
-
-
-def test_commission_with_webtools(tmp_path: Path) -> None:
-    settings = Settings(
-        db_path=tmp_path / "ctools.db",
-        mock_llm=True,
-        fixtures_dir=Path(__file__).resolve().parent / "fixtures",
-    )
-    client = TestClient(create_app(settings))
-    world_id = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()[
-        "worldId"
-    ]
-    kitchen = "scene-kitchen"
+def test_commission_with_webtools(app_client: tuple[TestClient, object]) -> None:
+    client, _services = app_client
+    world_id = client.post(
+        "/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}
+    ).json()["worldId"]
+    kitchen = "scene-conference-room"
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{kitchen}/presence/join",
-        json={"characterId": "char-alice"},
+        json={"characterId": "char-jordan-reyes"},
     )
 
     created = client.post(
         f"/api/v1/worlds/{world_id}/commissions",
         json={
-            "assigneeCharacterId": "char-alice",
+            "assigneeCharacterId": "char-jordan-reyes",
             "targetSceneId": kitchen,
-            "brief": "Research the library hours online.",
+            "brief": "Research Vertex Labs public API status page online.",
             "allowedTools": ["webtools_invoke", "memory_store", "memory_search"],
         },
     ).json()
@@ -50,10 +31,12 @@ def test_commission_with_webtools(tmp_path: Path) -> None:
     if created["status"] == "queued":
         start = client.post(f"/api/v1/worlds/{world_id}/commissions/{cid}/start")
         assert start.status_code == 200
-    _wait_jobs(client, world_id)
+    wait_for_jobs(client, world_id)
 
     done = client.get(f"/api/v1/worlds/{world_id}/commissions").json()
     final = next(c for c in done if c["commissionId"] == cid)
     assert final["status"] == "done"
-    mind = client.get(f"/api/v1/worlds/{world_id}/characters/char-alice/mind").json()
+    mind = client.get(
+        f"/api/v1/worlds/{world_id}/characters/char-jordan-reyes/mind"
+    ).json()
     assert any("commission:" in loc.get("locusKey", "") for loc in mind)

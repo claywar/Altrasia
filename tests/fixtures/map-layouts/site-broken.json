@@ -3,6 +3,6 @@
   "scope": "site",
   "referenceDiagramId": "site_overlay",
   "nodes": [
-    { "sceneId": "scene-hall", "mapPosition": { "x": 45, "y": 50 } }
+    { "sceneId": "scene-lobby", "mapPosition": { "x": 45, "y": 50 } }
   ]
 }

@@ -17,7 +17,7 @@ def test_scene_exit_set_state_broken(tmp_path: Path) -> None:
     client = TestClient(create_app(settings))
     w = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()
     world_id = w["worldId"]
-    scene_id = "scene-hall"
+    scene_id = "scene-lobby"
     import json
 
     scene = client.get(f"/api/v1/worlds/{world_id}/scenes/{scene_id}").json()

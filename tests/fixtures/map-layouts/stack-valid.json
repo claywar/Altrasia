@@ -4,13 +4,13 @@
   "referenceDiagramId": "level_stack",
   "nodes": [
     {
-      "sceneId": "scene-hall",
+      "sceneId": "scene-lobby",
       "mapPosition": { "x": 49, "y": 45 },
       "planPosition": { "x": 49, "y": 45 },
       "levelIndex": 0
     },
     {
-      "sceneId": "scene-upper-gallery",
+      "sceneId": "scene-eng-corridor",
       "mapPosition": { "x": 49, "y": 45 },
       "planPosition": { "x": 49, "y": 45 },
       "levelIndex": 1
@@ -19,8 +19,8 @@
   "edges": [
     {
       "exitId": "stairs-up",
-      "sourceSceneId": "scene-hall",
-      "targetSceneId": "scene-upper-gallery",
+      "sourceSceneId": "scene-lobby",
+      "targetSceneId": "scene-eng-corridor",
       "kind": "stairs"
     }
   ]

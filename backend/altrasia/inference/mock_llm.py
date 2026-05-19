@@ -56,7 +56,7 @@ async def mock_chat_completion(
                 {
                     "tempId": "scene-garden",
                     "locationName": "Garden",
-                    "locationDescription": "A walled garden off the hall.",
+                    "locationDescription": "A rooftop terrace off the lobby.",
                     "connectFromSceneId": None,
                     "exitLabel": "Garden path",
                 }
@@ -97,8 +97,27 @@ async def mock_chat_completion(
         }
     if tools and "commission errand" in system_text.lower():
         names = [t["function"]["name"] for t in tools]
-        has_web_result = any(m.get("role") == "tool" for m in messages)
-        if "memory_store" in names and has_web_result:
+        tool_rounds = sum(1 for m in messages if m.get("role") == "tool")
+        needs_web = "webtools_invoke" in names
+
+        def _plain_done() -> dict[str, Any]:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "Commission complete. Findings stored in mind.",
+                        }
+                    }
+                ]
+            }
+
+        if needs_web and tool_rounds >= 2:
+            return _plain_done()
+        if not needs_web and tool_rounds >= 1:
+            return _plain_done()
+
+        def _memory_store_response() -> dict[str, Any]:
             key = "commission:mock:summary"
             m = re.search(r'key "([^"]+)"', system_text)
             if m:
@@ -128,7 +147,8 @@ async def mock_chat_completion(
                     }
                 ]
             }
-        if "webtools_invoke" in names:
+
+        if needs_web and tool_rounds == 0:
             return {
                 "choices": [
                     {
@@ -152,10 +172,9 @@ async def mock_chat_completion(
                 ]
             }
         if "memory_store" in names:
-            key = "commission:mock:summary"
-            m = re.search(r'key "([^"]+)"', system_text)
-            if m:
-                key = m.group(1)
+            return _memory_store_response()
+    if tools and "commission errand" not in system_text.lower():
+        if re.search(r"\bremember\b", lower) or re.search(r"\bcapital\b", lower):
             return {
                 "choices": [
                     {
@@ -164,16 +183,11 @@ async def mock_chat_completion(
                             "content": None,
                             "tool_calls": [
                                 {
-                                    "id": "call_mem",
+                                    "id": "call_1",
                                     "type": "function",
                                     "function": {
-                                        "name": "memory_store",
-                                        "arguments": json.dumps(
-                                            {
-                                                "locusKey": key,
-                                                "value": "Mock commission findings from research.",
-                                            }
-                                        ),
+                                        "name": "memory_search",
+                                        "arguments": json.dumps({"query": "capital"}),
                                     },
                                 }
                             ],
@@ -181,27 +195,6 @@ async def mock_chat_completion(
                     }
                 ]
             }
-    if tools and ("remember" in lower or "capital" in lower):
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [
-                            {
-                                "id": "call_1",
-                                "type": "function",
-                                "function": {
-                                    "name": "memory_search",
-                                    "arguments": json.dumps({"query": "capital"}),
-                                },
-                            }
-                        ],
-                    }
-                }
-            ]
-        }
     name = "NPC"
     for m in messages:
         if m.get("role") == "system" and "You are" in m.get("content", ""):

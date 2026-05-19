@@ -38,7 +38,7 @@ def test_persona_line_one_reactive_reply(client: TestClient) -> None:
 
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     world_id = r.json()["worldId"]
-    hall = "scene-hall"
+    hall = "scene-lobby"
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
         json={"text": "Hello", "scope": "public"},
@@ -61,8 +61,8 @@ def test_knock_no_generation(client: TestClient) -> None:
         f"/api/v1/worlds/{world_id}/signals",
         json={
             "kind": "knock",
-            "sourceSceneId": "scene-hall",
-            "targetSceneId": "scene-kitchen",
+            "sourceSceneId": "scene-lobby",
+            "targetSceneId": "scene-conference-room",
         },
     )
     q = client.get(f"/api/v1/worlds/{world_id}/queue").json()

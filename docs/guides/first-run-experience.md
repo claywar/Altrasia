@@ -24,19 +24,19 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 
 **Expected state:**
 
-- World name: Demo Spatial World
-- Persona starts in **Hall** (`scene-hall`); Alice present in Hall; Bob in **Kitchen**
+- World name: **Vertex Labs HQ — Demo**
+- Persona starts in **Lobby** (`scene-lobby`); Jordan Reyes (CTO) at reception; product and program teams in their studios; engineers in private offices on the engineering wing
 - Preset: Solo story
 
 **UI affordances ([14-web-ui.md](../14-web-ui.md)):** Load demo via WF-9 / UI-WLD-1; right rail **Places** + **People**; center transcript + compose.
 
 ### 2. Public conversation
 
-**Operator action:** Persona sends a **public** line in Hall (scope selector = public).
+**Operator action:** Persona sends a **public** line in the Lobby (scope selector = public).
 
 **Expected:**
 
-- Alice (or eligible NPC in Hall) replies in scene transcript
+- Jordan Reyes (or another eligible NPC present) replies in scene transcript
 - GPU queue strip shows job trigger and wait if busy (UI-2, WF-20)
 - Selection rationale available via queue strip or message ⓘ popover (UI-1, WF-21)
 

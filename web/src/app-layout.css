@@ -63,14 +63,59 @@ body {
 }
 
 .world-activity-log {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.world-activity-log__trigger {
+  position: relative;
+  color: var(--status-idle);
+}
+
+.world-activity-log__trigger:hover,
+.world-activity-log__trigger[aria-expanded="true"] {
+  color: var(--foreground);
+}
+
+.world-activity-log__trigger--live {
+  color: var(--foreground);
+}
+
+.world-activity-log__live-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(140 55% 50%);
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+
+.world-activity-log__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: min(280px, 28vw);
-  min-width: 0;
+  gap: 6px;
+  width: min(320px, 70vw);
+  max-height: min(280px, 50vh);
+  padding: 8px 10px;
   font-size: 11px;
   color: var(--status-idle);
-  flex-shrink: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px hsl(0 0% 0% / 0.35);
+}
+
+.world-activity-log__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .world-activity-log__label {
@@ -80,12 +125,18 @@ body {
   opacity: 0.85;
 }
 
+.world-activity-log__count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.7;
+}
+
 .world-activity-log__list {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 3.6em;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .world-activity-log__item {

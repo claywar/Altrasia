@@ -1,9 +1,9 @@
 {
   "fixtureId": "demo-spatial-v1",
   "worldId": "demo-spatial-v1",
-  "name": "Altrasia Manor — Demo",
-  "activeSceneId": "scene-hall",
-  "personaSceneId": "scene-hall",
+  "name": "Vertex Labs HQ — Demo",
+  "activeSceneId": "scene-lobby",
+  "personaSceneId": "scene-lobby",
   "defaultModelProfile": "qwen3.6-35b-a3b",
   "config": {
     "agentContinueEnabled": true,
@@ -15,135 +15,1339 @@
     "schemaVersion": 1,
     "architectureStyle": "blueprint",
     "structurePlacements": [
-      { "structureId": "manor", "origin": { "x": 48, "y": 38 } },
-      { "structureId": "keep", "origin": { "x": 77, "y": 53 } },
-      { "structureId": "bailey", "origin": { "x": 20, "y": 76 } }
+      {
+        "structureId": "hq",
+        "origin": {
+          "x": 48,
+          "y": 40
+        }
+      }
     ]
   },
   "structures": [
     {
-      "structureId": "manor",
-      "displayName": "Manor House",
+      "structureId": "hq",
+      "displayName": "Vertex Labs HQ",
       "kind": "building",
       "boundary": {
         "shape": "polygon",
         "cornerRadius": 4,
         "vertices": [
-          { "x": 28, "y": 22 },
-          { "x": 66, "y": 22 },
-          { "x": 66, "y": 35 },
-          { "x": 58, "y": 35 },
-          { "x": 58, "y": 58 },
-          { "x": 28, "y": 58 }
+          {
+            "x": 22,
+            "y": 20
+          },
+          {
+            "x": 78,
+            "y": 20
+          },
+          {
+            "x": 78,
+            "y": 62
+          },
+          {
+            "x": 22,
+            "y": 62
+          }
         ]
-      }
-    },
-    {
-      "structureId": "keep",
-      "displayName": "Round Keep",
-      "kind": "building",
-      "boundary": {
-        "shape": "circle",
-        "cx": 84,
-        "cy": 50,
-        "r": 10.5
-      }
-    },
-    {
-      "structureId": "bailey",
-      "displayName": "Outer Bailey",
-      "kind": "outdoor",
-      "boundary": {
-        "shape": "roundedRect",
-        "x": 8,
-        "y": 70,
-        "w": 32,
-        "h": 26,
-        "cornerRadius": 6
       }
     }
   ],
   "characters": [
     {
-      "characterId": "char-alice",
-      "displayName": "Alice",
-      "speechWeight": 0.7,
-      "sceneRole": "host",
+      "characterId": "char-jordan-reyes",
+      "displayName": "Jordan Reyes",
+      "speechWeight": 0.68,
+      "sceneRole": "cto",
       "definition": {
-        "personality": "Warm, observant host in the manor hall."
+        "persona": "Calm, strategic CTO who speaks in clear priorities and ties decisions to customer impact.",
+        "instructions": "Lead cross-functional alignment; defer tactical details to directors; ask clarifying questions before committing.",
+        "focusTags": [
+          "leadership",
+          "architecture"
+        ]
       },
       "mindLoci": [
-        { "key": "role", "value": "Alice is the host of the manor hall." }
+        {
+          "key": "role",
+          "value": "Chief Technology Officer at Vertex Labs; reports to no one"
+        },
+        {
+          "key": "skills",
+          "value": "System architecture, org design, cloud and embedded strategy, executive communication, roadmap arbitration"
+        },
+        {
+          "key": "personality",
+          "value": "Decisive but collaborative; listens first, summarizes second"
+        }
       ]
     },
     {
-      "characterId": "char-bob",
-      "displayName": "Bob",
-      "speechWeight": 0.6,
-      "sceneRole": "guest",
+      "characterId": "char-sofia-mendez",
+      "displayName": "Sofia Mendez",
+      "speechWeight": 0.64,
+      "sceneRole": "director",
       "definition": {
-        "personality": "Curious guest, often in the kitchen."
+        "persona": "Empathetic product leader who champions user evidence and crisp problem statements.",
+        "instructions": "Protect discovery time; challenge solutions that lack user validation; coach PMs and designers.",
+        "focusTags": [
+          "product",
+          "leadership"
+        ]
       },
       "mindLoci": [
-        { "key": "role", "value": "Bob is a guest who enjoys the kitchen." }
+        {
+          "key": "role",
+          "value": "Director of Product Management at Vertex Labs; reports to Jordan Reyes"
+        },
+        {
+          "key": "skills",
+          "value": "Product strategy, portfolio prioritization, stakeholder management, UX research synthesis"
+        },
+        {
+          "key": "personality",
+          "value": "Warm, direct, data-informed"
+        }
       ]
     },
     {
-      "characterId": "char-guard",
-      "displayName": "Sergeant Hale",
-      "speechWeight": 0.55,
-      "sceneRole": "guard",
+      "characterId": "char-liam-park",
+      "displayName": "Liam Park",
+      "speechWeight": 0.63,
+      "sceneRole": "director",
       "definition": {
-        "personality": "Stoic keeper of the round keep gate."
+        "persona": "Structured program leader who tracks dependencies, risks, and delivery predictability.",
+        "instructions": "Surface blockers early; keep schedules honest; align project and program managers on milestones.",
+        "focusTags": [
+          "program",
+          "leadership"
+        ]
       },
       "mindLoci": [
-        { "key": "role", "value": "Hale watches the keep yard and the east gate." }
+        {
+          "key": "role",
+          "value": "Director of Program Management at Vertex Labs; reports to Jordan Reyes"
+        },
+        {
+          "key": "skills",
+          "value": "Program governance, capacity planning, risk management, release coordination"
+        },
+        {
+          "key": "personality",
+          "value": "Calm under pressure; precise with dates and owners"
+        }
+      ]
+    },
+    {
+      "characterId": "char-amara-osei",
+      "displayName": "Amara Osei",
+      "speechWeight": 0.64,
+      "sceneRole": "director",
+      "definition": {
+        "persona": "Hands-on digital engineering director who balances velocity with operational excellence.",
+        "instructions": "Unblock cloud, mobile, and QA teams; insist on observability and definition of done.",
+        "focusTags": [
+          "engineering",
+          "cloud",
+          "mobile"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Director of Digital Development at Vertex Labs; reports to Jordan Reyes"
+        },
+        {
+          "key": "skills",
+          "value": "Cloud platforms, CI/CD, mobile architecture, quality engineering, incident response"
+        },
+        {
+          "key": "personality",
+          "value": "Pragmatic, metrics-minded, supportive in postmortems"
+        }
+      ]
+    },
+    {
+      "characterId": "char-kenji-watanabe",
+      "displayName": "Kenji Watanabe",
+      "speechWeight": 0.63,
+      "sceneRole": "director",
+      "definition": {
+        "persona": "Methodical embedded leader focused on safety, traceability, and hardware–software co-design.",
+        "instructions": "Prioritize reproducible tests; review schematics and firmware interfaces; mentor validation rigor.",
+        "focusTags": [
+          "embedded",
+          "hardware"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Director of Embedded Engineering at Vertex Labs; reports to Jordan Reyes"
+        },
+        {
+          "key": "skills",
+          "value": "Embedded systems, RTOS, hardware bring-up, systems engineering, regulatory awareness"
+        },
+        {
+          "key": "personality",
+          "value": "Patient, detail-oriented, quiet confidence"
+        }
+      ]
+    },
+    {
+      "characterId": "char-priya-nair",
+      "displayName": "Priya Nair",
+      "speechWeight": 0.58,
+      "sceneRole": "ux_researcher",
+      "definition": {
+        "persona": "Curious UX researcher who turns interviews into actionable insights and journey maps.",
+        "instructions": "Ask open questions; cite study protocols; separate observation from interpretation.",
+        "focusTags": [
+          "ux",
+          "research"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "UX Researcher at Vertex Labs; reports to Sofia Mendez"
+        },
+        {
+          "key": "skills",
+          "value": "User interviews, usability testing, affinity mapping, survey design, accessibility heuristics"
+        },
+        {
+          "key": "personality",
+          "value": "Inquisitive, reflective, evidence-first"
+        }
+      ]
+    },
+    {
+      "characterId": "char-marco-delgado",
+      "displayName": "Marco Delgado",
+      "speechWeight": 0.58,
+      "sceneRole": "ux_researcher",
+      "definition": {
+        "persona": "Field-savvy researcher comfortable with contextual inquiry and rapid diary studies.",
+        "instructions": "Document research plans; triangulate qual and quant; flag sample bias.",
+        "focusTags": [
+          "ux",
+          "research"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "UX Researcher at Vertex Labs; reports to Sofia Mendez"
+        },
+        {
+          "key": "skills",
+          "value": "Contextual inquiry, diary studies, analytics pairing, prototype testing"
+        },
+        {
+          "key": "personality",
+          "value": "Energetic, storytelling with data"
+        }
+      ]
+    },
+    {
+      "characterId": "char-lena-cho",
+      "displayName": "Lena Cho",
+      "speechWeight": 0.58,
+      "sceneRole": "ux_designer",
+      "definition": {
+        "persona": "Visual systems thinker who crafts accessible interfaces and cohesive design language.",
+        "instructions": "Use design tokens; design for keyboard and screen readers; critique ideas not people.",
+        "focusTags": [
+          "ux",
+          "design"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "UX Designer at Vertex Labs; reports to Sofia Mendez"
+        },
+        {
+          "key": "skills",
+          "value": "Figma, design systems, interaction design, prototyping, WCAG patterns"
+        },
+        {
+          "key": "personality",
+          "value": "Collaborative, crisp feedback, aesthetic restraint"
+        }
+      ]
+    },
+    {
+      "characterId": "char-andre-silva",
+      "displayName": "Andre Silva",
+      "speechWeight": 0.58,
+      "sceneRole": "ux_designer",
+      "definition": {
+        "persona": "Product-minded designer who wires flows to measurable outcomes and edge cases.",
+        "instructions": "Prototype happy paths and failures; pair with engineering on feasibility.",
+        "focusTags": [
+          "ux",
+          "design"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "UX Designer at Vertex Labs; reports to Sofia Mendez"
+        },
+        {
+          "key": "skills",
+          "value": "Information architecture, microcopy, responsive layout, developer handoff"
+        },
+        {
+          "key": "personality",
+          "value": "Optimistic, iterative, user-advocate"
+        }
+      ]
+    },
+    {
+      "characterId": "char-hannah-brooks",
+      "displayName": "Hannah Brooks",
+      "speechWeight": 0.58,
+      "sceneRole": "product_manager",
+      "definition": {
+        "persona": "Outcome-driven PM who writes sharp PRDs and negotiates scope with empathy.",
+        "instructions": "Frame problems before solutions; maintain transparent prioritization; sync research and delivery.",
+        "focusTags": [
+          "product"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Product Manager at Vertex Labs; reports to Sofia Mendez"
+        },
+        {
+          "key": "skills",
+          "value": "Roadmapping, PRDs, OKRs, backlog grooming, stakeholder alignment"
+        },
+        {
+          "key": "personality",
+          "value": "Organized, persuasive, calm in tradeoff debates"
+        }
+      ]
+    },
+    {
+      "characterId": "char-omar-haddad",
+      "displayName": "Omar Haddad",
+      "speechWeight": 0.58,
+      "sceneRole": "product_manager",
+      "definition": {
+        "persona": "Technical PM comfortable spiking unknowns and translating constraints for design and eng.",
+        "instructions": "Timebox discovery; document assumptions; keep acceptance criteria testable.",
+        "focusTags": [
+          "product"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Product Manager at Vertex Labs; reports to Sofia Mendez"
+        },
+        {
+          "key": "skills",
+          "value": "Technical discovery, API contracts, launch planning, metrics definition"
+        },
+        {
+          "key": "personality",
+          "value": "Analytical, concise, engineering-literate"
+        }
+      ]
+    },
+    {
+      "characterId": "char-rachel-kim",
+      "displayName": "Rachel Kim",
+      "speechWeight": 0.58,
+      "sceneRole": "project_manager",
+      "definition": {
+        "persona": "Detail-oriented project manager who keeps boards honest and meetings short.",
+        "instructions": "Track owners and dates; escalate blockers within 24h; protect focus time.",
+        "focusTags": [
+          "program",
+          "delivery"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Project Manager at Vertex Labs; reports to Liam Park"
+        },
+        {
+          "key": "skills",
+          "value": "Scrum/Kanban, Jira, critical path, RAID logs, status reporting"
+        },
+        {
+          "key": "personality",
+          "value": "Direct, organized, friendly accountability"
+        }
+      ]
+    },
+    {
+      "characterId": "char-tom-bradley",
+      "displayName": "Tom Bradley",
+      "speechWeight": 0.58,
+      "sceneRole": "project_manager",
+      "definition": {
+        "persona": "Risk-aware PM who surfaces dependency conflicts before they become fires.",
+        "instructions": "Maintain dependency maps; run concise standups; document decisions.",
+        "focusTags": [
+          "program",
+          "delivery"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Project Manager at Vertex Labs; reports to Liam Park"
+        },
+        {
+          "key": "skills",
+          "value": "Dependency management, milestone tracking, vendor coordination"
+        },
+        {
+          "key": "personality",
+          "value": "Steady, skeptical of silent slips"
+        }
+      ]
+    },
+    {
+      "characterId": "char-nina-patel",
+      "displayName": "Nina Patel",
+      "speechWeight": 0.58,
+      "sceneRole": "program_manager",
+      "definition": {
+        "persona": "Big-picture program manager aligning multiple projects to quarterly outcomes.",
+        "instructions": "Connect project timelines to program goals; communicate executive summaries.",
+        "focusTags": [
+          "program"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Program Manager at Vertex Labs; reports to Liam Park"
+        },
+        {
+          "key": "skills",
+          "value": "Program planning, cross-team alignment, benefits tracking, steering prep"
+        },
+        {
+          "key": "personality",
+          "value": "Strategic, diplomatic, clarity-focused"
+        }
+      ]
+    },
+    {
+      "characterId": "char-chris-doyle",
+      "displayName": "Chris Doyle",
+      "speechWeight": 0.58,
+      "sceneRole": "program_manager",
+      "definition": {
+        "persona": "Operational program manager who standardizes rituals and improves predictability.",
+        "instructions": "Instrument delivery metrics; refine intake; coach PMs on estimation.",
+        "focusTags": [
+          "program"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Program Manager at Vertex Labs; reports to Liam Park"
+        },
+        {
+          "key": "skills",
+          "value": "Operating rhythms, metrics, portfolio reviews, capacity models"
+        },
+        {
+          "key": "personality",
+          "value": "Process-minded but not bureaucratic"
+        }
+      ]
+    },
+    {
+      "characterId": "char-ava-chen",
+      "displayName": "Ava Chen",
+      "speechWeight": 0.58,
+      "sceneRole": "cloud_engineer",
+      "definition": {
+        "persona": "Cloud engineer who treats infrastructure as product with guardrails and clear SLOs.",
+        "instructions": "Automate toil; document runbooks; prefer small reversible changes.",
+        "focusTags": [
+          "cloud",
+          "devops"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Cloud Engineer at Vertex Labs; reports to Amara Osei"
+        },
+        {
+          "key": "skills",
+          "value": "AWS/GCP, Terraform, Kubernetes, observability, cost optimization"
+        },
+        {
+          "key": "personality",
+          "value": "Calm, systematic, on-call ready"
+        }
+      ]
+    },
+    {
+      "characterId": "char-ryan-okafor",
+      "displayName": "Ryan Okafor",
+      "speechWeight": 0.58,
+      "sceneRole": "cloud_engineer",
+      "definition": {
+        "persona": "Platform engineer passionate about secure pipelines and developer experience.",
+        "instructions": "Harden CI/CD; reduce build times; pair with app teams on deployment patterns.",
+        "focusTags": [
+          "cloud",
+          "platform"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Cloud Engineer at Vertex Labs; reports to Amara Osei"
+        },
+        {
+          "key": "skills",
+          "value": "CI/CD, IAM, secrets management, service mesh, internal platforms"
+        },
+        {
+          "key": "personality",
+          "value": "Helpful, security-conscious, automation-first"
+        }
+      ]
+    },
+    {
+      "characterId": "char-mia-santos",
+      "displayName": "Mia Santos",
+      "speechWeight": 0.58,
+      "sceneRole": "qa_engineer",
+      "definition": {
+        "persona": "Skeptical QA engineer who hunts edge cases and writes reproduction steps engineers respect.",
+        "instructions": "Test charters over checkbox testing; file crisp bugs; advocate for testability in design.",
+        "focusTags": [
+          "qa",
+          "quality"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "QA Engineer at Vertex Labs; reports to Amara Osei"
+        },
+        {
+          "key": "skills",
+          "value": "Test planning, automation, exploratory testing, regression strategy"
+        },
+        {
+          "key": "personality",
+          "value": "Precise, persistent, constructive skepticism"
+        }
+      ]
+    },
+    {
+      "characterId": "char-derek-walsh",
+      "displayName": "Derek Walsh",
+      "speechWeight": 0.58,
+      "sceneRole": "qa_engineer",
+      "definition": {
+        "persona": "Automation-focused QA who builds reliable suites and monitors flake rates.",
+        "instructions": "Prefer stable selectors; quarantine flaky tests; measure coverage meaningfully.",
+        "focusTags": [
+          "qa",
+          "automation"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "QA Engineer at Vertex Labs; reports to Amara Osei"
+        },
+        {
+          "key": "skills",
+          "value": "Playwright, pytest, API testing, performance smoke tests"
+        },
+        {
+          "key": "personality",
+          "value": "Quiet, thorough, data on quality trends"
+        }
+      ]
+    },
+    {
+      "characterId": "char-elena-volkov",
+      "displayName": "Elena Volkov",
+      "speechWeight": 0.58,
+      "sceneRole": "mobile_engineer",
+      "definition": {
+        "persona": "Mobile engineer who cares about smooth UX, offline behavior, and battery impact.",
+        "instructions": "Profile on device; handle lifecycle edge cases; coordinate releases with QA.",
+        "focusTags": [
+          "mobile"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Mobile Software Engineer at Vertex Labs; reports to Amara Osei"
+        },
+        {
+          "key": "skills",
+          "value": "Swift/Kotlin, React Native, mobile performance, push notifications"
+        },
+        {
+          "key": "personality",
+          "value": "Craft-focused, user-empathetic"
+        }
+      ]
+    },
+    {
+      "characterId": "char-james-nguyen",
+      "displayName": "James Nguyen",
+      "speechWeight": 0.58,
+      "sceneRole": "mobile_engineer",
+      "definition": {
+        "persona": "Full-stack mobile developer comfortable with shared APIs and feature flags.",
+        "instructions": "Ship behind flags; document breaking API changes; test on real devices.",
+        "focusTags": [
+          "mobile"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Mobile Software Engineer at Vertex Labs; reports to Amara Osei"
+        },
+        {
+          "key": "skills",
+          "value": "Cross-platform mobile, REST/GraphQL clients, analytics hooks"
+        },
+        {
+          "key": "personality",
+          "value": "Fast-moving, collaborative, pragmatic"
+        }
+      ]
+    },
+    {
+      "characterId": "char-fatima-hassan",
+      "displayName": "Fatima Hassan",
+      "speechWeight": 0.58,
+      "sceneRole": "embedded_engineer",
+      "definition": {
+        "persona": "Embedded engineer who lives at the intersection of firmware, drivers, and timing diagrams.",
+        "instructions": "Respect interrupt latency; version hardware abstraction layers; document pin maps.",
+        "focusTags": [
+          "embedded",
+          "firmware"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Embedded Engineer at Vertex Labs; reports to Kenji Watanabe"
+        },
+        {
+          "key": "skills",
+          "value": "C/C++, RTOS tasks, driver development, JTAG debugging"
+        },
+        {
+          "key": "personality",
+          "value": "Focused, careful with hardware safety"
+        }
+      ]
+    },
+    {
+      "characterId": "char-lucas-weber",
+      "displayName": "Lucas Weber",
+      "speechWeight": 0.58,
+      "sceneRole": "embedded_engineer",
+      "definition": {
+        "persona": "Low-level engineer who optimizes memory and power on constrained devices.",
+        "instructions": "Profile ISR costs; write deterministic boot sequences; peer-review register changes.",
+        "focusTags": [
+          "embedded"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Embedded Engineer at Vertex Labs; reports to Kenji Watanabe"
+        },
+        {
+          "key": "skills",
+          "value": "Bare-metal, power management, DMA, communication protocols"
+        },
+        {
+          "key": "personality",
+          "value": "Methodical, terse, precision-minded"
+        }
+      ]
+    },
+    {
+      "characterId": "char-yuki-tanaka",
+      "displayName": "Yuki Tanaka",
+      "speechWeight": 0.58,
+      "sceneRole": "systems_engineer",
+      "definition": {
+        "persona": "Systems engineer who models interfaces between mechanical, electrical, and software domains.",
+        "instructions": "Maintain interface control documents; run integration reviews; trace requirements.",
+        "focusTags": [
+          "systems"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Systems Engineer at Vertex Labs; reports to Kenji Watanabe"
+        },
+        {
+          "key": "skills",
+          "value": "Systems modeling, requirements traceability, interface design, FMEA"
+        },
+        {
+          "key": "personality",
+          "value": "Holistic, documentation-heavy, risk-aware"
+        }
+      ]
+    },
+    {
+      "characterId": "char-sam-oconnor",
+      "displayName": "Sam O'Connor",
+      "speechWeight": 0.58,
+      "sceneRole": "systems_engineer",
+      "definition": {
+        "persona": "Integration-focused systems engineer who runs bench tests and documents anomalies.",
+        "instructions": "Reproduce failures on bench; capture logs and oscilloscope shots; version test fixtures.",
+        "focusTags": [
+          "systems",
+          "integration"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Systems Engineer at Vertex Labs; reports to Kenji Watanabe"
+        },
+        {
+          "key": "skills",
+          "value": "Integration testing, bench setup, telemetry, failure analysis"
+        },
+        {
+          "key": "personality",
+          "value": "Curious, hands-on, collaborative with validation"
+        }
+      ]
+    },
+    {
+      "characterId": "char-rosa-mendoza",
+      "displayName": "Rosa Mendoza",
+      "speechWeight": 0.58,
+      "sceneRole": "validation_engineer",
+      "definition": {
+        "persona": "Validation engineer who designs test plans aligned to standards and customer use cases.",
+        "instructions": "Map requirements to tests; track coverage; gate releases on evidence.",
+        "focusTags": [
+          "validation",
+          "quality"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Validation Engineer at Vertex Labs; reports to Kenji Watanabe"
+        },
+        {
+          "key": "skills",
+          "value": "V&V planning, environmental testing, compliance checklists, test reporting"
+        },
+        {
+          "key": "personality",
+          "value": "Methodical, compliance-aware, calm in audits"
+        }
+      ]
+    },
+    {
+      "characterId": "char-ian-fischer",
+      "displayName": "Ian Fischer",
+      "speechWeight": 0.58,
+      "sceneRole": "validation_engineer",
+      "definition": {
+        "persona": "Automation-minded validation engineer building repeatable hardware-in-the-loop rigs.",
+        "instructions": "Automate regression where possible; maintain golden traces; document test harness limits.",
+        "focusTags": [
+          "validation",
+          "automation"
+        ]
+      },
+      "mindLoci": [
+        {
+          "key": "role",
+          "value": "Validation Engineer at Vertex Labs; reports to Kenji Watanabe"
+        },
+        {
+          "key": "skills",
+          "value": "HIL automation, scripting, data acquisition, regression suites"
+        },
+        {
+          "key": "personality",
+          "value": "Engineering-rigor, incremental automation"
+        }
       ]
     }
   ],
   "scenes": [
     {
-      "sceneId": "scene-hall",
-      "locationName": "Hall",
-      "locationDescription": "A wide hall with hearth, oak doors north to the kitchen, east to the keep gate, and south to the bailey path.",
-      "structureId": "manor",
+      "sceneId": "scene-lobby",
+      "locationName": "Lobby",
+      "locationDescription": "Glass-walled reception with a digital directory, soft seating, and paths to every team wing.",
+      "structureId": "hq",
       "mapLevel": 0,
       "levelIndex": 0,
       "levelLabel": "Ground floor",
       "mapZone": "Ground floor",
       "mapShape": "rect",
-      "mapSize": { "w": 13, "h": 9 },
-      "mapPosition": { "x": 49, "y": 45 },
-      "present": ["char-alice"],
-      "fixtures": {
-        "chandelier": { "label": "Brass chandelier", "kind": "fixture" },
-        "hearth": { "label": "Stone hearth", "kind": "fixture" }
+      "mapSize": {
+        "w": 14,
+        "h": 10
       },
-      "mapArtifact": {
-        "schemaVersion": 1,
-        "walls": [
-          { "x1": 8, "y1": 92, "x2": 42, "y2": 92 },
-          { "x1": 58, "y1": 92, "x2": 92, "y2": 92 },
-          { "x1": 8, "y1": 8, "x2": 8, "y2": 92 },
-          { "x1": 92, "y1": 8, "x2": 92, "y2": 38 },
-          { "x1": 92, "y1": 58, "x2": 92, "y2": 92 },
-          { "x1": 8, "y1": 8, "x2": 92, "y2": 8 }
-        ],
-        "fixtures": [
-          { "id": "hearth", "x": 72, "y": 28, "label": "Hearth" },
-          { "id": "chandelier", "x": 50, "y": 55, "label": "Chandelier" }
-        ],
-        "exits": [
-          { "exitId": "hall-kitchen-door", "x": 50, "y": 92, "targetSceneId": "scene-kitchen", "label": "Kitchen" },
-          { "exitId": "hall-bailey-path", "x": 50, "y": 8, "targetSceneId": "scene-courtyard", "label": "Bailey" },
-          { "exitId": "hall-keep-gate", "x": 92, "y": 48, "targetSceneId": "scene-keep-yard", "label": "Keep" }
-        ]
+      "mapPosition": {
+        "x": 50,
+        "y": 48
+      },
+      "present": [
+        "char-jordan-reyes"
+      ],
+      "fixtures": {
+        "reception": {
+          "label": "Reception desk",
+          "kind": "fixture"
+        },
+        "directory": {
+          "label": "Digital building directory",
+          "kind": "fixture"
+        }
       },
       "exits": [
         {
-          "exitId": "hall-kitchen-door",
-          "label": "Door to kitchen",
-          "targetSceneId": "scene-kitchen",
+          "exitId": "lobby-break",
+          "label": "Break room",
+          "targetSceneId": "scene-break-room",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "W",
+          "exitAnchor": "W"
+        },
+        {
+          "exitId": "lobby-conference",
+          "label": "Conference room",
+          "targetSceneId": "scene-conference-room",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "E",
+          "exitAnchor": "E"
+        },
+        {
+          "exitId": "lobby-product",
+          "label": "Product studio",
+          "targetSceneId": "scene-product-studio",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "NW",
+          "exitAnchor": "NW"
+        },
+        {
+          "exitId": "lobby-program",
+          "label": "Program office",
+          "targetSceneId": "scene-program-office",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "NE",
+          "exitAnchor": "NE"
+        },
+        {
+          "exitId": "lobby-garage",
+          "label": "Engineering garage",
+          "targetSceneId": "scene-engineering-garage",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "SW",
+          "exitAnchor": "SW"
+        },
+        {
+          "exitId": "lobby-tech-lab",
+          "label": "Tech lab",
+          "targetSceneId": "scene-tech-lab",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "SE",
+          "exitAnchor": "SE"
+        },
+        {
+          "exitId": "lobby-stairs-eng",
+          "label": "Stairs to engineering wing",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "stairs",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "U",
+          "exitAnchor": "U"
+        }
+      ],
+      "mapArtifact": {
+        "schemaVersion": 1,
+        "walls": [
+          {
+            "x1": 8,
+            "y1": 8,
+            "x2": 92,
+            "y2": 8
+          },
+          {
+            "x1": 8,
+            "y1": 8,
+            "x2": 8,
+            "y2": 92
+          },
+          {
+            "x1": 92,
+            "y1": 8,
+            "x2": 92,
+            "y2": 92
+          },
+          {
+            "x1": 8,
+            "y1": 92,
+            "x2": 92,
+            "y2": 92
+          }
+        ],
+        "fixtures": [
+          {
+            "id": "reception",
+            "x": 50,
+            "y": 70,
+            "label": "Reception"
+          },
+          {
+            "id": "directory",
+            "x": 75,
+            "y": 35,
+            "label": "Directory"
+          }
+        ],
+        "exits": [
+          {
+            "exitId": "lobby-break",
+            "x": 15,
+            "y": 50,
+            "targetSceneId": "scene-break-room",
+            "label": "Break"
+          },
+          {
+            "exitId": "lobby-conference",
+            "x": 85,
+            "y": 50,
+            "targetSceneId": "scene-conference-room",
+            "label": "Conference"
+          },
+          {
+            "exitId": "lobby-stairs-eng",
+            "x": 50,
+            "y": 15,
+            "targetSceneId": "scene-eng-corridor",
+            "label": "Engineering wing"
+          }
+        ]
+      },
+      "worldLoci": {
+        "ambience": "Quiet HVAC hum; footsteps on polished concrete."
+      }
+    },
+    {
+      "sceneId": "scene-break-room",
+      "locationName": "Break Room",
+      "locationDescription": "Espresso machine, snack wall, and a whiteboard covered in sprint jokes.",
+      "structureId": "hq",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 9,
+        "h": 7
+      },
+      "mapPosition": {
+        "x": 32,
+        "y": 52
+      },
+      "present": [],
+      "fixtures": {
+        "espresso": {
+          "label": "Espresso bar",
+          "kind": "fixture"
+        },
+        "fridge": {
+          "label": "Snack fridge",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "break-lobby",
+          "label": "Lobby",
+          "targetSceneId": "scene-lobby",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "E",
+          "exitAnchor": "E"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-conference-room",
+      "locationName": "Conference Room",
+      "locationDescription": "Executive conference table, wall display, and video gear for leadership sync.",
+      "structureId": "hq",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 11,
+        "h": 8
+      },
+      "mapPosition": {
+        "x": 68,
+        "y": 52
+      },
+      "present": [],
+      "fixtures": {
+        "display": {
+          "label": "Wall display",
+          "kind": "fixture"
+        },
+        "table": {
+          "label": "Conference table",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "conference-lobby",
+          "label": "Lobby",
+          "targetSceneId": "scene-lobby",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "W",
+          "exitAnchor": "W"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-product-studio",
+      "locationName": "Product Studio",
+      "locationDescription": "Open product war room with research wall, design monitors, and roadmap boards.",
+      "structureId": "hq",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 12,
+        "h": 9
+      },
+      "mapPosition": {
+        "x": 28,
+        "y": 36
+      },
+      "present": [
+        "char-sofia-mendez",
+        "char-priya-nair",
+        "char-marco-delgado",
+        "char-lena-cho",
+        "char-andre-silva",
+        "char-hannah-brooks",
+        "char-omar-haddad"
+      ],
+      "fixtures": {
+        "research_wall": {
+          "label": "Research insight wall",
+          "kind": "fixture"
+        },
+        "design_station": {
+          "label": "Design stations",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "product-lobby",
+          "label": "Lobby",
+          "targetSceneId": "scene-lobby",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "SE",
+          "exitAnchor": "SE"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-program-office",
+      "locationName": "Program Office",
+      "locationDescription": "Program command center with milestone boards, risk registers, and standup space.",
+      "structureId": "hq",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 12,
+        "h": 9
+      },
+      "mapPosition": {
+        "x": 72,
+        "y": 36
+      },
+      "present": [
+        "char-liam-park",
+        "char-rachel-kim",
+        "char-tom-bradley",
+        "char-nina-patel",
+        "char-chris-doyle"
+      ],
+      "fixtures": {
+        "milestone_board": {
+          "label": "Milestone board",
+          "kind": "fixture"
+        },
+        "risk_register": {
+          "label": "Risk register",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "program-lobby",
+          "label": "Lobby",
+          "targetSceneId": "scene-lobby",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "SW",
+          "exitAnchor": "SW"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-engineering-garage",
+      "locationName": "Engineering Garage",
+      "locationDescription": "Hardware benches, 3D printers, and pairing tables for digital and embedded teams.",
+      "structureId": "hq",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 11,
+        "h": 8
+      },
+      "mapPosition": {
+        "x": 42,
+        "y": 28
+      },
+      "present": [
+        "char-amara-osei"
+      ],
+      "fixtures": {
+        "benches": {
+          "label": "Hardware benches",
+          "kind": "fixture"
+        },
+        "printers": {
+          "label": "3D printers",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "garage-lobby",
+          "label": "Lobby",
+          "targetSceneId": "scene-lobby",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "NE",
+          "exitAnchor": "NE"
+        },
+        {
+          "exitId": "garage-tech-lab",
+          "label": "Tech lab",
+          "targetSceneId": "scene-tech-lab",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "E",
+          "exitAnchor": "E"
+        },
+        {
+          "exitId": "garage-corridor",
+          "label": "Engineering wing",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "stairs",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "U",
+          "exitAnchor": "U"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-tech-lab",
+      "locationName": "Tech Lab",
+      "locationDescription": "Oscilloscopes, environmental chambers, and prototype racks for embedded validation.",
+      "structureId": "hq",
+      "mapLevel": 0,
+      "levelIndex": 0,
+      "levelLabel": "Ground floor",
+      "mapZone": "Ground floor",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 11,
+        "h": 8
+      },
+      "mapPosition": {
+        "x": 58,
+        "y": 28
+      },
+      "present": [
+        "char-kenji-watanabe"
+      ],
+      "fixtures": {
+        "scopes": {
+          "label": "Oscilloscope bench",
+          "kind": "fixture"
+        },
+        "chamber": {
+          "label": "Environmental chamber",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "tech-lobby",
+          "label": "Lobby",
+          "targetSceneId": "scene-lobby",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "NW",
+          "exitAnchor": "NW"
+        },
+        {
+          "exitId": "tech-garage",
+          "label": "Engineering garage",
+          "targetSceneId": "scene-engineering-garage",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "W",
+          "exitAnchor": "W"
+        },
+        {
+          "exitId": "tech-corridor",
+          "label": "Engineering wing",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "stairs",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "U",
+          "exitAnchor": "U"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-eng-corridor",
+      "locationName": "Engineering Wing Corridor",
+      "locationDescription": "Quiet corridor lined with nameplates leading to individual engineer offices.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 28,
+        "h": 22
+      },
+      "mapPosition": {
+        "x": 50,
+        "y": 50
+      },
+      "present": [],
+      "fixtures": {
+        "nameplates": {
+          "label": "Office nameplates",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "corridor-lobby-down",
+          "label": "Stairs to lobby",
+          "targetSceneId": "scene-lobby",
+          "kind": "stairs",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "D",
+          "exitAnchor": "D"
+        },
+        {
+          "exitId": "corridor-garage-down",
+          "label": "Stairs to garage",
+          "targetSceneId": "scene-engineering-garage",
+          "kind": "stairs",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "D",
+          "exitAnchor": "D"
+        },
+        {
+          "exitId": "corridor-tech-down",
+          "label": "Stairs to tech lab",
+          "targetSceneId": "scene-tech-lab",
+          "kind": "stairs",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "D",
+          "exitAnchor": "D"
+        },
+        {
+          "exitId": "corridor-cloud-1",
+          "label": "Cloud Office",
+          "targetSceneId": "scene-office-cloud-1",
           "kind": "door",
           "doorState": "closed",
           "travelSteps": 1,
@@ -151,239 +1355,688 @@
           "exitAnchor": "N"
         },
         {
-          "exitId": "hall-keep-gate",
-          "label": "East gate to keep",
-          "targetSceneId": "scene-keep-yard",
+          "exitId": "corridor-cloud-2",
+          "label": "Cloud Office",
+          "targetSceneId": "scene-office-cloud-2",
           "kind": "door",
           "doorState": "closed",
-          "travelSteps": 2,
-          "direction": "E",
-          "exitAnchor": "E",
-          "crossesStructure": true
-        },
-        {
-          "exitId": "hall-bailey-path",
-          "label": "Path to bailey",
-          "targetSceneId": "scene-courtyard",
-          "kind": "path",
-          "doorState": "open",
-          "travelSteps": 2,
-          "direction": "S",
-          "exitAnchor": "S",
-          "crossesStructure": true
-        },
-        {
-          "exitId": "hall-stairs-up",
-          "label": "Stairs to upper gallery",
-          "targetSceneId": "scene-upper-gallery",
-          "kind": "stairs",
           "travelSteps": 1,
-          "direction": "U",
-          "exitAnchor": "E"
+          "direction": "N",
+          "exitAnchor": "N"
         },
         {
-          "exitId": "hall-ladder-down",
-          "label": "Ladder to cellar",
-          "targetSceneId": "scene-cellar",
-          "kind": "ladder",
+          "exitId": "corridor-qa-1",
+          "label": "QA Office",
+          "targetSceneId": "scene-office-qa-1",
+          "kind": "door",
+          "doorState": "closed",
           "travelSteps": 1,
-          "direction": "D",
-          "exitAnchor": "W"
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-qa-2",
+          "label": "QA Office",
+          "targetSceneId": "scene-office-qa-2",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-mobile-1",
+          "label": "Mobile Office",
+          "targetSceneId": "scene-office-mobile-1",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-mobile-2",
+          "label": "Mobile Office",
+          "targetSceneId": "scene-office-mobile-2",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-embedded-1",
+          "label": "Embedded Office",
+          "targetSceneId": "scene-office-embedded-1",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-embedded-2",
+          "label": "Embedded Office",
+          "targetSceneId": "scene-office-embedded-2",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-systems-1",
+          "label": "Systems Office",
+          "targetSceneId": "scene-office-systems-1",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-systems-2",
+          "label": "Systems Office",
+          "targetSceneId": "scene-office-systems-2",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-validation-1",
+          "label": "Validation Office",
+          "targetSceneId": "scene-office-validation-1",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
+        },
+        {
+          "exitId": "corridor-validation-2",
+          "label": "Validation Office",
+          "targetSceneId": "scene-office-validation-2",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "N",
+          "exitAnchor": "N"
         }
       ],
-      "worldLoci": {
-        "ambience": "Draft from the north door; fire low in the hearth."
-      }
-    },
-    {
-      "sceneId": "scene-kitchen",
-      "locationName": "Kitchen",
-      "locationDescription": "Stone counters, herb racks, and the smell of bread from the oven.",
-      "structureId": "manor",
-      "mapLevel": 0,
-      "levelIndex": 0,
-      "levelLabel": "Ground floor",
-      "mapZone": "Ground floor",
-      "mapShape": "rect",
-      "mapSize": { "w": 11, "h": 7 },
-      "mapPosition": { "x": 49, "y": 30 },
-      "present": ["char-bob"],
-      "fixtures": {
-        "kettle": { "label": "Iron kettle", "kind": "fixture" },
-        "oven": { "label": "Bread oven", "kind": "fixture" }
-      },
       "mapArtifact": {
         "schemaVersion": 1,
         "walls": [
-          { "x1": 10, "y1": 10, "x2": 90, "y2": 10 },
-          { "x1": 10, "y1": 10, "x2": 10, "y2": 90 },
-          { "x1": 90, "y1": 10, "x2": 90, "y2": 90 },
-          { "x1": 42, "y1": 90, "x2": 90, "y2": 90 },
-          { "x1": 10, "y1": 90, "x2": 38, "y2": 90 }
+          {
+            "x1": 5,
+            "y1": 5,
+            "x2": 95,
+            "y2": 5
+          },
+          {
+            "x1": 5,
+            "y1": 5,
+            "x2": 5,
+            "y2": 95
+          },
+          {
+            "x1": 95,
+            "y1": 5,
+            "x2": 95,
+            "y2": 95
+          },
+          {
+            "x1": 5,
+            "y1": 95,
+            "x2": 95,
+            "y2": 95
+          }
         ],
         "fixtures": [
-          { "id": "oven", "x": 75, "y": 35, "label": "Oven" },
-          { "id": "kettle", "x": 30, "y": 50, "label": "Kettle" }
+          {
+            "id": "nameplates",
+            "x": 50,
+            "y": 50,
+            "label": "Nameplates"
+          }
         ],
         "exits": [
-          { "exitId": "kitchen-hall-door", "x": 40, "y": 90, "targetSceneId": "scene-hall", "label": "Hall" },
-          { "exitId": "kitchen-pantry", "x": 10, "y": 50, "targetSceneId": "scene-pantry", "label": "Pantry" }
+          {
+            "exitId": "corridor-lobby-down",
+            "x": 50,
+            "y": 8,
+            "targetSceneId": "scene-lobby",
+            "label": "Lobby"
+          }
         ]
+      }
+    },
+    {
+      "sceneId": "scene-office-cloud-1",
+      "locationName": "Cloud Office — Ava",
+      "locationDescription": "Private office for Ava Chen: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 38,
+        "y": 42
+      },
+      "present": [
+        "char-ava-chen"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
       },
       "exits": [
         {
-          "exitId": "kitchen-hall-door",
-          "label": "Door to hall",
-          "targetSceneId": "scene-hall",
+          "exitId": "cloud-1-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
           "kind": "door",
           "doorState": "closed",
           "travelSteps": 1,
           "direction": "S",
           "exitAnchor": "S"
-        },
-        {
-          "exitId": "kitchen-pantry",
-          "label": "Pantry passage",
-          "targetSceneId": "scene-pantry",
-          "kind": "path",
-          "travelSteps": 1,
-          "direction": "W",
-          "exitAnchor": "W"
         }
       ]
     },
     {
-      "sceneId": "scene-pantry",
-      "locationName": "Pantry",
-      "locationDescription": "A narrow storeroom lined with jars and cured goods.",
-      "structureId": "manor",
-      "mapLevel": 0,
-      "levelIndex": 0,
-      "levelLabel": "Ground floor",
-      "mapZone": "Ground floor",
-      "mapShape": "rect",
-      "mapSize": { "w": 6, "h": 5 },
-      "mapPosition": { "x": 36, "y": 27 },
-      "present": [],
-      "fixtures": {
-        "shelves": { "label": "Oak shelves", "kind": "fixture" }
-      },
-      "exits": [
-        {
-          "exitId": "pantry-kitchen",
-          "label": "To kitchen",
-          "targetSceneId": "scene-kitchen",
-          "kind": "path",
-          "travelSteps": 1,
-          "direction": "E",
-          "exitAnchor": "E"
-        }
-      ]
-    },
-    {
-      "sceneId": "scene-upper-gallery",
-      "locationName": "Upper Gallery",
-      "locationDescription": "A narrow gallery overlooking the hall below; moonlight through the clerestory.",
-      "structureId": "manor",
+      "sceneId": "scene-office-cloud-2",
+      "locationName": "Cloud Office — Ryan",
+      "locationDescription": "Private office for Ryan Okafor: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
       "mapLevel": 1,
       "levelIndex": 1,
-      "levelLabel": "Upper gallery",
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
       "mapShape": "rect",
-      "mapSize": { "w": 14, "h": 6 },
-      "mapPosition": { "x": 49, "y": 45 },
-      "present": [],
-      "fixtures": {
-        "rail": { "label": "Oak gallery rail", "kind": "fixture" }
+      "mapSize": {
+        "w": 6,
+        "h": 5
       },
-      "exits": [
-        {
-          "exitId": "gallery-stairs-down",
-          "label": "Stairs to hall",
-          "targetSceneId": "scene-hall",
-          "kind": "stairs",
-          "travelSteps": 1,
-          "direction": "D",
-          "exitAnchor": "W"
+      "mapPosition": {
+        "x": 46,
+        "y": 42
+      },
+      "present": [
+        "char-ryan-okafor"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
         }
-      ]
-    },
-    {
-      "sceneId": "scene-cellar",
-      "locationName": "Cellar",
-      "locationDescription": "Cool stone vaults under the hall; casks along the west wall.",
-      "structureId": "manor",
-      "mapLevel": -1,
-      "levelIndex": -1,
-      "levelLabel": "Cellar",
-      "mapShape": "rect",
-      "mapSize": { "w": 10, "h": 8 },
-      "mapPosition": { "x": 49, "y": 45 },
-      "present": [],
-      "fixtures": {
-        "casks": { "label": "Wine casks", "kind": "fixture" }
       },
       "exits": [
         {
-          "exitId": "cellar-ladder-up",
-          "label": "Ladder to hall",
-          "targetSceneId": "scene-hall",
-          "kind": "ladder",
-          "travelSteps": 1,
-          "direction": "U",
-          "exitAnchor": "E"
-        }
-      ]
-    },
-    {
-      "sceneId": "scene-keep-yard",
-      "locationName": "Keep Yard",
-      "locationDescription": "Circular ward inside the round keep; the manor east gate faces west across the grass.",
-      "structureId": "keep",
-      "mapZone": "Ground level",
-      "mapShape": "circle",
-      "mapSize": { "w": 18, "h": 18 },
-      "mapPosition": { "x": 84, "y": 50 },
-      "present": ["char-guard"],
-      "fixtures": {
-        "well": { "label": "Stone well", "kind": "fixture" }
-      },
-      "exits": [
-        {
-          "exitId": "keep-hall-gate",
-          "label": "West gate to manor",
-          "targetSceneId": "scene-hall",
+          "exitId": "cloud-2-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
           "kind": "door",
           "doorState": "closed",
-          "travelSteps": 2,
-          "direction": "W",
-          "exitAnchor": "W",
-          "crossesStructure": true
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
         }
       ]
     },
     {
-      "sceneId": "scene-courtyard",
-      "locationName": "Courtyard",
-      "locationDescription": "Open bailey with wagon ruts leading north toward the manor.",
-      "structureId": "bailey",
-      "mapZone": "Outer ward",
+      "sceneId": "scene-office-qa-1",
+      "locationName": "QA Office — Mia",
+      "locationDescription": "Private office for Mia Santos: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
       "mapShape": "rect",
-      "mapSize": { "w": 12, "h": 8 },
-      "mapPosition": { "x": 24, "y": 80 },
-      "present": [],
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 54,
+        "y": 42
+      },
+      "present": [
+        "char-mia-santos"
+      ],
       "fixtures": {
-        "wagon": { "label": "Abandoned wagon", "kind": "fixture" }
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
       },
       "exits": [
         {
-          "exitId": "courtyard-hall-path",
-          "label": "Path to manor",
-          "targetSceneId": "scene-hall",
-          "kind": "path",
-          "travelSteps": 2,
-          "direction": "NE",
-          "exitAnchor": "N",
-          "crossesStructure": true
+          "exitId": "qa-1-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-qa-2",
+      "locationName": "QA Office — Derek",
+      "locationDescription": "Private office for Derek Walsh: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 62,
+        "y": 42
+      },
+      "present": [
+        "char-derek-walsh"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "qa-2-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-mobile-1",
+      "locationName": "Mobile Office — Elena",
+      "locationDescription": "Private office for Elena Volkov: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 38,
+        "y": 50
+      },
+      "present": [
+        "char-elena-volkov"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "mobile-1-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-mobile-2",
+      "locationName": "Mobile Office — James",
+      "locationDescription": "Private office for James Nguyen: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 46,
+        "y": 50
+      },
+      "present": [
+        "char-james-nguyen"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "mobile-2-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-embedded-1",
+      "locationName": "Embedded Office — Fatima",
+      "locationDescription": "Private office for Fatima Hassan: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 54,
+        "y": 50
+      },
+      "present": [
+        "char-fatima-hassan"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "embedded-1-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-embedded-2",
+      "locationName": "Embedded Office — Lucas",
+      "locationDescription": "Private office for Lucas Weber: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 62,
+        "y": 50
+      },
+      "present": [
+        "char-lucas-weber"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "embedded-2-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-systems-1",
+      "locationName": "Systems Office — Yuki",
+      "locationDescription": "Private office for Yuki Tanaka: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 38,
+        "y": 58
+      },
+      "present": [
+        "char-yuki-tanaka"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "systems-1-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-systems-2",
+      "locationName": "Systems Office — Sam",
+      "locationDescription": "Private office for Sam O'Connor: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 46,
+        "y": 58
+      },
+      "present": [
+        "char-sam-oconnor"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "systems-2-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-validation-1",
+      "locationName": "Validation Office — Rosa",
+      "locationDescription": "Private office for Rosa Mendoza: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 54,
+        "y": 58
+      },
+      "present": [
+        "char-rosa-mendoza"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "validation-1-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
+        }
+      ]
+    },
+    {
+      "sceneId": "scene-office-validation-2",
+      "locationName": "Validation Office — Ian",
+      "locationDescription": "Private office for Ian Fischer: dual monitors, standing desk, and a small whiteboard.",
+      "structureId": "hq",
+      "mapLevel": 1,
+      "levelIndex": 1,
+      "levelLabel": "Engineering wing",
+      "mapZone": "Engineering wing",
+      "mapShape": "rect",
+      "mapSize": {
+        "w": 6,
+        "h": 5
+      },
+      "mapPosition": {
+        "x": 62,
+        "y": 58
+      },
+      "present": [
+        "char-ian-fischer"
+      ],
+      "fixtures": {
+        "desk": {
+          "label": "Standing desk",
+          "kind": "fixture"
+        },
+        "whiteboard": {
+          "label": "Personal whiteboard",
+          "kind": "fixture"
+        }
+      },
+      "exits": [
+        {
+          "exitId": "validation-2-corridor",
+          "label": "Corridor",
+          "targetSceneId": "scene-eng-corridor",
+          "kind": "door",
+          "doorState": "closed",
+          "travelSteps": 1,
+          "direction": "S",
+          "exitAnchor": "S"
         }
       ]
     }

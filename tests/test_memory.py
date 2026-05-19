@@ -34,13 +34,13 @@ def test_diary_fanout(mem: MemoryService, tmp_path: Path) -> None:
     fixtures = Path(__file__).resolve().parent / "fixtures"
     load_fixture_by_id(store, fixtures, "demo-spatial-v1")
     mem.capture_diary_fanout(
-        scene_id="scene-hall",
-        present_ids=["char-alice", "char-bob"],
+        scene_id="scene-lobby",
+        present_ids=["char-jordan-reyes", "char-sofia-mendez"],
         snippet="Alice: Hello\nBob: Hi",
         message_ids=["m1", "m2"],
     )
-    a = store.list_diary("char-alice")
-    b = store.list_diary("char-bob")
+    a = store.list_diary("char-jordan-reyes")
+    b = store.list_diary("char-sofia-mendez")
     assert len(a) == 1
     assert len(b) == 1
     assert a[0]["dedupeKey"] == b[0]["dedupeKey"]

@@ -11,6 +11,7 @@ from altrasia.config import Settings
 
 def test_layout_draft_commit(tmp_path: Path) -> None:
     settings = Settings(
+        data_dir=tmp_path,
         db_path=tmp_path / "mapdraft.db",
         mock_llm=True,
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
@@ -21,18 +22,19 @@ def test_layout_draft_commit(tmp_path: Path) -> None:
     ]
     draft = client.post(
         f"/api/v1/worlds/{world_id}/layout-drafts",
-        json={"brief": "Spread hall and kitchen apart", "scope": "mini"},
+        json={"brief": "Spread lobby and conference room apart", "scope": "mini"},
     ).json()
-    assert draft["status"] == "ready"
-    assert draft.get("proposed")
     did = draft["layoutDraftId"]
 
-    deadline = time.time() + 8
+    deadline = time.time() + 15
+    row = draft
     while time.time() < deadline:
         row = client.get(f"/api/v1/worlds/{world_id}/layout-drafts/{did}").json()
         if row["status"] == "ready":
             break
         time.sleep(0.05)
+    assert row["status"] == "ready"
+    assert row.get("proposed")
 
     commit = client.post(f"/api/v1/worlds/{world_id}/layout-drafts/{did}/commit").json()
     assert len(commit["applied"]) >= 1

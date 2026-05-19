@@ -25,27 +25,24 @@ def test_spatial_graph_has_layout_fields(tmp_path: Path) -> None:
     assert edge.get("travelSteps") == 1
     assert edge.get("exitAnchor") == "N"
     names = {s["displayName"] for s in graph["structures"]}
-    assert "Manor House" in names
-    assert "Round Keep" in names
-    assert len(graph["nodes"]) == 7
-    manor_levels = {
+    assert "Vertex Labs HQ" in names
+    assert len(graph["nodes"]) == 20
+    hq_levels = {
         n.get("levelIndex")
         for n in graph["nodes"]
-        if n.get("structureId") == "manor" and n.get("levelIndex") is not None
+        if n.get("structureId") == "hq" and n.get("levelIndex") is not None
     }
-    assert manor_levels == {-1, 0, 1}
-    manor = next(s for s in graph["structures"] if s["structureId"] == "manor")
-    assert manor["boundary"]["shape"] == "polygon"
-    hall = next(n for n in graph["nodes"] if n["sceneId"] == "scene-hall")
-    assert hall.get("planPosition") is not None
-    assert hall.get("locationDescription")
+    assert hq_levels == {0, 1}
+    hq = next(s for s in graph["structures"] if s["structureId"] == "hq")
+    assert hq["boundary"]["shape"] == "polygon"
+    lobby = next(n for n in graph["nodes"] if n["sceneId"] == "scene-lobby")
+    assert lobby.get("planPosition") is not None
+    assert lobby.get("locationDescription")
     assert graph.get("layoutStatus") in ("complete", "partial")
     assert graph.get("worldMap") is not None
-    assert len(graph["worldMap"].get("structurePlacements", [])) >= 3
-    keep_nodes = [n for n in graph["nodes"] if n.get("structureId") == "keep"]
-    manor_nodes = [n for n in graph["nodes"] if n.get("structureId") == "manor"]
-    assert keep_nodes and manor_nodes
-    assert keep_nodes[0]["layout"]["x"] > manor_nodes[0]["layout"]["x"]
+    assert len(graph["worldMap"].get("structurePlacements", [])) >= 1
+    hq_nodes = [n for n in graph["nodes"] if n.get("structureId") == "hq"]
+    assert len(hq_nodes) == 20
     fixtures_dir = Path(__file__).resolve().parent / "fixtures" / "map-layouts"
     if fixtures_dir.exists():
         for f in fixtures_dir.glob("*.json"):

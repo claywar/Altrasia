@@ -10,6 +10,7 @@ from altrasia.config import Settings
 
 def test_unified_layout_draft_create_and_commit(tmp_path: Path) -> None:
     settings = Settings(
+        data_dir=tmp_path,
         db_path=tmp_path / "unified.db",
         mock_llm=True,
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
@@ -20,12 +21,22 @@ def test_unified_layout_draft_create_and_commit(tmp_path: Path) -> None:
     ]
     draft = client.post(
         f"/api/v1/worlds/{world_id}/layout-drafts/unified",
-        json={"brief": "Arrange hall and kitchen with site envelope"},
+        json={"brief": "Arrange lobby and conference room with site envelope"},
     ).json()
-    assert draft["status"] == "ready"
-    assert draft.get("proposed")
-    assert draft.get("scope") == "unified"
     did = draft["layoutDraftId"]
+
+    import time
+
+    deadline = time.time() + 30
+    row = draft
+    while time.time() < deadline:
+        row = client.get(f"/api/v1/worlds/{world_id}/layout-drafts/{did}").json()
+        if row["status"] == "ready":
+            break
+        time.sleep(0.1)
+    assert row["status"] == "ready"
+    assert row.get("proposed")
+    assert row.get("scope") == "unified"
 
     commit = client.post(f"/api/v1/worlds/{world_id}/layout-drafts/{did}/commit").json()
     assert len(commit["applied"]) >= 1

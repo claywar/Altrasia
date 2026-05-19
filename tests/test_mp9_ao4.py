@@ -17,6 +17,7 @@ ISO = lambda: datetime.now(timezone.utc).isoformat()
 @pytest.fixture
 def client(tmp_path: Path) -> tuple[TestClient, object]:
     settings = Settings(
+        data_dir=tmp_path,
         db_path=tmp_path / "spec.db",
         mock_llm=True,
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
@@ -41,7 +42,7 @@ def test_mp9_first_call_memory_tools_only(client: tuple[TestClient, object]) -> 
     mock_llm.clear_tool_snapshots()
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     world_id = r.json()["worldId"]
-    hall = "scene-hall"
+    hall = "scene-lobby"
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
         json={"text": "What is the capital of France?", "scope": "public"},
@@ -55,31 +56,20 @@ def test_mp9_first_call_memory_tools_only(client: tuple[TestClient, object]) -> 
 
 
 def test_ao4_idle_round_robin_three_npcs(client: tuple[TestClient, object]) -> None:
-    """docs/17 — AO-4: idle cursor visits alice → bob → carol in sorted order."""
+    """docs/17 — AO-4: idle cursor visits jordan → sofia → priya in sorted order."""
     client, services = client
     r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
     world_id = r.json()["worldId"]
-    hall = "scene-hall"
+    hall = "scene-lobby"
     store = services.store
-    store.insert_character(
-        {
-            "characterId": "char-carol",
-            "displayName": "Carol",
-            "definitionJson": json.dumps({"personality": "Quiet observer."}),
-            "modelProfile": "qwen3.6-35b-a3b",
-            "speechWeight": 0.5,
-            "createdAt": ISO(),
-        }
-    )
-    store.add_world_member(world_id, "char-carol")
     store.update_scene(
         hall,
-        presentJson=json.dumps(["char-alice", "char-bob", "char-carol"]),
+        presentJson=json.dumps(["char-jordan-reyes", "char-sofia-mendez", "char-priya-nair"]),
         roundRobinIndex=0,
     )
     sched = services.idle_scheduler
     assert sched is not None
-    cast = ["char-alice", "char-bob", "char-carol"]
+    cast = sorted(["char-jordan-reyes", "char-sofia-mendez", "char-priya-nair"])
     picked: list[str] = []
     for _ in range(3):
         scene = store.get_scene(hall)

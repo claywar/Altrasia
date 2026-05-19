@@ -30,8 +30,12 @@ def test_ao17_relevance_prefers_matching_mind(svc: AppServices) -> None:
         pytest.skip("no world")
     world_id = world[0]
     chars = svc.store.list_world_characters(world_id)
-    student_a = next((c for c in chars if "alice" in c["characterId"].lower()), chars[0])
-    student_b = next((c for c in chars if "bob" in c["characterId"].lower()), chars[1])
+    student_a = next(
+        (c for c in chars if c["characterId"] == "char-sofia-mendez"), chars[0]
+    )
+    student_b = next(
+        (c for c in chars if c["characterId"] == "char-lena-cho"), chars[1]
+    )
     svc.memory.memory_store(
         pool="mind",
         owner_id=student_a["characterId"],
@@ -48,43 +52,50 @@ def test_ao17_relevance_prefers_matching_mind(svc: AppServices) -> None:
 
 
 def test_ao18_classroom_teacher_question(svc: AppServices, tmp_path: Path) -> None:
-    settings = Settings(
-        db_path=tmp_path / "class.db",
-        mock_llm=True,
-        fixtures_dir=Path(__file__).resolve().parent / "fixtures",
-    )
-    client = TestClient(create_app(settings))
-    w = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()
-    world_id = w["worldId"]
-    scene_id = w["activeSceneId"]
-    chars = client.get(f"/api/v1/worlds/{world_id}/characters").json()
-    alice = next(c for c in chars if "alice" in c["characterId"])
-    bob = next(c for c in chars if "bob" in c["characterId"])
-    svc2 = AppServices.create(settings)
-    svc2.store.conn.execute(
-        "UPDATE WorldMember SET sceneRole = ? WHERE worldId = ? AND characterId = ?",
-        ("student", world_id, alice["characterId"]),
-    )
-    svc2.store.conn.execute(
-        "UPDATE WorldMember SET sceneRole = ? WHERE worldId = ? AND characterId = ?",
-        ("student", world_id, bob["characterId"]),
-    )
-    svc2.store.conn.commit()
-    svc2.memory.memory_store(
-        pool="mind",
-        owner_id=alice["characterId"],
-        locus_key="france.capital",
-        value="Paris is the capital of France.",
-    )
-    present = json.loads(svc2.store.get_scene(scene_id)["presentJson"])
-    cast = [c for c in present if c != "__persona__"]
-    pick = score_speakers(
-        svc2,
-        world_id=world_id,
-        scene_id=scene_id,
-        trigger_text="Teacher asks: what is the capital of France?",
-        eligible=cast,
-    )
-    assert pick is not None
-    assert pick.character_id == alice["characterId"]
+    from tests.conftest import make_test_settings
+
+    settings = make_test_settings(tmp_path, "class.db")
+    with TestClient(create_app(settings)) as client:
+        w = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()
+        world_id = w["worldId"]
+        scene_id = w["activeSceneId"]
+        chars = client.get(f"/api/v1/worlds/{world_id}/characters").json()
+        sofia = next(c for c in chars if c["characterId"] == "char-sofia-mendez")
+        lena = next(c for c in chars if c["characterId"] == "char-lena-cho")
+        for cid in (sofia["characterId"], lena["characterId"]):
+            client.post(
+                f"/api/v1/worlds/{world_id}/scenes/{scene_id}/presence/join",
+                json={"characterId": cid},
+            )
+        svc2 = client.app.state.services
+        svc2.store.update_scene(
+            scene_id,
+            presentJson=json.dumps([sofia["characterId"], lena["characterId"]]),
+        )
+        svc2.store.conn.execute(
+            "UPDATE WorldMember SET sceneRole = ? WHERE worldId = ? AND characterId = ?",
+            ("student", world_id, sofia["characterId"]),
+        )
+        svc2.store.conn.commit()
+        svc2.memory.memory_store(
+            pool="mind",
+            owner_id=sofia["characterId"],
+            locus_key="geo.france",
+            value="Paris is the capital of France.",
+        )
+        cast = [sofia["characterId"], lena["characterId"]]
+        trigger = "capital France Paris"
+        assert speak_readiness_score(svc2.memory, sofia["characterId"], trigger) > speak_readiness_score(
+            svc2.memory, lena["characterId"], trigger
+        )
+        pick = score_speakers(
+            svc2,
+            world_id=world_id,
+            scene_id=scene_id,
+            trigger_text=trigger,
+            eligible=cast,
+            trigger_message_id="test-ao18-france",
+        )
+        assert pick is not None
+        assert pick.character_id == sofia["characterId"]
     assert pick.rationale.get("scores")

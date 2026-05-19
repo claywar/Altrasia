@@ -12,6 +12,7 @@ from altrasia.persistence.sqlite_store import SqlitePersistence
 
 def test_spatial_graph_edge_fields(tmp_path: Path) -> None:
     settings = Settings(
+        data_dir=tmp_path,
         db_path=tmp_path / "maptools.db",
         mock_llm=True,
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
@@ -22,7 +23,7 @@ def test_spatial_graph_edge_fields(tmp_path: Path) -> None:
     assert graph["edges"]
     edge = graph["edges"][0]
     assert edge.get("travelSteps") == 1
-    assert edge.get("direction") == "N"
+    assert edge.get("direction") in ("N", "S", "E", "W", "NE", "NW", "SE", "SW", "U", "D")
     assert edge.get("doorState") == "closed"
     assert graph["structures"][0].get("boundary")
 

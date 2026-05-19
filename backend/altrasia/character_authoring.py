@@ -155,6 +155,9 @@ def approve_character_draft(
     character_id = f"char-{uuid.uuid4().hex[:12]}"
     now = ISO()
     model_profile = base.get("modelProfile") or "qwen3.6-35b-a3b"
+    if isinstance(model_profile, dict):
+        model_profile = model_profile.get("id") or "qwen3.6-35b-a3b"
+    model_profile = str(model_profile)
     svc.store.insert_character(
         {
             "characterId": character_id,

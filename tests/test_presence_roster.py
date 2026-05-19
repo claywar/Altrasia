@@ -9,16 +9,17 @@ from altrasia.config import Settings
 
 
 def test_unplaced_roster_and_summon(tmp_path: Path) -> None:
-    settings = Settings(
-        db_path=tmp_path / "presence.db",
-        mock_llm=True,
-        fixtures_dir=Path(__file__).resolve().parent / "fixtures",
-    )
-    client = TestClient(create_app(settings))
-    world_id = client.post(
-        "/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}
-    ).json()["worldId"]
-    hall = "scene-hall"
+    from tests.conftest import make_test_settings
+
+    with TestClient(create_app(make_test_settings(tmp_path, "presence.db"))) as client:
+        _run_presence_roster(client)
+
+
+def _run_presence_roster(client: TestClient) -> None:
+    world_id = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()[
+        "worldId"
+    ]
+    hall = "scene-lobby"
 
     draft = client.post(
         "/api/v1/characters/draft",
@@ -43,7 +44,7 @@ def test_unplaced_roster_and_summon(tmp_path: Path) -> None:
     assert any(p["characterId"] == char_id for p in roster2["atLocation"])
     assert not any(u["characterId"] == char_id for u in roster2["unplaced"])
 
-    kitchen = "scene-kitchen"
+    kitchen = "scene-conference-room"
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{kitchen}/presence/join",
         json={"characterId": char_id},

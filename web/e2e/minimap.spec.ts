@@ -9,7 +9,7 @@ test("spatial panel shows 3D minimap", async ({ page }) => {
 
 test("spatial panel header shows structure context", async ({ page }) => {
   await loadDemoWorld(page);
-  await expect(page.locator(".map-panel-header")).toContainText("Manor");
+  await expect(page.locator(".map-panel-header")).toContainText(/Vertex|Lobby/i);
 });
 
 async function openDiagramMap(page: import("@playwright/test").Page) {
@@ -20,8 +20,8 @@ async function openDiagramMap(page: import("@playwright/test").Page) {
 test("structure envelope visible in diagram map", async ({ page }) => {
   await loadDemoWorld(page);
   await openDiagramMap(page);
-  await expect(page.locator(".map-envelope")).toHaveCount(3);
-  await expect(page.locator(".map-structure-label").filter({ hasText: "Round Keep" })).toBeVisible();
+  await expect(page.locator(".map-envelope")).toHaveCount(1);
+  await expect(page.locator(".map-structure-label").filter({ hasText: "Vertex Labs HQ" })).toBeVisible();
 });
 
 test("zone badges appear in diagram site view", async ({ page }) => {
@@ -43,7 +43,7 @@ test("outdoor paths render as smooth curves in diagram view", async ({ page }) =
 test("exit hover highlights edge in diagram view", async ({ page }) => {
   await loadDemoWorld(page);
   await openDiagramMap(page);
-  const exitRow = page.getByRole("button", { name: /Door to kitchen/i }).first();
+  const exitRow = page.getByRole("button", { name: /Conference room|Break room/i }).first();
   if ((await exitRow.count()) > 0) {
     await exitRow.hover();
     await expect(page.locator(".map-edge--hi path").first()).toBeVisible();
@@ -60,14 +60,14 @@ test("diagram view shows structure list", async ({ page }) => {
   await loadDemoWorld(page);
   await page.keyboard.press("m");
   await page.getByRole("button", { name: /diagram/i }).click();
-  await expect(page.locator(".map-console-structures li")).toHaveCount(3);
+  await expect(page.locator(".map-console-structures li")).toHaveCount(1);
 });
 
 test("site view shows structure placement footprints", async ({ page }) => {
   await loadDemoWorld(page);
   await page.keyboard.press("m");
   await page.getByRole("button", { name: /diagram/i }).click();
-  await expect(page.locator(".map-site-placement-footprint")).toHaveCount(3);
+  await expect(page.locator(".map-site-placement-footprint")).toHaveCount(1);
 });
 
 test("map console has zoom controls and layers", async ({ page }) => {
@@ -97,9 +97,9 @@ test("level stack view shows plates and vertical connectors", async ({ page }) =
   }
   await stackTab.click();
   await expect(page.locator(".level-stack-panel")).toBeVisible();
-  await expect(page.locator(".level-stack-selector__btn")).toHaveCount(3);
+  await expect(page.locator(".level-stack-selector__btn")).toHaveCount(2);
   await expect(page.locator(".level-stack__svg")).toBeVisible();
-  await expect(page.locator(".level-stack-connector")).toHaveCount(2);
+  await expect(page.locator(".level-stack-connector")).toHaveCount(1);
   await expect(page.locator(".iso-room").first()).toBeVisible();
   await expect(page.locator(".level-stack-annotation--active")).toBeVisible();
 });

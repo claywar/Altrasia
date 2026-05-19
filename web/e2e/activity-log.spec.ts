@@ -12,7 +12,7 @@ test("idle_timer message hidden from chronicle and shown in activity log", async
       {
         messageId: "msg-idle-e2e",
         role: "assistant",
-        characterId: "char-alice",
+        characterId: "char-jordan-reyes",
         outputText: "Quiet ambient thought.",
         streamStatus: "final",
         metaJson: JSON.stringify({ communication: { scope: "public" } }),
@@ -30,8 +30,11 @@ test("idle_timer message hidden from chronicle and shown in activity log", async
   await expect(page.getByText("Quiet ambient thought.")).toBeVisible();
   await expect(page.getByTestId("chronicle-entry")).toHaveCount(0);
   await expect(page.getByTestId("world-activity-log")).toBeVisible();
-  await expect(page.getByTestId("world-activity-log")).toContainText(/alice/i);
-  await expect(page.getByTestId("world-activity-log")).toContainText(/idle \(tab\)/i);
+  await page.getByRole("button", { name: /ambient activity/i }).click();
+  const panel = page.getByTestId("world-activity-log-panel");
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText(/alice/i);
+  await expect(panel).toContainText(/idle \(tab\)/i);
 });
 
 test("show ambient in transcript restores idle lines in chronicle", async ({ page }) => {
@@ -49,7 +52,7 @@ test("show ambient in transcript restores idle lines in chronicle", async ({ pag
         {
           messageId: "msg-idle-e2e-2",
           role: "assistant",
-          characterId: "char-alice",
+          characterId: "char-jordan-reyes",
           outputText: "Visible ambient line.",
           streamStatus: "final",
           metaJson: JSON.stringify({ communication: { scope: "public" } }),

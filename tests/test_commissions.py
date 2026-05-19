@@ -10,6 +10,7 @@ from altrasia.config import Settings
 
 def test_commission_crud(tmp_path: Path) -> None:
     settings = Settings(
+        data_dir=tmp_path,
         db_path=tmp_path / "com.db",
         mock_llm=True,
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
@@ -22,14 +23,14 @@ def test_commission_crud(tmp_path: Path) -> None:
     created = client.post(
         f"/api/v1/worlds/{world_id}/commissions",
         json={
-            "assigneeCharacterId": "char-alice",
-            "targetSceneId": "scene-kitchen",
-            "brief": "Research the old ledger in the pantry.",
+            "assigneeCharacterId": "char-jordan-reyes",
+            "targetSceneId": "scene-conference-room",
+            "brief": "Compile Q1 platform reliability metrics for the leadership review.",
         },
     )
     assert created.status_code == 200
     body = created.json()
-    assert body["status"] == "blocked"  # COM-6: Alice starts in Hall, not Kitchen
+    assert body["status"] == "blocked"  # COM-6: assignee not at target scene yet
     assert body["deliverablePolicy"] == "mind"
     cid = body["commissionId"]
 
@@ -55,8 +56,8 @@ def test_commission_crud(tmp_path: Path) -> None:
     force = client.post(
         f"/api/v1/worlds/{world_id}/commissions",
         json={
-            "assigneeCharacterId": "char-bob",
-            "targetSceneId": "scene-hall",
+            "assigneeCharacterId": "char-sofia-mendez",
+            "targetSceneId": "scene-lobby",
             "brief": "Quick errand",
         },
     ).json()

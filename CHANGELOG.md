@@ -23,6 +23,8 @@ All notable changes to Altrasia are documented here.
 
 ### Changed
 
+- Demo world `demo-spatial-v1` reimagined as **Vertex Labs HQ** — 27-character software company cast, lobby/studios/garage/lab, and twelve engineer offices.
+- Fixture reload deletes `MapArtifact` rows before world purge (fixes reload when demo map artifacts are present).
 - Documentation aligned with shipped Alpha (ROADMAP, IMPLEMENTATION-CHECKLIST, BACKLOG).
 
 ## [0.1.0-alpha] — 2026-05-18

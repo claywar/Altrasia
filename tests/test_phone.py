@@ -30,16 +30,16 @@ def test_phone_handset_bystander_hears_one_side_only(client: tuple[TestClient, o
     phone = PhoneService(services.store)
     ch = phone.create_channel(
         world_id=world_id,
-        scene_a="scene-hall",
-        character_a="char-bob",
-        scene_b="scene-kitchen",
-        character_b="char-alice",
+        scene_a="scene-lobby",
+        character_a="char-sofia-mendez",
+        scene_b="scene-conference-room",
+        character_b="char-jordan-reyes",
     )
     msg_id, _ = phone.insert_phone_line(
         world_id=world_id,
-        speaker_scene_id="scene-kitchen",
+        speaker_scene_id="scene-conference-room",
         channel_id=ch["channelId"],
-        text="Hello from kitchen",
+        text="Hello from conference room",
         created_at="2026-01-01T00:00:00+00:00",
     )
     ch_row = phone.get(ch["channelId"])
@@ -47,20 +47,20 @@ def test_phone_handset_bystander_hears_one_side_only(client: tuple[TestClient, o
         "SELECT * FROM Message WHERE messageId = ?", (msg_id,)
     ).fetchone()
     message = dict(msg)
-    # Carol in kitchen, not on call — hears Alice side only
+    # Priya in conference, not on call — hears Jordan side only
     assert can_perceive(
-        viewer_id="char-carol",
+        viewer_id="char-priya-nair",
         message=message,
-        present=["char-carol", "char-alice"],
-        viewer_scene_id="scene-kitchen",
+        present=["char-priya-nair", "char-jordan-reyes"],
+        viewer_scene_id="scene-conference-room",
         channel=ch_row,
     )
-    # Bystander in hall should not hear kitchen-spoken line (Bob's leg only when Bob speaks)
+    # Bystander in lobby should not hear conference-spoken line
     assert not can_perceive(
-        viewer_id="char-carol",
+        viewer_id="char-priya-nair",
         message=message,
-        present=["char-carol"],
-        viewer_scene_id="scene-hall",
+        present=["char-priya-nair"],
+        viewer_scene_id="scene-lobby",
         channel=ch_row,
     )
 
@@ -72,22 +72,22 @@ def test_phone_api_create_and_line(client: tuple[TestClient, object]) -> None:
     ch = client.post(
         f"/api/v1/worlds/{world_id}/channels",
         json={
-            "sceneIdA": "scene-hall",
-            "characterIdA": "char-bob",
-            "sceneIdB": "scene-kitchen",
-            "characterIdB": "char-alice",
+            "sceneIdA": "scene-lobby",
+            "characterIdA": "char-sofia-mendez",
+            "sceneIdB": "scene-conference-room",
+            "characterIdB": "char-jordan-reyes",
         },
     ).json()
     client.patch(
-        f"/api/v1/worlds/{world_id}/channels/{ch['channelId']}/endpoints/scene-kitchen",
+        f"/api/v1/worlds/{world_id}/channels/{ch['channelId']}/endpoints/scene-conference-room",
         json={"speakerphone": True},
     )
     send = client.post(
-        f"/api/v1/worlds/{world_id}/scenes/scene-kitchen/messages",
+        f"/api/v1/worlds/{world_id}/scenes/scene-conference-room/messages",
         json={"text": "Phone check", "scope": "phone", "channelId": ch["channelId"]},
     )
     assert send.status_code == 200
-    hall_msgs = client.get(f"/api/v1/worlds/{world_id}/scenes/scene-hall/messages").json()
+    hall_msgs = client.get(f"/api/v1/worlds/{world_id}/scenes/scene-lobby/messages").json()
     assert any(m.get("outputText") == "Phone check" for m in hall_msgs)
 
 
@@ -99,13 +99,13 @@ def test_knock_answer_enqueues(client: tuple[TestClient, object]) -> None:
         f"/api/v1/worlds/{world_id}/signals",
         json={
             "kind": "knock",
-            "sourceSceneId": "scene-kitchen",
-            "targetSceneId": "scene-hall",
+            "sourceSceneId": "scene-conference-room",
+            "targetSceneId": "scene-lobby",
         },
     ).json()
     ans = client.post(
         f"/api/v1/worlds/{world_id}/signals/{sig['signalId']}/answer",
-        json={"characterId": "char-alice", "targetSceneId": "scene-hall"},
+        json={"characterId": "char-jordan-reyes", "targetSceneId": "scene-lobby"},
     )
     assert ans.status_code == 200
     assert ans.json().get("generationJob")

@@ -467,9 +467,17 @@ class Orchestrator:
             commission_id=com_id,
         )
         depth = 0
+        is_commission = str(job.get("trigger", "")).startswith("commission")
         while depth < 5:
-            if depth == 0 and blocking and not memory_gate_open:
+            if (
+                depth == 0
+                and blocking
+                and not memory_gate_open
+                and not is_commission
+            ):
                 tools_payload = self._filter_tools(job_tools, memory_only)
+            elif is_commission:
+                tools_payload = job_tools
             else:
                 tools_payload = job_tools if depth == 0 else None
             resp = await self.svc.llm.chat(messages, tools_payload)

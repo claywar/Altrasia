@@ -37,7 +37,7 @@ export function PhonePanel({
   const myEndpoint = active?.endpoints?.find((e) => e.sceneId === activeSceneId);
   const localChar =
     atLocation.find((p) => p.characterId !== "__persona__")?.characterId ??
-    "char-alice";
+    "char-jordan-reyes";
 
   return (
     <div className="rail-section">

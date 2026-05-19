@@ -26,11 +26,11 @@ def test_load_demo_fixture(store: SqlitePersistence) -> None:
     result = load_fixture_by_id(store, fixtures, "demo-spatial-v1")
     assert result["worldId"] == "demo-spatial-v1"
     scenes = store.list_scenes(result["worldId"])
-    assert len(scenes) == 5
+    assert len(scenes) == 20
     structures = store.list_structures(result["worldId"])
-    assert len(structures) == 3
+    assert len(structures) == 1
     world = store.get_world(result["worldId"])
-    assert world["activeSceneId"] == "scene-hall"
+    assert world["activeSceneId"] == "scene-lobby"
     assert world.get("worldMapJson")
 
 
@@ -41,7 +41,7 @@ def test_load_demo_fixture_twice_on_same_db(store: SqlitePersistence) -> None:
     store.update_world(first["worldId"], name="Mutated demo")
     second = load_fixture_by_id(store, fixtures, "demo-spatial-v1")
     assert first["worldId"] == second["worldId"] == "demo-spatial-v1"
-    assert second["activeSceneId"] == "scene-hall"
+    assert second["activeSceneId"] == "scene-lobby"
     assert len(store.list_worlds()) == 1
-    assert store.get_world(second["worldId"])["name"] == "Altrasia Manor — Demo"
-    assert len(store.list_scenes(second["worldId"])) == 5
+    assert store.get_world(second["worldId"])["name"] == "Vertex Labs HQ — Demo"
+    assert len(store.list_scenes(second["worldId"])) == 20

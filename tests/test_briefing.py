@@ -19,7 +19,7 @@ def test_briefing_fixture_and_world_pool(tmp_path: Path) -> None:
     world_id = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()[
         "worldId"
     ]
-    hall = "scene-hall"
+    hall = "scene-lobby"
     out = client.post(
         f"/api/v1/worlds/{world_id}/scenes/{hall}/briefing",
         json={"text": "Meeting at dusk. Doors locked.", "fixtureKey": "board"},

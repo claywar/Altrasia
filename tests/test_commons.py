@@ -20,22 +20,22 @@ def test_commons_gated_recall(tmp_path: Path) -> None:
     world_id = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()[
         "worldId"
     ]
-    hall = "scene-hall"
+    hall = "scene-lobby"
     client.put(
         f"/api/v1/worlds/{world_id}/commons",
         json={"key": "charter", "text": "No fires in the hall."},
     )
     client.patch(
         f"/api/v1/worlds/{world_id}/policy",
-        json={"commonsAccessIds": ["char-alice"]},
+        json={"commonsAccessIds": ["char-jordan-reyes"]},
     )
     recall_alice = svc.memory.build_mandatory_recall(
-        character_id="char-alice",
+        character_id="char-jordan-reyes",
         scene_id=hall,
         world_id=world_id,
     )
     recall_bob = svc.memory.build_mandatory_recall(
-        character_id="char-bob",
+        character_id="char-sofia-mendez",
         scene_id=hall,
         world_id=world_id,
     )

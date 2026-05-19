@@ -7,36 +7,36 @@ import { structureLabels, labelsOverlap } from "./labelLayout";
 import { assertNoOverlaps } from "./layoutSpacing";
 import type { MapGraph, MapNode } from "./types";
 
-const demoManorRooms: MapNode[] = [
+const demoHqRooms: MapNode[] = [
   {
-    sceneId: "scene-hall",
-    locationName: "Hall",
+    sceneId: "scene-lobby",
+    locationName: "Lobby",
     isActive: true,
     layout: { x: 49, y: 45 },
     presentCount: 1,
     mapShape: "rect",
     mapSize: { w: 13, h: 9 },
-    structureId: "manor",
+    structureId: "hq",
   },
   {
-    sceneId: "scene-kitchen",
-    locationName: "Kitchen",
+    sceneId: "scene-conference-room",
+    locationName: "Conference Room",
     isActive: false,
     layout: { x: 49, y: 30 },
     presentCount: 0,
     mapShape: "rect",
     mapSize: { w: 11, h: 7 },
-    structureId: "manor",
+    structureId: "hq",
   },
   {
-    sceneId: "scene-pantry",
-    locationName: "Pantry",
+    sceneId: "scene-break-room",
+    locationName: "Break Room",
     isActive: false,
     layout: { x: 36, y: 27 },
     presentCount: 0,
     mapShape: "rect",
     mapSize: { w: 6, h: 5 },
-    structureId: "manor",
+    structureId: "hq",
   },
 ];
 
@@ -166,27 +166,38 @@ describe("computeViewBox", () => {
 });
 
 describe("layoutSpacing", () => {
-  it("demo manor rooms do not overlap", () => {
-    const overlaps = assertNoOverlaps(demoManorRooms, 1.5);
+  it("demo HQ rooms do not overlap", () => {
+    const overlaps = assertNoOverlaps(demoHqRooms, 1.5);
     expect(overlaps).toEqual([]);
   });
 });
 
 describe("labelLayout", () => {
   it("places structure titles without overlapping each other", () => {
+    const annex: MapNode = {
+      sceneId: "scene-annex-lab",
+      locationName: "R&D Annex Lab",
+      isActive: false,
+      layout: { x: 75, y: 45 },
+      presentCount: 0,
+      mapShape: "rect",
+      mapSize: { w: 10, h: 8 },
+      structureId: "annex",
+    };
     const graph: MapGraph = {
       activeSceneId: "hall",
-      nodes: [hall, kitchen],
+      nodes: [hall, kitchen, annex],
       structures: [
         {
-          structureId: "manor",
-          displayName: "Manor House",
+          structureId: "hq",
+          displayName: "Vertex Labs HQ",
           kind: "building",
           containsActiveScene: true,
+          boundary: { shape: "rect", x: 20, y: 35, w: 50, h: 35 },
         },
         {
-          structureId: "keep",
-          displayName: "Round Keep",
+          structureId: "annex",
+          displayName: "R&D Annex",
           kind: "building",
           boundary: { shape: "rect", x: 70, y: 40, w: 20, h: 20 },
         },

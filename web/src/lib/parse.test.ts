@@ -11,7 +11,7 @@ function msg(overrides: Partial<Message> = {}): Message {
   return {
     messageId: "m1",
     role: "assistant",
-    characterId: "char-alice",
+    characterId: "char-jordan-reyes",
     outputText: "Ambient.",
     streamStatus: "final",
     metaJson: "{}",
