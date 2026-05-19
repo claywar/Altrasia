@@ -8,6 +8,7 @@ type Props = {
   onClose: () => void;
   graph: SpatialGraph | null;
   exits: ExitItem[];
+  pendingKnockTargetIds?: Set<string>;
   highlightedExitId: string | null;
   onTravel: (targetSceneId: string) => void;
   onKnock: (targetSceneId: string) => void;
@@ -22,6 +23,7 @@ export function SpatialDrawer({
   onClose,
   graph,
   exits,
+  pendingKnockTargetIds,
   highlightedExitId,
   onTravel,
   onKnock,
@@ -41,6 +43,7 @@ export function SpatialDrawer({
         <SpatialPanel
           graph={graph}
           exits={exits}
+          pendingKnockTargetIds={pendingKnockTargetIds}
           highlightedExitId={highlightedExitId}
           onTravel={onTravel}
           onKnock={onKnock}

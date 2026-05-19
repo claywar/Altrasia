@@ -8,6 +8,7 @@ export type MapDestination = {
   direction?: string;
   travelSteps?: number;
   kind?: string;
+  doorState?: string;
 };
 
 const DIR_GLYPH: Record<string, string> = {
@@ -42,6 +43,7 @@ export function destinationsFromActive(graph: SpatialGraph): MapDestination[] {
         direction: e.direction,
         travelSteps: e.travelSteps,
         kind: e.kind,
+        doorState: e.doorState,
       };
     });
 }

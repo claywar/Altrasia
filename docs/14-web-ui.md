@@ -116,7 +116,7 @@ flowchart LR
 2. **People** — presence roster, elsewhere list (UI-D2)  
 3. **Signals** — pending knocks; dismiss/expire (UI-S4)
 
-**Left panel (when expanded):** `SpatialGraphMiniMap`, `ExitList` (knock per exit), fixture chips.
+**Left panel (when expanded):** `SpatialGraphMiniMap`, `ExitList` (knock on door exits with `doorState` `closed` or `unlocked` only; width `--spatial-w` 300px), fixture chips.
 
 Desktop-first; large tablets: right drawer + floating left sheet for spatial panel.
 
@@ -139,7 +139,7 @@ Wireframes: [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) (WF-1–W
 |----|-------------|
 | UI-S1 | World scene list in right rail **Places** with present / elsewhere badges (CC-3). |
 | UI-S2 | One-click switch active scene; persona auto-join policy visible. |
-| UI-S3 | **Knock on [exit]** in left spatial panel (or scene header); creates `CrossSceneSignal`; target scene banner (CC-2). Operator MAY dismiss/expire (CC-11b). **No** v1 control that auto-triggers NPC generation on knock (CC-11a). |
+| UI-S3 | **Knock on [exit]** in left spatial panel for **door** exits when `doorState` is `closed` or `unlocked` (hidden when `open` or `broken`; non-door exits are travel-only in `ExitList`). Creates `CrossSceneSignal`; target scene banner (CC-2). Operator MAY dismiss/expire (CC-11b). **No** v1 control that auto-triggers NPC generation on knock (CC-11a). |
 | UI-S4 | **Signals** section on right rail: pending knocks with dismiss/expire actions. |
 
 ## 5. Observer Studio (UI-OBS-CHAT)

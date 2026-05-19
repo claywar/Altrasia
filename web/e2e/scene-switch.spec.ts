@@ -22,11 +22,12 @@ test("knock shows banner at target scene", async ({ page }) => {
   const kitchen = page.getByTestId("world-rail").getByRole("button", { name: /Kitchen/i }).first();
   if (!(await kitchen.isVisible())) return;
   await kitchen.click();
-  const knockBtn = page.getByTestId("spatial-panel").getByRole("button", { name: /^Knock$/i }).first();
-  if (!(await knockBtn.isVisible())) {
+  const spatialPanel = page.getByTestId("spatial-panel");
+  let knock = spatialPanel.getByRole("button", { name: /^Knock$/i }).first();
+  if (!(await knock.isVisible())) {
     await page.getByRole("button", { name: /Spatial/i }).click();
+    knock = page.getByRole("button", { name: /^Knock$/i }).first();
   }
-  const knock = page.getByRole("button", { name: /^Knock$/i }).first();
   if (await knock.isVisible()) {
     const entriesBefore = await page.getByTestId("chronicle-entry").count();
     await knock.click();
@@ -37,4 +38,18 @@ test("knock shows banner at target scene", async ({ page }) => {
     const entriesAfter = await page.getByTestId("chronicle-entry").count();
     expect(entriesAfter).toBe(entriesBefore);
   }
+});
+
+/** Door-gated knock: non-door exits (e.g. stairs) do not show Knock in ExitList. */
+test("exit list hides knock on non-door exits", async ({ page }) => {
+  await loadDemoWorld(page);
+  const panel = page.getByTestId("spatial-panel");
+  if (!(await panel.isVisible())) {
+    await page.getByRole("button", { name: /Spatial/i }).click();
+  }
+  const exitList = page.getByTestId("exit-list");
+  const stairs = exitList.getByRole("button", { name: /Go to .*[Ss]tairs/i });
+  if ((await stairs.count()) === 0) return;
+  const row = stairs.first().locator("xpath=ancestor::li[contains(@class,'exit-card')]");
+  await expect(row.getByRole("button", { name: /^Knock$/i })).toHaveCount(0);
 });

@@ -22,6 +22,7 @@ import { LauncherView } from "./layouts/LauncherView";
 import { SpatialShell } from "./layouts/SpatialShell";
 import { Button } from "./ui/Button";
 import type { ExitItem } from "./features/spatial/ExitList";
+import { buildMergedExits, pendingKnockTargets } from "./features/spatial/exitAffordances";
 import { splitSceneMessages } from "./lib/parse";
 
 export default function App() {
@@ -322,15 +323,12 @@ export default function App() {
     scenes.find((s) => s.sceneId === id)?.locationName ?? id.replace("scene-", "");
 
   const pendingForScene = signals.filter((s) => s.targetSceneId === scene?.sceneId);
-  const rawExits = scene ? JSON.parse(scene.exitsJson || "[]") : [];
-  const exits: ExitItem[] = rawExits.map(
-    (ex: { exitId: string; label: string; targetSceneId: string; direction?: string }) => ({
-      exitId: ex.exitId,
-      label: ex.label,
-      targetSceneId: ex.targetSceneId,
-      direction: ex.direction,
-    })
-  );
+  const exits: ExitItem[] = scene
+    ? buildMergedExits(scene.exitsJson, graph, scene.sceneId)
+    : [];
+  const pendingKnockTargetIds = scene
+    ? pendingKnockTargets(signals, scene.sceneId)
+    : undefined;
 
   const allPeople = [
     ...(roster?.atLocation ?? []),
@@ -393,6 +391,7 @@ export default function App() {
         worldPaused={worldPaused}
         currentJobId={currentJobId}
         exits={exits}
+        pendingKnockTargetIds={pendingKnockTargetIds}
         rosterAtLocation={roster?.atLocation ?? []}
         mapOpen={mapOpen}
         layoutDesignMode={layoutDesignMode}

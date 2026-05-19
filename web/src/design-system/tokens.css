@@ -59,7 +59,8 @@
   /* Layout */
   --rail-w: 340px;
   --rail-collapsed: 48px;
-  --spatial-drawer-w: 240px;
+  --spatial-w: 300px;
+  --spatial-drawer-w: 300px;
   --center-min-w: 640px;
   --top-bar-h: 48px;
   --drawer-breakpoint: 1280px;

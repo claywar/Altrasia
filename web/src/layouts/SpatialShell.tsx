@@ -34,6 +34,7 @@ type Props = {
   worldPaused: boolean;
   currentJobId: string | null;
   exits: ExitItem[];
+  pendingKnockTargetIds?: Set<string>;
   rosterAtLocation: RosterPerson[];
   mapOpen: boolean;
   layoutDesignMode?: boolean;
@@ -82,6 +83,7 @@ export function SpatialShell({
   worldPaused,
   currentJobId,
   exits,
+  pendingKnockTargetIds,
   rosterAtLocation,
   mapOpen,
   layoutDesignMode = true,
@@ -184,6 +186,7 @@ export function SpatialShell({
           <SpatialPanel
             graph={graph}
             exits={exits}
+            pendingKnockTargetIds={pendingKnockTargetIds}
             highlightedExitId={highlightedExitId}
             onTravel={onTravelExit}
             onKnock={onKnock}
@@ -237,6 +240,7 @@ export function SpatialShell({
         onClose={() => setSpatialOpen(false)}
         graph={graph}
         exits={exits}
+        pendingKnockTargetIds={pendingKnockTargetIds}
         highlightedExitId={highlightedExitId}
         onTravel={(id) => {
           onTravelExit(id);

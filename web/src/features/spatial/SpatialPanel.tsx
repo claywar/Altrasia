@@ -7,6 +7,7 @@ import { ExitList, type ExitItem } from "./ExitList";
 type Props = {
   graph: SpatialGraph | null;
   exits: ExitItem[];
+  pendingKnockTargetIds?: Set<string>;
   highlightedExitId: string | null;
   onTravel: (targetSceneId: string) => void;
   onKnock: (targetSceneId: string) => void;
@@ -20,6 +21,7 @@ type Props = {
 export function SpatialPanel({
   graph,
   exits,
+  pendingKnockTargetIds,
   highlightedExitId,
   onTravel,
   onKnock,
@@ -47,10 +49,10 @@ export function SpatialPanel({
         sceneName={activeNode?.locationName}
       />
       {hasLayout ? (
-        <>
+        <div className="spatial-panel__map">
           <MiniMap3D graph={graph} onSelect={onMinimapSelect} />
           <MapMiniMapChrome graph={graph} onOpenFullMap={onOpenFullMap} />
-        </>
+        </div>
       ) : (
         <div className="minimap minimap--empty">
           <p>Layout incomplete</p>
@@ -63,6 +65,7 @@ export function SpatialPanel({
       )}
       <ExitList
         exits={exits}
+        pendingKnockTargetIds={pendingKnockTargetIds}
         highlightedExitId={highlightedExitId}
         onTravel={onTravel}
         onKnock={onKnock}
@@ -71,3 +74,4 @@ export function SpatialPanel({
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type NavigationRoute, type SpatialGraph } from "../../api/client";
 import { Button } from "../../ui/Button";
+import { exitKnockAffordance } from "../spatial/exitAffordances";
 import { destinationsFromActive, directionGlyph } from "./mapNavigation";
 
 export type MapSelection =
@@ -89,11 +90,26 @@ function NavigateHome({
                     )}
                   </button>
                   <div className="map-console-destination__side">
-                    {onKnock && (
-                      <Button variant="ghost" size="sm" onClick={() => onKnock(d.targetSceneId)}>
-                        Knock
-                      </Button>
-                    )}
+                    {onKnock &&
+                      (() => {
+                        const aff = exitKnockAffordance({
+                          exitId: d.exitId,
+                          label: d.label,
+                          targetSceneId: d.targetSceneId,
+                          kind: d.kind,
+                          doorState: d.doorState,
+                        });
+                        return aff.showKnock ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={aff.disabled}
+                            onClick={() => onKnock(d.targetSceneId)}
+                          >
+                            {aff.label}
+                          </Button>
+                        ) : null;
+                      })()}
                     {onSelectScene && (
                       <button
                         type="button"
@@ -293,11 +309,19 @@ export function MapInspectorPanel({
               <Button variant="primary" size="sm" onClick={() => onTravel(node.sceneId)}>
                 Go to {node.locationName}
               </Button>
-              {onKnock && (
-                <Button variant="ghost" size="sm" onClick={() => onKnock(node.sceneId)}>
-                  Knock instead
-                </Button>
-              )}
+              {onKnock &&
+                exitFromActive &&
+                exitKnockAffordance({
+                  exitId: exitFromActive.exitId,
+                  label: exitFromActive.label,
+                  targetSceneId: node.sceneId,
+                  kind: exitFromActive.kind,
+                  doorState: exitFromActive.doorState,
+                }).showKnock && (
+                  <Button variant="ghost" size="sm" onClick={() => onKnock(node.sceneId)}>
+                    Knock instead
+                  </Button>
+                )}
             </>
           ) : worldId && (onTravel || onSwitchScene) ? (
             <>
@@ -319,11 +343,21 @@ export function MapInspectorPanel({
               </Button>
             </>
           ) : null}
-          {!isActive && exitToActive && onKnock && !exitFromActive && (
-            <Button variant="ghost" size="sm" onClick={() => onKnock(node.sceneId)}>
-              Knock
-            </Button>
-          )}
+          {!isActive &&
+            exitToActive &&
+            onKnock &&
+            !exitFromActive &&
+            exitKnockAffordance({
+              exitId: exitToActive.exitId,
+              label: exitToActive.label,
+              targetSceneId: activeSceneId,
+              kind: exitToActive.kind,
+              doorState: exitToActive.doorState,
+            }).showKnock && (
+              <Button variant="ghost" size="sm" onClick={() => onKnock(node.sceneId)}>
+                Knock
+              </Button>
+            )}
           {onFitScene && (
             <Button variant="ghost" size="sm" onClick={() => onFitScene(node.sceneId)}>
               Center on map
@@ -365,11 +399,18 @@ export function MapInspectorPanel({
             <Button variant="primary" size="sm" onClick={() => onTravel(target.sceneId)}>
               Go to {target.locationName}
             </Button>
-            {onKnock && (
-              <Button variant="ghost" size="sm" onClick={() => onKnock(target.sceneId)}>
-                Knock
-              </Button>
-            )}
+            {onKnock &&
+              exitKnockAffordance({
+                exitId: edge.exitId,
+                label: edge.label,
+                targetSceneId: target.sceneId,
+                kind: edge.kind,
+                doorState: edge.doorState,
+              }).showKnock && (
+                <Button variant="ghost" size="sm" onClick={() => onKnock(target.sceneId)}>
+                  Knock
+                </Button>
+              )}
           </div>
         )}
         {!fromActive && target && (
