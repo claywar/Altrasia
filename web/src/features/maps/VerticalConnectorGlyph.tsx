@@ -1,4 +1,4 @@
-import type { StackConnector } from "./stackGeometry";
+import type { StackConnector } from "./buildingStackLayout";
 
 type Props = {
   connector: StackConnector;

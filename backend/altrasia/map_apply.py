@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from altrasia.domain.position3d import upgrade_layout_v1
 from altrasia.persistence.sqlite_store import SqlitePersistence
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
@@ -20,6 +21,7 @@ def _normalize_position(pos: dict[str, Any]) -> dict[str, float]:
 
 def apply_layout_json(store: SqlitePersistence, world_id: str, layout: dict[str, Any]) -> dict[str, Any]:
     """Apply validated layout to scenes, structures, exits, worldMapJson."""
+    layout = upgrade_layout_v1(layout)
     scenes_db = {s["sceneId"]: s for s in store.list_scenes(world_id)}
     applied_scenes: list[str] = []
     conflicts: list[dict[str, str]] = []
@@ -48,6 +50,7 @@ def apply_layout_json(store: SqlitePersistence, world_id: str, layout: dict[str,
             "mapLevel",
             "levelLabel",
             "exitAnchor",
+            "position3d",
         ):
             if item.get(key) is not None:
                 hints[key] = item[key]

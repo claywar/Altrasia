@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SpatialGraph } from "../../api/client";
+import { api, type NavigationRoute, type SceneMapArtifact, type SpatialGraph } from "../../api/client";
 import { FocusTrap } from "../../ui/FocusTrap";
 import { MapAuthorPanel } from "./MapAuthorPanel";
 import { MapInspectorPanel, type MapSelection } from "./MapInspectorPanel";
@@ -9,6 +9,7 @@ import { DEFAULT_MAP_LAYERS, type MapLayerVisibility } from "./mapLayers";
 import {
   activeLevel,
   activeStructureId,
+  defaultViewModeForGraph,
   levelLabelFor,
   levelsForStructure,
   type MapViewMode,
@@ -29,14 +30,19 @@ export type MapConsoleMode = "navigate" | "author";
 type Props = {
   graph: SpatialGraph | null;
   worldId: string;
+  variant?: "full" | "slideOver";
   onClose: () => void;
   onEnhanceLayout?: () => void;
   onSwitchScene?: (sceneId: string) => void;
   onTravel?: (targetSceneId: string) => void;
+  onWalkRoute?: (targetSceneId: string) => void | Promise<void>;
   onKnock?: (targetSceneId: string) => void;
   highlightedExitId?: string | null;
   onExitHover?: (exitId: string | null) => void;
   onGraphRefresh?: () => void;
+  externalSelectedSceneId?: string | null;
+  onExternalSelectScene?: (sceneId: string) => void;
+  onPatchPosition?: (sceneId: string, x: number, y: number) => void;
 };
 
 const MODE_KEYS: { id: MapViewMode; key: string }[] = [
@@ -53,16 +59,24 @@ function toMapGraph(graph: SpatialGraph): MapGraph {
 export function MapConsole({
   graph,
   worldId,
+  variant = "full",
   onClose,
   onEnhanceLayout,
   onSwitchScene,
   onTravel,
+  onWalkRoute,
   onKnock,
   highlightedExitId = null,
   onExitHover,
   onGraphRefresh,
+  externalSelectedSceneId = null,
+  onExternalSelectScene,
+  onPatchPosition,
 }: Props) {
-  const [viewMode, setViewMode] = useState<MapViewMode>("site");
+  const slideOver = variant === "slideOver";
+  const [viewMode, setViewMode] = useState<MapViewMode>(() =>
+    graph ? defaultViewModeForGraph(toMapGraph(graph)) : "site"
+  );
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
   const [consoleMode, setConsoleMode] = useState<MapConsoleMode>("navigate");
   const [layers, setLayers] = useState<MapLayerVisibility>(DEFAULT_MAP_LAYERS);
@@ -76,6 +90,8 @@ export function MapConsole({
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const viewport = useMapViewport(graph);
+  const [sceneArtifacts, setSceneArtifacts] = useState<Record<string, SceneMapArtifact>>({});
+  const [previewRoute, setPreviewRoute] = useState<NavigationRoute | null>(null);
 
   const mg = graph ? toMapGraph(graph) : null;
   const focusStructId = mg ? activeStructureId(mg) : undefined;
@@ -103,6 +119,28 @@ export function MapConsole({
 
   const selectedSceneId =
     selection?.type === "scene" ? selection.sceneId : null;
+
+  const routeHighlightExitId =
+    previewRoute?.steps?.[0]?.exitId ?? highlightedExitId ?? null;
+
+  useEffect(() => {
+    if (!graph || !selectedSceneId || selectedSceneId === graph.activeSceneId) {
+      setPreviewRoute(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .navigationRoute(worldId, graph.activeSceneId, selectedSceneId)
+      .then((r) => {
+        if (!cancelled) setPreviewRoute(r);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewRoute(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [graph, worldId, selectedSceneId]);
   const selectedExitId =
     selection?.type === "exit" ? selection.exitId : null;
 
@@ -136,6 +174,51 @@ export function MapConsole({
       );
     }
   }, [graph?.layout?.architectureStyle]);
+
+  const activeSceneId = graph?.activeSceneId;
+
+  useEffect(() => {
+    if (!graph || viewMode === "stack") {
+      setSceneArtifacts({});
+      return;
+    }
+    const sceneIds = prepared?.graph.nodes.map((n) => n.sceneId) ?? [];
+    if (!sceneIds.length) {
+      setSceneArtifacts({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      sceneIds.map(async (sceneId) => {
+        try {
+          const res = await api.getSceneMapArtifact(worldId, sceneId);
+          return [sceneId, res.artifact] as const;
+        } catch {
+          return [sceneId, null] as const;
+        }
+      })
+    ).then((pairs) => {
+      if (cancelled) return;
+      const next: Record<string, SceneMapArtifact> = {};
+      for (const [id, art] of pairs) {
+        if (art) next[id] = art;
+      }
+      setSceneArtifacts(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [graph, worldId, viewMode, prepared?.graph.nodes]);
+
+  useEffect(() => {
+    if (!graph) return;
+    const mgLocal = toMapGraph(graph);
+    setViewMode(defaultViewModeForGraph(mgLocal));
+    setSelectedLevel(activeLevel(mgLocal));
+    const structId = activeStructureId(mgLocal);
+    if (structId) viewport.fitStructure(structId);
+    else viewport.fitWorld();
+  }, [activeSceneId]); // eslint-disable-line react-hooks/exhaustive-deps -- refit when persona moves
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -199,9 +282,19 @@ export function MapConsole({
     return () => window.removeEventListener("keydown", onKey);
   }, [selection, viewMode, viewport, onClose, showViewportGuide, dismissGuide]);
 
-  const handleNodeSelect = useCallback((sceneId: string) => {
-    setSelection({ type: "scene", sceneId });
-  }, []);
+  const handleNodeSelect = useCallback(
+    (sceneId: string) => {
+      setSelection({ type: "scene", sceneId });
+      onExternalSelectScene?.(sceneId);
+    },
+    [onExternalSelectScene]
+  );
+
+  useEffect(() => {
+    if (slideOver && externalSelectedSceneId) {
+      setSelection({ type: "scene", sceneId: externalSelectedSceneId });
+    }
+  }, [slideOver, externalSelectedSceneId]);
 
   const handleEdgeSelect = useCallback((exitId: string) => {
     setSelection({ type: "exit", exitId });
@@ -219,6 +312,57 @@ export function MapConsole({
     },
     [graph?.edges, onTravel]
   );
+
+  if (slideOver && graph) {
+    return (
+      <div className="map-console map-console--slide-over" data-testid="map-console-slide">
+        <div className="map-console-body map-console-body--slide-only">
+          <div className="map-console-center map-console-center--full">
+            <div
+              ref={containerRef}
+              className="map-console-viewport"
+              tabIndex={0}
+              onWheel={viewport.onWheel}
+              onPointerDown={viewport.onPointerDown}
+              onPointerMove={(e) => viewport.onPointerMove(e, containerRef.current)}
+              onPointerUp={viewport.onPointerUp}
+              onPointerLeave={viewport.onPointerUp}
+            >
+              <div
+                className="site-map-transform"
+                style={{
+                  transform: `translate(${viewport.pan.x}px, ${viewport.pan.y}px) scale(${viewport.zoom})`,
+                  transformOrigin: "center center",
+                }}
+              >
+                <MapRenderer
+                  graph={displayGraph}
+                  offPlanActive={prepared?.offPlanActive}
+                  className="site-map-main"
+                  viewFit="full"
+                  interactive
+                  showEnvelopes
+                  showEdges
+                  showLabels
+                  architectureStyle={archStyle}
+                  worldMap={graph.worldMap}
+                  highlightedExitId={routeHighlightExitId}
+                  selectedSceneId={selectedSceneId}
+                  onNodeSelect={handleNodeSelect}
+                  onEdgeHover={onExitHover}
+                  onNodePositionChange={
+                    onPatchPosition
+                      ? (sceneId, pos) => onPatchPosition(sceneId, pos.x, pos.y)
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -375,6 +519,7 @@ export function MapConsole({
                     onFocusLevel={(lvl) => setSelectedLevel(lvl)}
                     selectedSceneId={selectedSceneId}
                     onSelectScene={handleNodeSelect}
+                    onTravelScene={onTravel}
                     onTravelVertical={handleTravelVertical}
                   />
                 ) : (
@@ -402,13 +547,15 @@ export function MapConsole({
                       interactive={consoleMode === "navigate"}
                       architectureStyle={archStyle}
                       worldMap={graph?.worldMap}
-                      highlightedExitId={highlightedExitId}
+                      highlightedExitId={routeHighlightExitId}
                       selectedSceneId={selectedSceneId}
                       selectedExitId={selectedExitId}
                       onNodeSelect={handleNodeSelect}
                       onEdgeSelect={handleEdgeSelect}
                       onEdgeHover={onExitHover}
                       onStructureSelect={handleStructureSelect}
+                      sceneArtifacts={sceneArtifacts}
+                      onArtifactTravel={onTravel}
                     />
                   </div>
                 )}
@@ -471,10 +618,12 @@ export function MapConsole({
             {consoleMode === "navigate" ? (
               <MapInspectorPanel
                 graph={graph}
+                worldId={worldId}
                 selection={selection}
                 activeSceneId={graph?.activeSceneId ?? ""}
                 onSwitchScene={onSwitchScene}
                 onTravel={onTravel}
+                onWalkRoute={onWalkRoute}
                 onKnock={onKnock}
                 onFitStructure={viewport.fitStructure}
                 onFitScene={viewport.fitScene}

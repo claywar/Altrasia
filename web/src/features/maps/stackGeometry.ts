@@ -6,12 +6,12 @@ import { isoPlateViewBox } from "./IsoDiagramPlate";
 import { isVerticalEdge, nodeLevelIndex, type StackPlate } from "./floorLevels";
 import type { MapEdge, MapGraph, MapNode, Point } from "./types";
 
-export const PLATE_GAP = 14;
+export const PLATE_GAP = 12;
 export const PLATE_PAD = 5;
-const ROOT_MARGIN = 6;
+export const ROOT_MARGIN = 10;
 const CONNECTOR_PAD = 1.5;
-/** Target width in SVG units — plates scale to this so diagrams stay legible. */
-export const PLATE_TARGET_W = 58;
+/** Target width in SVG units — one scale for all floors so the stack reads as one building. */
+export const PLATE_TARGET_W = 132;
 
 export function planPoint(node: MapNode): Point {
   return readPlanPosition(node);
@@ -103,31 +103,40 @@ export function layoutStackPlates(
   const allNodes = plates.flatMap((p) => p.nodes);
   const stackAnchorX = computeStackAnchorX(allNodes, anchorIds);
 
-  let yCursor = 0;
   const layouts: PlateLayoutMetrics[] = [];
 
   for (const plate of ordered) {
     const nodes = normalizePlateNodes(plate, stackAnchorX, anchorIds);
     const vb = plateViewBoxFromNodes(nodes, projection);
-    const scale = PLATE_TARGET_W / Math.max(vb.w, 8);
-    const scaledH = vb.h * scale;
     layouts.push({
       plate,
       level: plate.level,
       label: plate.label,
       nodes,
       vb,
-      y: yCursor,
-      scale,
-      scaledW: PLATE_TARGET_W,
-      scaledH,
+      y: 0,
+      scale: 1,
+      scaledW: vb.w,
+      scaledH: vb.h,
     });
-    yCursor += scaledH + PLATE_GAP;
+  }
+
+  const maxVbW = Math.max(...layouts.map((l) => l.vb.w), 8);
+  const unifiedScale = PLATE_TARGET_W / maxVbW;
+
+  let yCursor = 0;
+  for (const layout of layouts) {
+    layout.scale = unifiedScale;
+    layout.scaledW = layout.vb.w * unifiedScale;
+    layout.scaledH = layout.vb.h * unifiedScale;
+    layout.y = yCursor;
+    yCursor += layout.scaledH + PLATE_GAP;
   }
 
   const totalH = layouts.length > 0 ? yCursor - PLATE_GAP : 0;
+  const labelGutter = 14;
   const rootH = totalH + ROOT_MARGIN * 2;
-  const rootW = PLATE_TARGET_W + ROOT_MARGIN * 2;
+  const rootW = PLATE_TARGET_W + ROOT_MARGIN * 2 + labelGutter;
   return { layouts, totalH, maxW: PLATE_TARGET_W, rootW, rootH };
 }
 
@@ -163,8 +172,9 @@ export function planToStackSvg(
       : { x: planX, y: planY };
   const localX = (display.x - layout.vb.x) * layout.scale;
   const localY = (display.y - layout.vb.y) * layout.scale;
+  const labelGutter = 14;
   return {
-    x: ROOT_MARGIN + localX,
+    x: ROOT_MARGIN + labelGutter + localX,
     y: ROOT_MARGIN + layout.y + localY,
   };
 }

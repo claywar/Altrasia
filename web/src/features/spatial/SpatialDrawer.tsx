@@ -14,6 +14,7 @@ type Props = {
   onExitHover: (exitId: string | null) => void;
   onMapOpen?: () => void;
   onOpenFullMap?: () => void;
+  onMinimapSelect?: (sceneId: string) => void;
 };
 
 export function SpatialDrawer({
@@ -27,6 +28,7 @@ export function SpatialDrawer({
   onExitHover,
   onMapOpen,
   onOpenFullMap,
+  onMinimapSelect,
 }: Props) {
   return (
     <Drawer open={open} onClose={onClose} testId="spatial-drawer">
@@ -44,6 +46,7 @@ export function SpatialDrawer({
           onKnock={onKnock}
           onExitHover={onExitHover}
           onOpenFullMap={onOpenFullMap ?? onMapOpen}
+          onMinimapSelect={onMinimapSelect}
         />
       </div>
     </Drawer>

@@ -6,6 +6,7 @@ from typing import Any, AsyncIterator
 import httpx
 
 from altrasia.inference.mock_llm import mock_chat_completion
+from altrasia.inference.openai_compat import chat_completions_url
 
 
 class LlmClient:
@@ -33,7 +34,7 @@ class LlmClient:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
         async with httpx.AsyncClient(timeout=120.0) as client:
-            r = await client.post(f"{self.base_url}/v1/chat/completions", json=payload)
+            r = await client.post(chat_completions_url(self.base_url), json=payload)
             r.raise_for_status()
             return r.json()
 
@@ -51,7 +52,7 @@ class LlmClient:
         payload = {"model": self.model, "messages": messages, "stream": True}
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
-                "POST", f"{self.base_url}/v1/chat/completions", json=payload
+                "POST", chat_completions_url(self.base_url), json=payload
             ) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():

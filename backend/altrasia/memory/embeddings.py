@@ -11,6 +11,8 @@ from typing import Any
 
 import httpx
 
+from altrasia.inference.openai_compat import embeddings_url
+
 log = logging.getLogger(__name__)
 ISO = lambda: datetime.now(timezone.utc).isoformat()
 
@@ -89,7 +91,7 @@ class EmbeddingService:
         base = eff.get("embeddingBaseUrl")
         if not base:
             return _hash_embed(text)
-        url = str(base).rstrip("/") + "/v1/embeddings"
+        url = embeddings_url(str(base))
         payload = {"model": eff.get("embeddingModel"), "input": text[:8000]}
         try:
 

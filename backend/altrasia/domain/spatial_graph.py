@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from altrasia.domain.position3d import collect_reference_points, derive_position3d
 from altrasia.persistence.sqlite_store import SqlitePersistence
 
 
@@ -52,6 +53,7 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
                 node[key] = hints.get(key) if hints.get(key) is not None else scene.get(key)
         if node.get("levelIndex") is None and scene.get("mapLevel") is not None:
             node["levelIndex"] = scene.get("mapLevel")
+        node["position3d"] = derive_position3d(node, hints)
         nodes.append(node)
         src_struct = hints.get("structureId") or scene.get("structureId")
         for ex in json.loads(scene.get("exitsJson") or "[]"):
@@ -127,6 +129,12 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
         )
 
     layout_status = _layout_status(nodes)
+    has_authored_3d = any(
+        _layout_hints(s).get("position3d")
+        for s in scenes
+    )
+    layout_3d_status = "complete" if has_authored_3d else "derived"
+    ref_points = collect_reference_points(None, world_map)
 
     return {
         "activeSceneId": active,
@@ -135,8 +143,10 @@ def build_spatial_graph(store: SqlitePersistence, world_id: str) -> dict[str, An
         "edges": edges,
         "verticalEdges": vertical_edges,
         "worldMap": world_map,
+        "referencePoints": ref_points,
         "siteLayoutApplied": bool(world_map and world_map.get("structurePlacements")),
         "layoutStatus": layout_status,
+        "layout3dStatus": layout_3d_status,
         "layout": {
             "coordinateSpace": "normalized-0-100",
             "algorithm": "layered-bfs-v1",

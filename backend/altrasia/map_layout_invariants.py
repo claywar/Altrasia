@@ -9,8 +9,13 @@ SCOPE_REF_IDS = {
     "site": {"site_overlay"},
     "stack": {"level_stack"},
     "floor": {"mini_envelope", "mini_shapes"},
+    "unified": {"mini_envelope", "mini_shapes", "site_overlay", "level_stack"},
 }
 MIN_SITE_SEPARATION = 8.0
+MAX_ADJACENT_GAP = 4.0
+DEFAULT_FOOTPRINT_W = 12.0
+DEFAULT_FOOTPRINT_H = 8.0
+CIRCLE_R = 5.0
 
 
 def _hints(scene: dict) -> dict:
@@ -30,6 +35,64 @@ def _pos(item: dict) -> dict[str, float] | None:
         }
     if raw.get("x") is not None and raw.get("y") is not None:
         return {"x": float(raw["x"]), "y": float(raw["y"])}
+    return None
+
+
+def _level_index(item: dict) -> int:
+    if item.get("levelIndex") is not None:
+        return int(item["levelIndex"])
+    if item.get("mapLevel") is not None:
+        return int(item["mapLevel"])
+    return 0
+
+
+def _footprint_bounds(item: dict) -> tuple[float, float, float, float] | None:
+    """Axis-aligned bounds (minX, minY, maxX, maxY) in plan 0–100 space."""
+    pos = _pos(item)
+    if not pos:
+        return None
+    cx, cy = pos["x"], pos["y"]
+    shape = (item.get("mapShape") or "rect").lower()
+    if shape == "circle":
+        r = CIRCLE_R
+        return (cx - r, cy - r, cx + r, cy + r)
+    sz = item.get("mapSize") or {}
+    w = float(sz.get("w", DEFAULT_FOOTPRINT_W))
+    h = float(sz.get("h", DEFAULT_FOOTPRINT_H))
+    if shape == "corridor":
+        w = max(w, 6.0)
+        h = min(float(sz.get("h", DEFAULT_FOOTPRINT_H)), 5.0)
+    return (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+
+
+def _rects_overlap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
+    ax0, ay0, ax1, ay1 = a
+    bx0, by0, bx1, by1 = b
+    overlap_x = ax0 < bx1 and bx0 < ax1
+    overlap_y = ay0 < by1 and by0 < ay1
+    if not overlap_x or not overlap_y:
+        return False
+    # Ignore edge-touching (zero area overlap)
+    return min(ax1, bx1) - max(ax0, bx0) > 0.05 and min(ay1, by1) - max(ay0, by0) > 0.05
+
+
+def _min_gap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+    ax0, ay0, ax1, ay1 = a
+    bx0, by0, bx1, by1 = b
+    if _rects_overlap(a, b):
+        return 0.0
+    dx = max(0.0, max(ax0 - bx1, bx0 - ax1))
+    dy = max(0.0, max(ay0 - by1, by0 - ay1))
+    return (dx**2 + dy**2) ** 0.5
+
+
+def _structure_id(item: dict, scenes_db: dict) -> str | None:
+    sid = item.get("structureId")
+    if sid:
+        return sid
+    scene_id = item.get("sceneId")
+    if scene_id and scene_id in scenes_db:
+        return _hints(scenes_db[scene_id]).get("structureId")
     return None
 
 
@@ -153,6 +216,49 @@ def check_invariants(
             tl = tgt_item.get("levelIndex", tgt_item.get("mapLevel", 0))
             if sl == tl:
                 errors.append(f"vertical edge {edge.get('exitId')} connects same level")
+
+    if scope in ("mini", "stack", "floor"):
+        by_cell: dict[tuple[str, int], list[tuple[str, tuple[float, float, float, float]]]] = {}
+        for item in scene_items:
+            st = _structure_id(item, scenes_db)
+            if not st:
+                continue
+            bounds = _footprint_bounds(item)
+            if not bounds:
+                continue
+            key = (st, _level_index(item))
+            by_cell.setdefault(key, []).append((item.get("sceneId") or "?", bounds))
+
+        for (_st, _lvl), entries in by_cell.items():
+            for i, (id_a, box_a) in enumerate(entries):
+                for id_b, box_b in entries[i + 1 :]:
+                    if _rects_overlap(box_a, box_b):
+                        errors.append(f"rooms {id_a} and {id_b} overlap on the same floor")
+
+        scene_bounds = {
+            item.get("sceneId"): _footprint_bounds(item)
+            for item in scene_items
+            if item.get("sceneId") and _footprint_bounds(item)
+        }
+        for edge in layout.get("edges") or []:
+            kind = (edge.get("kind") or "").lower()
+            if kind in VERTICAL_KINDS:
+                continue
+            if edge.get("crossesStructure"):
+                continue
+            src = edge.get("sourceSceneId")
+            tgt = edge.get("targetSceneId")
+            if not src or not tgt:
+                continue
+            box_a = scene_bounds.get(src)
+            box_b = scene_bounds.get(tgt)
+            if not box_a or not box_b:
+                continue
+            gap = _min_gap(box_a, box_b)
+            if gap > MAX_ADJACENT_GAP:
+                warnings.append(
+                    f"adjacent rooms {src} and {tgt} have gap {gap:.1f} (max {MAX_ADJACENT_GAP})"
+                )
 
     return {
         "valid": len(errors) == 0,

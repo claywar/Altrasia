@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://altrasia.local/schemas/map-layout-v1.json",
-  "title": "MapLayoutV1",
+  "title": "MapLayout",
   "type": "object",
   "required": ["schemaVersion"],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "scope": { "enum": ["mini", "site", "stack", "floor"] },
+    "schemaVersion": { "type": "integer", "enum": [1, 2] },
+    "scope": { "enum": ["mini", "site", "stack", "floor", "unified"] },
     "architectureStyle": { "type": "string" },
     "referenceDiagramId": {
       "enum": ["mini_envelope", "mini_shapes", "site_overlay", "level_stack"]
@@ -20,13 +20,42 @@
           "structureId": { "type": "string" },
           "displayName": { "type": "string" },
           "kind": { "type": "string" },
-          "boundary": { "type": "object" }
+          "boundary": { "type": "object" },
+          "structureVolume": {
+            "type": "object",
+            "properties": {
+              "shape": { "enum": ["extrusion"] },
+              "height": { "type": "number" }
+            }
+          }
         }
       }
     },
     "scenes": { "type": "array" },
     "nodes": { "type": "array" },
     "edges": { "type": "array" },
+    "verticalEdges": { "type": "array" },
+    "referencePoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "position3d"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "sceneId": { "type": "string" },
+          "position3d": {
+            "type": "object",
+            "required": ["x", "y", "z"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "z": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
     "worldMap": { "type": "object" }
   }
 }

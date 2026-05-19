@@ -238,6 +238,44 @@ export type Approval = {
   createdAt: string;
 };
 
+export type Position3d = { x: number; y: number; z: number };
+
+export type SceneMapArtifact = {
+  schemaVersion?: number;
+  walls?: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+  fixtures?: Array<{ id: string; x: number; y: number; label: string }>;
+  exits?: Array<{
+    exitId: string;
+    x: number;
+    y: number;
+    targetSceneId: string;
+    label?: string;
+  }>;
+};
+
+export type NavigationRoute = {
+  fromSceneId: string;
+  toSceneId: string;
+  reachable: boolean;
+  steps: Array<{
+    exitId?: string;
+    fromSceneId: string;
+    toSceneId: string;
+    label?: string;
+    kind?: string;
+    travelSteps?: number;
+  }>;
+  sceneIds: string[];
+  totalTravelSteps: number;
+};
+
+export type ReferencePoint = {
+  id: string;
+  label: string;
+  position3d: Position3d;
+  sceneId?: string;
+};
+
 export type SpatialGraph = {
   activeSceneId: string;
   nodes: Array<{
@@ -246,6 +284,7 @@ export type SpatialGraph = {
     isActive: boolean;
     layout: { x: number; y: number };
     planPosition?: { x: number; y: number };
+    position3d?: Position3d;
     locationDescription?: string;
     presentCount: number;
     mapShape?: string;
@@ -257,6 +296,8 @@ export type SpatialGraph = {
     mapSize?: { w?: number; h?: number };
     exitAnchor?: string;
   }>;
+  referencePoints?: ReferencePoint[];
+  layout3dStatus?: "complete" | "partial" | "derived";
   edges: Array<{
     exitId: string;
     sourceSceneId: string;
@@ -369,11 +410,32 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  createWorldBootstrapDraft: (
+    worldId: string,
+    body: { description: string; connectFromSceneId?: string }
+  ) =>
+    request<LayoutDraft>(`/worlds/${worldId}/layout-bootstrap-drafts`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   createLayoutDraft: (worldId: string, body: { brief: string; scope?: string }) =>
     request<LayoutDraft>(`/worlds/${worldId}/layout-drafts`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  createUnifiedLayoutDraft: (worldId: string, body: { brief: string }) =>
+    request<LayoutDraft & { scopesApplied?: string[] }>(
+      `/worlds/${worldId}/layout-drafts/unified`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+  patchLayoutSafe: (
+    worldId: string,
+    patch: { nodes?: Array<{ sceneId: string; mapPosition: { x: number; y: number } }>; edges?: unknown[] }
+  ) =>
+    request<{ applied: string[]; conflicts: unknown[]; autoApplied: boolean }>(
+      `/worlds/${worldId}/layout-patch`,
+      { method: "POST", body: JSON.stringify(patch) }
+    ),
   getLayoutDraft: (worldId: string, draftId: string) =>
     request<LayoutDraft>(`/worlds/${worldId}/layout-drafts/${draftId}`),
   commitLayoutDraft: (worldId: string, draftId: string) =>
@@ -536,6 +598,36 @@ export const api = {
       body: JSON.stringify({ characterId }),
     }),
   spatialGraph: (worldId: string) => request<SpatialGraph>(`/worlds/${worldId}/spatial-graph`),
+  navigationSummary: (worldId: string, fromSceneId?: string) =>
+    request<{
+      activeSceneId: string;
+      travelMode: "strict" | "operator";
+      reachableSceneIds: string[];
+      adjacentSceneIds: string[];
+    }>(
+      `/worlds/${worldId}/navigation/summary${fromSceneId ? `?fromSceneId=${encodeURIComponent(fromSceneId)}` : ""}`
+    ),
+  navigationRoute: (worldId: string, fromSceneId: string, toSceneId: string) =>
+    request<NavigationRoute>(
+      `/worlds/${worldId}/navigation/route?fromSceneId=${encodeURIComponent(fromSceneId)}&toSceneId=${encodeURIComponent(toSceneId)}`
+    ),
+  navigationTravel: (
+    worldId: string,
+    body: { toSceneId: string; fromSceneId?: string; mode?: "route" | "step" | "jump" }
+  ) =>
+    request<{
+      activeSceneId: string;
+      mode: string;
+      route: NavigationRoute | null;
+      stoppedAtSceneId?: string;
+    }>(
+      `/worlds/${worldId}/navigation/travel`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+  getSceneMapArtifact: (worldId: string, sceneId: string) =>
+    request<{ artifact: SceneMapArtifact | null }>(
+      `/worlds/${worldId}/scenes/${sceneId}/map-artifact`
+    ),
   queue: (worldId: string) => request<QueueSnapshot>(`/worlds/${worldId}/queue`),
   getGeneration: (worldId: string, jobId: string) =>
     request<GenerationJob>(`/worlds/${worldId}/generations/${jobId}`),

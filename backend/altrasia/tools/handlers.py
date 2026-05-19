@@ -202,6 +202,29 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
 
+    async def map_world_bootstrap(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.map_world_bootstrap import create_world_bootstrap_draft
+
+        world_id = params.get("worldId") or ctx.world_id
+        description = params.get("description") or params.get("brief") or ""
+        if not description.strip():
+            return {"ok": False, "error": "description required"}
+        try:
+            draft = await create_world_bootstrap_draft(
+                services,
+                world_id,
+                description.strip(),
+                connect_from_scene_id=params.get("connectFromSceneId"),
+            )
+            return {
+                "ok": True,
+                "layoutDraftId": draft["layoutDraftId"],
+                "status": draft["status"],
+                "message": "Review and commit via MapDraft panel",
+            }
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
     async def map_layout_patch(params: dict, ctx: ToolContext) -> Any:
         from altrasia.map_authoring import create_layout_draft, patch_layout_safe
 
@@ -392,6 +415,22 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["brief"],
             },
             handler=map_layout_generate,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="map_world_bootstrap",
+            description="Create new scenes and 3D layout from a world description (operator commit).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "worldId": {"type": "string"},
+                    "description": {"type": "string"},
+                    "connectFromSceneId": {"type": "string"},
+                },
+                "required": ["description"],
+            },
+            handler=map_world_bootstrap,
         )
     )
     registry.register(

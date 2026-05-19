@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, type OperatorSettings, type Scene, type SpatialGraph } from "../api/client";
+import { api, type OperatorSettings, type Scene } from "../api/client";
 import { CharacterDraftPanel } from "./CharacterDraftPanel";
 import { SceneGeographyPanel } from "./SceneGeographyPanel";
 import { CastListPanel } from "./CastListPanel";
 import { CommissionsPanel } from "./CommissionsPanel";
-import { MapDraftPanel } from "./MapDraftPanel";
 import { WorldPolicyPanel } from "./WorldPolicyPanel";
 import { BriefingPanel } from "./BriefingPanel";
 import { SettingsShell } from "./settings/SettingsShell";
@@ -27,7 +26,6 @@ type Props = {
   onWorldImported: (world: { worldId: string; name: string; activeSceneId: string }) => void;
   onCastChanged?: () => void;
   scenes?: Scene[];
-  graph?: SpatialGraph | null;
   onScenesChanged?: () => void;
   activeSceneId?: string;
 };
@@ -39,7 +37,6 @@ export function SettingsPanel({
   onClose,
   onWorldImported,
   onCastChanged,
-  graph,
   scenes = [],
   onScenesChanged,
   activeSceneId = "",
@@ -90,12 +87,10 @@ export function SettingsPanel({
                   onChanged={() => onScenesChanged?.()}
                   embedded
                 />
-                <MapDraftPanel
-                  worldId={worldId}
-                  graph={graph}
-                  onCommitted={() => onScenesChanged?.()}
-                  embedded
-                />
+                <p className="settings-muted">
+                  Map layout is edited in the world map. Press <kbd>M</kbd> and choose{" "}
+                  <strong>Enhance map</strong>.
+                </p>
               </SettingsGroup>
             )}
           </SettingsCategoryPane>

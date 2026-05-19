@@ -51,6 +51,7 @@ export default function App() {
   const [savedWorlds, setSavedWorlds] = useState<World[]>([]);
   const [phoneChannelId, setPhoneChannelId] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
+  const [layoutDesignMode, setLayoutDesignMode] = useState(true);
   const sendInFlight = useRef(false);
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function App() {
     setSignals(sig);
     setQueue(q);
     setWorldPaused(!!w.paused);
+    api.geography(w.worldId).then((g) => setLayoutDesignMode(g.layoutDesignMode)).catch(() => {});
     const active = scList.find((s) => s.sceneId === w.activeSceneId) ?? scList[0];
     setScene(active);
     const msgs = await api.listMessages(w.worldId, active.sceneId);
@@ -130,11 +132,49 @@ export default function App() {
   };
 
   const switchScene = async (sceneId: string) => {
-    if (!world) return;
-    await api.patchWorld(world.worldId, { activeSceneId: sceneId });
-    const w = { ...world, activeSceneId: sceneId };
-    setWorld(w);
-    await refresh(w);
+    if (!world || sceneId === world.activeSceneId) return;
+    const active = world.activeSceneId;
+    let mode: "route" | "jump" = "route";
+    if (graph && active) {
+      const adj = graph.edges.some(
+        (e) =>
+          (e.sourceSceneId === active && e.targetSceneId === sceneId) ||
+          (e.sourceSceneId === sceneId && e.targetSceneId === active)
+      );
+      if (!adj) {
+        try {
+          const summary = await api.navigationSummary(world.worldId, active);
+          mode = summary.travelMode === "operator" ? "jump" : "route";
+        } catch {
+          mode = "jump";
+        }
+      }
+    }
+    try {
+      const result = await api.navigationTravel(world.worldId, {
+        toSceneId: sceneId,
+        fromSceneId: active,
+        mode,
+      });
+      const w = { ...world, activeSceneId: result.activeSceneId };
+      setWorld(w);
+      await refresh(w);
+    } catch {
+      if (mode === "route") {
+        try {
+          const result = await api.navigationTravel(world.worldId, {
+            toSceneId: sceneId,
+            fromSceneId: active,
+            mode: "jump",
+          });
+          const w = { ...world, activeSceneId: result.activeSceneId };
+          setWorld(w);
+          await refresh(w);
+        } catch {
+          /* unreachable */
+        }
+      }
+    }
   };
 
   const send = async () => {
@@ -187,8 +227,12 @@ export default function App() {
 
   const movePersonaToExit = async (targetSceneId: string) => {
     if (!world) return;
-    await api.patchWorld(world.worldId, { activeSceneId: targetSceneId });
-    const w = { ...world, activeSceneId: targetSceneId };
+    const result = await api.navigationTravel(world.worldId, {
+      toSceneId: targetSceneId,
+      fromSceneId: world.activeSceneId,
+      mode: "route",
+    });
+    const w = { ...world, activeSceneId: result.activeSceneId };
     setWorld(w);
     await refresh(w);
   };
@@ -316,6 +360,7 @@ export default function App() {
         exits={exits}
         rosterAtLocation={roster?.atLocation ?? []}
         mapOpen={mapOpen}
+        layoutDesignMode={layoutDesignMode}
         compose={{
           text,
           scope,
@@ -368,10 +413,7 @@ export default function App() {
         }}
         onMapOpen={() => setMapOpen(true)}
         onMapClose={() => setMapOpen(false)}
-        onEnhanceLayout={async () => {
-          await refresh(world);
-          setSettingsOpen(true);
-        }}
+        onEnhanceLayout={() => setMapOpen(true)}
         onObserver={() => setObserverOpen(true)}
         onSettings={async () => {
           await refresh(world);
@@ -390,6 +432,7 @@ export default function App() {
         onTravelExit={movePersonaToExit}
         onKnock={knock}
         onGraphRefresh={() => refresh(world)}
+        onWorldRefresh={() => refresh(world)}
         toolsPhone={
           world && scene && roster ? (
             <PhonePanel
@@ -435,7 +478,6 @@ export default function App() {
             await refresh(world);
           }}
           scenes={scenes}
-          graph={graph}
           onScenesChanged={async () => {
             await refresh(world);
           }}

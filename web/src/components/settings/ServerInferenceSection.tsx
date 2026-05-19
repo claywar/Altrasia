@@ -77,7 +77,7 @@ export function ServerInferenceSection({ settings, onUpdated }: Props) {
   return (
     <SettingsBlock
       title="Inference endpoints"
-      description="Point this operator install at local or remote llama.cpp servers. Empty fields fall back to ALTRASIA_* environment variables."
+      description="Point this operator install at local or remote llama.cpp servers (host:port or …/v1 — both work). Empty fields fall back to ALTRASIA_* environment variables."
     >
       <div className="settings-fields">
         <label className="settings-field">

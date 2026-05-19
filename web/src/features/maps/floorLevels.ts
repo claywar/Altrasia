@@ -45,6 +45,17 @@ export function activeSceneNode(graph: MapGraph): MapNode | undefined {
   return graph.nodes.find((n) => n.isActive);
 }
 
+/** Default map overlay mode from active scene context (MAP-16). */
+export function defaultViewModeForGraph(graph: MapGraph): MapViewMode {
+  const active = activeSceneNode(graph);
+  if (!active?.structureId) return "site";
+  const structKind = graph.structures?.find((s) => s.structureId === active.structureId)?.kind;
+  if (structKind === "outdoor") return "site";
+  const levels = levelsForStructure(graph.nodes, active.structureId);
+  if (levels.length > 1) return "stack";
+  return "floor";
+}
+
 export function isVerticalEdge(edge: MapEdge): boolean {
   const k = edge.kind?.toLowerCase();
   return k === "stairs" || k === "ladder" || k === "elevator" || k === "shaft";

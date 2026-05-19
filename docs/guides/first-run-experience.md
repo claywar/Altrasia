@@ -64,13 +64,14 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 
 ### 4b. World map navigation
 
-**Operator action:** Press **M** or click **Map** / the scene header map chip. In the tactical map console, click **Kitchen** in the inspector and choose **Go** (or click the path between rooms).
+**Operator action:** Press **M** or click **Map** / the scene header map chip. In the **3D world map**, orbit with the mouse, click **Kitchen**, then **Travel route** or **Go** in the inspector.
 
 **Expected:**
 
-- Full-screen map opens with layers rail, viewport, and inspector
-- Zoom (+/−), pan (drag or arrow keys), view modes (Site / Structure / Floor / Stack)
-- Travel updates active scene; mini-map and exit list stay in sync
+- Full-screen **3D map** opens (room boxes, structure volumes, route highlight on multi-hop paths)
+- **Diagram** toggle switches to the SVG tactical map (site / structure / floor / stack)
+- Travel follows exit topology when geography is locked; **Places** shows **Go** vs **Jump**
+- Left **3D minimap** and scene-header compass stay in sync after moves
 
 ### 5. Knock on exit
 

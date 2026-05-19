@@ -1,18 +1,26 @@
 import { useMemo } from "react";
 import { computeCorridors } from "./corridorGeometry";
-import { projectFootprint, plateOriginFromNodes, boundsFromProjectedFootprints } from "./diagramProjection";
+import {
+  projectFootprint,
+  plateOriginFromNodes,
+  boundsFromProjectedFootprints,
+  structureIsoFloorPath,
+} from "./diagramProjection";
 import { edgeEndpoints, hubEdgeIndex, nodeFootprint } from "./layoutGeometry";
 import { routeEdge } from "./edgeRouting";
 import { isoPointsToPath } from "./isoProjection";
 import type { MapStyleTokens } from "./mapStyle";
-import type { MapEdge, MapNode, MapStructure } from "./types";
+import type { MapEdge, MapNode, MapStructure, Point } from "./types";
 
 type Props = {
   nodes: MapNode[];
   edges: MapEdge[];
   structure?: MapStructure;
   tokens: MapStyleTokens;
-  /** @deprecated structure kept for API parity with DiagramPlate */
+  /** Shared plan origin for multi-floor stacks (must match across floors). */
+  origin?: Point;
+  /** Use structure boundary as floor slab (holistic stack). */
+  useStructureShell?: boolean;
   dimmed?: boolean;
   interactive?: boolean;
   selectedSceneId?: string | null;
@@ -27,16 +35,21 @@ function truncate(name: string, max = 10): string {
 export function IsoDiagramPlate({
   nodes,
   edges,
-  structure: _structure,
+  structure,
   tokens,
+  origin: originProp,
+  useStructureShell = false,
   dimmed = false,
   interactive = false,
   selectedSceneId = null,
   onSceneClick,
   idPrefix = "iso",
 }: Props) {
-  const origin = useMemo(() => plateOriginFromNodes(nodes), [nodes]);
-  const plateOpacity = dimmed ? 0.42 : 1;
+  const origin = useMemo(
+    () => originProp ?? plateOriginFromNodes(nodes),
+    [originProp, nodes]
+  );
+  const plateOpacity = dimmed ? 0.55 : 1;
   const { floorPath, rooms } = useMemo(() => {
     const projected = nodes.map((n) => ({
       node: n,
@@ -44,12 +57,18 @@ export function IsoDiagramPlate({
     }));
     const bounds = boundsFromProjectedFootprints(projected);
     const pad = 2;
-    const floorPath = isoPointsToPath([
-      { x: bounds.x - pad, y: bounds.y - pad },
-      { x: bounds.x + bounds.w + pad, y: bounds.y - pad },
-      { x: bounds.x + bounds.w + pad, y: bounds.y + bounds.h + pad },
-      { x: bounds.x - pad, y: bounds.y + bounds.h + pad },
-    ]);
+    const shellPath =
+      useStructureShell && structure?.boundary
+        ? structureIsoFloorPath(structure.boundary, origin)
+        : null;
+    const floorPath =
+      shellPath ??
+      isoPointsToPath([
+        { x: bounds.x - pad, y: bounds.y - pad },
+        { x: bounds.x + bounds.w + pad, y: bounds.y - pad },
+        { x: bounds.x + bounds.w + pad, y: bounds.y + bounds.h + pad },
+        { x: bounds.x - pad, y: bounds.y + bounds.h + pad },
+      ]);
     const rooms = projected.map(({ node, floor, walls, labelPt }) => ({
       sceneId: node.sceneId,
       floor,
@@ -59,7 +78,7 @@ export function IsoDiagramPlate({
       active: Boolean(node.isActive || selectedSceneId === node.sceneId),
     }));
     return { floorPath, rooms };
-  }, [nodes, origin, selectedSceneId]);
+  }, [nodes, origin, selectedSceneId, useStructureShell, structure?.boundary]);
 
   const corridors = useMemo(() => computeCorridors(nodes, edges), [nodes, edges]);
   const nodeById = useMemo(() => new Map(nodes.map((n) => [n.sceneId, n])), [nodes]);
@@ -87,12 +106,13 @@ export function IsoDiagramPlate({
         </filter>
       </defs>
 
-      <g filter={`url(#${idPrefix}-shadow)`}>
+      <g filter={useStructureShell ? undefined : `url(#${idPrefix}-shadow)`}>
         <path
           d={floorPath}
-          fill={`url(#${idPrefix}-grid)`}
+          fill={useStructureShell ? "var(--map-structure-fill, rgba(40, 48, 58, 0.45))" : `url(#${idPrefix}-grid)`}
           stroke={tokens.envelopeStroke}
-          strokeWidth={tokens.envelopeStrokeWidth * 0.75}
+          strokeWidth={useStructureShell ? tokens.envelopeStrokeWidth : tokens.envelopeStrokeWidth * 0.75}
+          strokeDasharray={useStructureShell ? "none" : undefined}
         />
       </g>
 

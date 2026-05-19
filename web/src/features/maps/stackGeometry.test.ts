@@ -96,7 +96,9 @@ describe("stackGeometry", () => {
     expect(connectors).toHaveLength(2);
     expect(connectors[0]!.y2).toBeLessThan(connectors[0]!.y1);
     expect(layout.layouts[0]!.scale).toBeGreaterThan(0);
-    expect(layout.layouts[0]!.scaledW).toBe(58);
+    expect(layout.maxW).toBe(132);
+    const widest = Math.max(...layout.layouts.map((l) => l.scaledW));
+    expect(widest).toBeCloseTo(132, 0);
     expect(connectorLabel(vertical[0] as MapEdge, 0, 1)).toBe("STAIRS UP");
     expect(connectorLabel(vertical[1] as MapEdge, 0, -1)).toBe("LADDER DOWN");
   });

@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import type { Scene, SpatialGraph, World } from "../api/client";
+import { useCallback, useState, type ReactNode } from "react";
+import { api, type Scene, SpatialGraph, World } from "../api/client";
 import { ApprovalsBanner } from "../components/ApprovalsBanner";
 import { WorldMapOverlay } from "../components/WorldMapOverlay";
 import { SceneStage } from "../features/scene/SceneStage";
@@ -8,6 +8,7 @@ import { PersonaCompose } from "../features/compose/PersonaCompose";
 import { SpatialDrawer } from "../features/spatial/SpatialDrawer";
 import { SpatialPanel } from "../features/spatial/SpatialPanel";
 import type { ExitItem } from "../features/spatial/ExitList";
+import { areAdjacentScenes, reachableSceneIdsFromGraph } from "../features/maps/mapNavigation";
 import { PlacesRail } from "../features/rails/PlacesRail";
 import { ToolsRail } from "../features/rails/ToolsRail";
 import { TopBar } from "./TopBar";
@@ -32,6 +33,7 @@ type Props = {
   exits: ExitItem[];
   rosterAtLocation: RosterPerson[];
   mapOpen: boolean;
+  layoutDesignMode?: boolean;
   compose: {
     text: string;
     scope: string;
@@ -57,6 +59,7 @@ type Props = {
   onTravelExit: (targetSceneId: string) => void;
   onKnock: (targetSceneId: string) => void;
   onGraphRefresh?: () => void;
+  onWorldRefresh?: () => void | Promise<void>;
   toolsPhone: ReactNode;
   toolsDebate: ReactNode;
 };
@@ -73,6 +76,7 @@ export function SpatialShell({
   exits,
   rosterAtLocation,
   mapOpen,
+  layoutDesignMode = true,
   compose,
   signalToast,
   rightRail,
@@ -87,6 +91,7 @@ export function SpatialShell({
   onTravelExit,
   onKnock,
   onGraphRefresh,
+  onWorldRefresh,
   toolsPhone,
   toolsDebate,
 }: Props) {
@@ -94,8 +99,42 @@ export function SpatialShell({
   const [rightRailOpen, setRightRailOpen] = useState(true);
   const [highlightedExitId, setHighlightedExitId] = useState<string | null>(null);
 
+  const handleMinimapSelect = (sceneId: string) => {
+    if (!graph || sceneId === world.activeSceneId) return;
+    if (areAdjacentScenes(graph, world.activeSceneId, sceneId)) {
+      onTravelExit(sceneId);
+    } else {
+      onMapOpen();
+    }
+  };
+
+  const walkRouteTo = useCallback(
+    async (targetSceneId: string) => {
+      if (!graph || targetSceneId === world.activeSceneId) return;
+      let active = world.activeSceneId;
+      for (let hops = 0; hops < 20 && active !== targetSceneId; hops++) {
+        const result = await api.navigationTravel(world.worldId, {
+          toSceneId: targetSceneId,
+          fromSceneId: active,
+          mode: "step",
+        });
+        if (result.route?.steps?.[0]?.exitId) {
+          setHighlightedExitId(result.route.steps[0].exitId ?? null);
+        }
+        active = result.activeSceneId;
+        if (active === world.activeSceneId) break;
+        await onWorldRefresh?.();
+      }
+      setHighlightedExitId(null);
+    },
+    [graph, world, onSwitchScene, onWorldRefresh]
+  );
+
   return (
-    <div className="app-shell" data-testid="spatial-shell">
+    <div
+      className={`app-shell${mapOpen ? " app-shell--map-focus" : ""}`}
+      data-testid="spatial-shell"
+    >
       <TopBar
         worldName={world.name}
         worldPaused={worldPaused}
@@ -114,10 +153,12 @@ export function SpatialShell({
         <WorldMapOverlay
           graph={graph}
           worldId={world.worldId}
+          layoutDesignMode={layoutDesignMode}
           onClose={onMapClose}
           onEnhanceLayout={onEnhanceLayout}
           onSwitchScene={onSwitchScene}
           onTravel={onTravelExit}
+          onWalkRoute={walkRouteTo}
           onKnock={onKnock}
           highlightedExitId={highlightedExitId}
           onExitHover={setHighlightedExitId}
@@ -136,6 +177,7 @@ export function SpatialShell({
             onExitHover={setHighlightedExitId}
             onEnhanceLayout={onEnhanceLayout}
             onOpenFullMap={onMapOpen}
+            onMinimapSelect={handleMinimapSelect}
           />
         </aside>
         <main className="spatial-layout__center" data-testid="center-column">
@@ -156,7 +198,11 @@ export function SpatialShell({
         >
           <PlacesRail
             scenes={scenes}
+            graph={graph}
             activeSceneId={world.activeSceneId}
+            reachableSceneIds={
+              graph ? reachableSceneIdsFromGraph(graph, world.activeSceneId) : undefined
+            }
             onSelect={onSwitchScene}
           />
           {rightRail}
@@ -180,6 +226,7 @@ export function SpatialShell({
           onMapOpen();
         }}
         onOpenFullMap={onMapOpen}
+        onMinimapSelect={handleMinimapSelect}
       />
     </div>
   );

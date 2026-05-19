@@ -1,7 +1,8 @@
 import type { Scene, SpatialGraph } from "../../api/client";
 import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
-import { MiniMap } from "../../components/MiniMap";
+import { MiniMap3D } from "../map3d/MiniMap3D";
+import { compassFromActive } from "../maps/mapNavigation";
 import { parsePresent, sceneStructureHints, structureLabel, structureTint } from "../../lib/parse";
 
 type PresencePerson = {
@@ -39,6 +40,7 @@ export function SceneStage({
   const presentIds = parsePresent(scene.presentJson);
   const tintHue = structureTint(structureId ?? undefined);
   const structure = graph?.structures?.find((s) => s.structureId === structureId);
+  const compass = graph ? compassFromActive(graph) : null;
 
   return (
     <header
@@ -55,6 +57,11 @@ export function SceneStage({
           )}
           <div className="scene-stage__title-row">
             <h2 className="scene-stage__title">{scene.locationName}</h2>
+            {compass && (
+              <span className="scene-stage__compass" title="Nearest exit bearing">
+                {compass}
+              </span>
+            )}
             {onMapOpen && graph && (
               <button
                 type="button"
@@ -63,7 +70,7 @@ export function SceneStage({
                 aria-label="Open world map"
                 title="World map (M)"
               >
-                <MiniMap graph={graph} className="scene-stage__map-chip-inner" />
+                <MiniMap3D graph={graph} className="scene-stage__map-chip-inner" />
               </button>
             )}
             <Button

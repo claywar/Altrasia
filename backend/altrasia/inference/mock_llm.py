@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Any
+
+_MAP_FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "map-layouts"
 
 _tool_snapshots: list[list[str]] = []
 
@@ -31,6 +34,48 @@ async def mock_chat_completion(
             last_user = m.get("content", "")
             break
     lower = last_user.lower()
+    if "map layout assistant" in system_text.lower():
+        scope = "mini"
+        for line in last_user.splitlines():
+            if line.startswith("Scope:"):
+                scope = line.split(":", 1)[1].strip().lower() or "mini"
+        if scope == "unified":
+            scope = "site"
+        fixture = _MAP_FIXTURES / f"{scope}-valid.json"
+        if not fixture.is_file():
+            fixture = _MAP_FIXTURES / "mini-valid.json"
+        payload = json.loads(fixture.read_text(encoding="utf-8"))
+        payload["schemaVersion"] = 2
+        return {
+            "choices": [{"message": {"role": "assistant", "content": json.dumps(payload)}}]
+        }
+    if "world bootstrap assistant" in system_text.lower():
+        payload = {
+            "schemaVersion": 2,
+            "newScenes": [
+                {
+                    "tempId": "scene-garden",
+                    "locationName": "Garden",
+                    "locationDescription": "A walled garden off the hall.",
+                    "connectFromSceneId": None,
+                    "exitLabel": "Garden path",
+                }
+            ],
+            "layout": {
+                "schemaVersion": 2,
+                "scope": "mini",
+                "scenes": [
+                    {
+                        "sceneId": "scene-garden",
+                        "mapPosition": {"x": 70, "y": 60},
+                        "position3d": {"x": 0.4, "y": 0.2, "z": 0},
+                    }
+                ],
+            },
+        }
+        return {
+            "choices": [{"message": {"role": "assistant", "content": json.dumps(payload)}}]
+        }
     if "character authoring assistant" in system_text.lower():
         brief = last_user.strip() or "a mysterious stranger"
         payload = {

@@ -73,10 +73,10 @@ def validate_layout(
     errors: list[str] = []
     warnings: list[str] = []
 
-    if layout.get("schemaVersion") not in (1, "1", None):
-        errors.append("schemaVersion must be 1")
+    if layout.get("schemaVersion") not in (1, 2, "1", "2", None):
+        errors.append("schemaVersion must be 1 or 2")
     scope = layout.get("scope")
-    if scope not in ("mini", "site", "stack", "floor", None):
+    if scope not in ("mini", "site", "stack", "floor", "unified", None):
         errors.append(f"invalid scope: {scope}")
 
     scenes_db = {s["sceneId"]: s for s in store.list_scenes(world_id)}
@@ -133,6 +133,7 @@ def validate_layout(
             if sid and sid in structs_db and sid not in known:
                 warnings.append(f"scene {scene_id} structure {sid} has no site placement")
 
+    errors.extend(validate_json_schema(layout))
     base = {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
     inv = check_invariants(layout, store, world_id)
     merged_errors = errors + inv["errors"]
@@ -155,7 +156,27 @@ def strip_unknown_keys(layout: dict[str, Any]) -> dict[str, Any]:
         "scenes",
         "nodes",
         "edges",
+        "verticalEdges",
         "worldMap",
+        "referencePoints",
     }
     out = {k: v for k, v in layout.items() if k in allowed_top}
     return out
+
+
+def validate_json_schema(layout: dict[str, Any]) -> list[str]:
+    """Optional JSON Schema validation when jsonschema is installed."""
+    try:
+        import jsonschema
+    except ImportError:
+        return []
+    path = _schema_path()
+    if not path.exists():
+        return []
+    schema = json.loads(path.read_text(encoding="utf-8"))
+    instance = {k: v for k, v in layout.items() if v is not None}
+    try:
+        jsonschema.validate(instance=instance, schema=schema)
+        return []
+    except jsonschema.ValidationError as e:
+        return [str(e.message)]

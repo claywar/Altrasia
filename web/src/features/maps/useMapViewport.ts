@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { structureEnvelope } from "./layoutGeometry";
+import { nodeFootprint, structureEnvelope } from "./layoutGeometry";
 import type { MapNode } from "./types";
 import type { SpatialGraph } from "../../api/client";
 
@@ -27,6 +27,44 @@ export function useMapViewport(graph: SpatialGraph | null) {
     setZoom(1);
   }, []);
 
+  /** Fit entire site — all rooms and structure envelopes with generous padding. */
+  const fitSite = useCallback(() => {
+    if (!graph?.nodes.length) {
+      fitWorld();
+      return;
+    }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const n of graph.nodes) {
+      const fp = nodeFootprint(n as MapNode);
+      minX = Math.min(minX, fp.cx - fp.w / 2);
+      minY = Math.min(minY, fp.cy - fp.h / 2);
+      maxX = Math.max(maxX, fp.cx + fp.w / 2);
+      maxY = Math.max(maxY, fp.cy + fp.h / 2);
+    }
+    for (const st of graph.structures ?? []) {
+      const env = structureEnvelope(st.structureId, graph.nodes as MapNode[], st.boundary);
+      if (!env) continue;
+      minX = Math.min(minX, env.minX);
+      minY = Math.min(minY, env.minY);
+      maxX = Math.max(maxX, env.maxX);
+      maxY = Math.max(maxY, env.maxY);
+    }
+    if (!Number.isFinite(minX)) {
+      fitWorld();
+      return;
+    }
+    const w = Math.max(maxX - minX, 24);
+    const h = Math.max(maxY - minY, 24);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const scale = Math.min(VB / w, VB / h) * 0.72;
+    setZoom(scale);
+    setPan({ x: VB / 2 - cx * scale, y: VB / 2 - cy * scale });
+  }, [graph, fitWorld]);
+
   const fitStructure = useCallback(
     (structureId: string) => {
       if (!graph) return;
@@ -40,7 +78,7 @@ export function useMapViewport(graph: SpatialGraph | null) {
       const h = env.maxY - env.minY;
       const cx = (env.minX + env.maxX) / 2;
       const cy = (env.minY + env.maxY) / 2;
-      const scale = Math.min(VB / Math.max(w, 20), VB / Math.max(h, 20)) * 0.85;
+      const scale = Math.min(VB / Math.max(w, 20), VB / Math.max(h, 20)) * 0.48;
       setZoom(scale);
       setPan({ x: VB / 2 - cx * scale, y: VB / 2 - cy * scale });
     },
@@ -171,6 +209,7 @@ export function useMapViewport(graph: SpatialGraph | null) {
     viewportRect,
     zoomPercent: Math.round(zoom * 100),
     fitWorld,
+    fitSite,
     fitStructure,
     fitActiveStructure,
     fitScene,

@@ -8,6 +8,7 @@ type Props = {
   onEnhanceLayout?: () => void;
   onSwitchScene?: (sceneId: string) => void;
   onTravel?: (targetSceneId: string) => void;
+  onWalkRoute?: (targetSceneId: string) => void | Promise<void>;
   onKnock?: (targetSceneId: string) => void;
   highlightedExitId?: string | null;
   onExitHover?: (exitId: string | null) => void;

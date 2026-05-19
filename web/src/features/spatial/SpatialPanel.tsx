@@ -1,6 +1,6 @@
 import type { SpatialGraph } from "../../api/client";
 import { MapMiniMapChrome } from "../../components/MapMiniMapChrome";
-import { MiniMap } from "../../components/MiniMap";
+import { MiniMap3D } from "../map3d/MiniMap3D";
 import { MapPanelHeader } from "../maps/MapChrome";
 import { ExitList, type ExitItem } from "./ExitList";
 
@@ -13,6 +13,7 @@ type Props = {
   onExitHover: (exitId: string | null) => void;
   onEnhanceLayout?: () => void;
   onOpenFullMap?: () => void;
+  onMinimapSelect?: (sceneId: string) => void;
 };
 
 /** Mini-map + exits — used in the persistent left column and the mobile drawer. */
@@ -23,8 +24,8 @@ export function SpatialPanel({
   onTravel,
   onKnock,
   onExitHover,
-  onEnhanceLayout,
   onOpenFullMap,
+  onMinimapSelect,
 }: Props) {
   const activeNode = graph?.nodes.find((n) => n.isActive);
   const structure = graph?.structures?.find(
@@ -47,15 +48,15 @@ export function SpatialPanel({
       />
       {hasLayout ? (
         <>
-          <MiniMap graph={graph} highlightedExitId={highlightedExitId} enablePan viewFit="full" />
+          <MiniMap3D graph={graph} onSelect={onMinimapSelect} />
           <MapMiniMapChrome graph={graph} onOpenFullMap={onOpenFullMap} />
         </>
       ) : (
         <div className="minimap minimap--empty">
           <p>Layout incomplete</p>
-          {onEnhanceLayout && (
-            <button type="button" className="minimap-empty-cta" onClick={onEnhanceLayout}>
-              Enhance in Settings
+          {onOpenFullMap && (
+            <button type="button" className="minimap-empty-cta" onClick={onOpenFullMap}>
+              Open world map
             </button>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultViewModeForGraph,
   isVerticalEdge,
   levelsForStructure,
   personaOffSitePlan,
@@ -66,6 +67,23 @@ const graph: MapGraph = {
 };
 
 describe("floorLevels", () => {
+  it("defaultViewModeForGraph picks stack for multi-level building", () => {
+    expect(defaultViewModeForGraph(graph)).toBe("stack");
+  });
+
+  it("defaultViewModeForGraph picks site for outdoor-only active scene", () => {
+    const outdoor: MapGraph = {
+      ...graph,
+      activeSceneId: "yard",
+      nodes: [
+        { ...manorGround, isActive: false },
+        manorUpper,
+        { ...courtyard, isActive: true, structureId: undefined },
+      ],
+    };
+    expect(defaultViewModeForGraph(outdoor)).toBe("site");
+  });
+
   it("site view always shows ground floor only", () => {
     const upperActive: MapGraph = {
       ...graph,

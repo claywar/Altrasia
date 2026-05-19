@@ -143,10 +143,63 @@ export function viewModeDescription(
   }
 }
 
+const BLOCKED_DOORS = new Set(["locked", "sealed", "blocked"]);
+
+function isTraversable(edge: SpatialGraph["edges"][0]): boolean {
+  const state = (edge.doorState ?? "").toLowerCase();
+  return !BLOCKED_DOORS.has(state);
+}
+
+/** All scenes reachable from active via exit graph (BFS, bidirectional). */
+export function reachableSceneIdsFromGraph(
+  graph: SpatialGraph,
+  fromSceneId: string = graph.activeSceneId
+): Set<string> {
+  const adj = new Map<string, Set<string>>();
+  for (const e of graph.edges) {
+    if (!isTraversable(e)) continue;
+    if (!adj.has(e.sourceSceneId)) adj.set(e.sourceSceneId, new Set());
+    if (!adj.has(e.targetSceneId)) adj.set(e.targetSceneId, new Set());
+    adj.get(e.sourceSceneId)!.add(e.targetSceneId);
+    adj.get(e.targetSceneId)!.add(e.sourceSceneId);
+  }
+  const seen = new Set<string>();
+  const queue = [fromSceneId];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const nxt of adj.get(cur) ?? []) {
+      if (nxt !== fromSceneId && !seen.has(nxt)) {
+        seen.add(nxt);
+        queue.push(nxt);
+      }
+    }
+  }
+  return seen;
+}
+
+/** Direct neighbors only (1-hop). */
 export function reachableSceneIds(graph: SpatialGraph): Set<string> {
-  return new Set(
-    graph.edges
-      .filter((e) => e.sourceSceneId === graph.activeSceneId)
-      .map((e) => e.targetSceneId)
+  return reachableSceneIdsFromGraph(graph, graph.activeSceneId);
+}
+
+/** True when two scenes share a traversable exit edge. */
+export function areAdjacentScenes(
+  graph: SpatialGraph,
+  fromSceneId: string,
+  toSceneId: string
+): boolean {
+  if (fromSceneId === toSceneId) return false;
+  return graph.edges.some(
+    (e) =>
+      isTraversable(e) &&
+      ((e.sourceSceneId === fromSceneId && e.targetSceneId === toSceneId) ||
+        (e.sourceSceneId === toSceneId && e.targetSceneId === fromSceneId))
   );
+}
+
+/** Compass hint from the first outbound exit direction at the active scene. */
+export function compassFromActive(graph: SpatialGraph): string | null {
+  const edge = graph.edges.find((e) => e.sourceSceneId === graph.activeSceneId && e.direction);
+  if (!edge?.direction) return null;
+  return directionGlyph(edge.direction);
 }

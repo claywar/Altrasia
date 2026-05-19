@@ -148,6 +148,7 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
                 )
                 if k in sc
             }
+            map_art = sc.get("mapArtifact")
             store.insert_scene(
                 {
                     "sceneId": sc["sceneId"],
@@ -158,7 +159,7 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
                     "planPositionJson": json.dumps(sc["planPosition"])
                     if sc.get("planPosition")
                     else None,
-                    "mapArtifactJson": None,
+                    "mapArtifactJson": json.dumps(map_art) if map_art else None,
                     "locationName": sc["locationName"],
                     "locationDescription": sc.get("locationDescription", ""),
                     "presentJson": json.dumps(sc.get("present", [])),
@@ -172,6 +173,16 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
             )
             for key, val in sc.get("worldLoci", {}).items():
                 store.upsert_locus("world", sc["sceneId"], key, val, now)
+            if map_art:
+                from altrasia.map_artifacts import put_artifact
+
+                put_artifact(
+                    store,
+                    world_id=world_id,
+                    kind="floor",
+                    payload=map_art,
+                    scene_id=sc["sceneId"],
+                )
         presence = PresenceService(store)
         persona_scene = data.get("personaSceneId") or active_scene_id
         presence.join(persona_scene, PERSONA_ID)

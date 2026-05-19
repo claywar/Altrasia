@@ -43,7 +43,7 @@ At full maturity the operator can:
 | MAP-23 | Observer or location admin initiates regen; MAP-7 diff + operator ack before overwrite. |
 | MAP-24 | CI fixtures MUST include at least one LLM-produced layout JSON per surface: `mini`, `site`, `stack`. |
 
-**Note on “3D”:** Altrasia maps are **stacked floor plans + vertical connectivity**, not a game-engine free-camera 3D world. Optional **axonometric preview** (MAP-13) is schematic—operator-console clarity, not walkable geometry.
+**Note on “3D”:** The **primary play map** is a **WebGL explorer** (orbit, room volumes, route highlight). Layout data uses `position3d` (schema v2) derived from plan positions and `mapLevel`. The **Diagram** view (SVG MapConsole) remains for authoring and export. This is operator-console navigation—not a walkable game-engine avatar.
 
 ## 3. Shared rules
 

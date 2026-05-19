@@ -119,6 +119,26 @@
         "chandelier": { "label": "Brass chandelier", "kind": "fixture" },
         "hearth": { "label": "Stone hearth", "kind": "fixture" }
       },
+      "mapArtifact": {
+        "schemaVersion": 1,
+        "walls": [
+          { "x1": 8, "y1": 92, "x2": 42, "y2": 92 },
+          { "x1": 58, "y1": 92, "x2": 92, "y2": 92 },
+          { "x1": 8, "y1": 8, "x2": 8, "y2": 92 },
+          { "x1": 92, "y1": 8, "x2": 92, "y2": 38 },
+          { "x1": 92, "y1": 58, "x2": 92, "y2": 92 },
+          { "x1": 8, "y1": 8, "x2": 92, "y2": 8 }
+        ],
+        "fixtures": [
+          { "id": "hearth", "x": 72, "y": 28, "label": "Hearth" },
+          { "id": "chandelier", "x": 50, "y": 55, "label": "Chandelier" }
+        ],
+        "exits": [
+          { "exitId": "hall-kitchen-door", "x": 50, "y": 92, "targetSceneId": "scene-kitchen", "label": "Kitchen" },
+          { "exitId": "hall-bailey-path", "x": 50, "y": 8, "targetSceneId": "scene-courtyard", "label": "Bailey" },
+          { "exitId": "hall-keep-gate", "x": 92, "y": 48, "targetSceneId": "scene-keep-yard", "label": "Keep" }
+        ]
+      },
       "exits": [
         {
           "exitId": "hall-kitchen-door",
@@ -191,6 +211,24 @@
       "fixtures": {
         "kettle": { "label": "Iron kettle", "kind": "fixture" },
         "oven": { "label": "Bread oven", "kind": "fixture" }
+      },
+      "mapArtifact": {
+        "schemaVersion": 1,
+        "walls": [
+          { "x1": 10, "y1": 10, "x2": 90, "y2": 10 },
+          { "x1": 10, "y1": 10, "x2": 10, "y2": 90 },
+          { "x1": 90, "y1": 10, "x2": 90, "y2": 90 },
+          { "x1": 42, "y1": 90, "x2": 90, "y2": 90 },
+          { "x1": 10, "y1": 90, "x2": 38, "y2": 90 }
+        ],
+        "fixtures": [
+          { "id": "oven", "x": 75, "y": 35, "label": "Oven" },
+          { "id": "kettle", "x": 30, "y": 50, "label": "Kettle" }
+        ],
+        "exits": [
+          { "exitId": "kitchen-hall-door", "x": 40, "y": 90, "targetSceneId": "scene-hall", "label": "Hall" },
+          { "exitId": "kitchen-pantry", "x": 10, "y": 50, "targetSceneId": "scene-pantry", "label": "Pantry" }
+        ]
       },
       "exits": [
         {

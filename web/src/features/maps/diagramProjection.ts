@@ -78,6 +78,61 @@ export function boundsFromProjectedFootprints(
   };
 }
 
+type StructureBoundary = {
+  shape?: string;
+  vertices?: Point[];
+  cx?: number;
+  cy?: number;
+  r?: number;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+};
+
+/** Building shell for stack plates — same footprint on every floor. */
+export function structureIsoFloorPath(
+  boundary: StructureBoundary | undefined,
+  origin: Point
+): string | null {
+  if (!boundary) return null;
+  if (boundary.vertices && boundary.vertices.length >= 3) {
+    return isoPointsToPath(boundary.vertices.map((v) => planToIso(v.x, v.y, origin)));
+  }
+  if (boundary.cx != null && boundary.cy != null && boundary.r != null) {
+    const pts: Point[] = [];
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      pts.push(
+        planToIso(
+          boundary.cx + Math.cos(a) * boundary.r,
+          boundary.cy + Math.sin(a) * boundary.r,
+          origin
+        )
+      );
+    }
+    return isoPointsToPath(pts);
+  }
+  if (
+    boundary.x != null &&
+    boundary.y != null &&
+    boundary.w != null &&
+    boundary.h != null
+  ) {
+    const x0 = boundary.x;
+    const y0 = boundary.y;
+    const x1 = x0 + boundary.w;
+    const y1 = y0 + boundary.h;
+    return isoPointsToPath([
+      planToIso(x0, y0, origin),
+      planToIso(x1, y0, origin),
+      planToIso(x1, y1, origin),
+      planToIso(x0, y1, origin),
+    ]);
+  }
+  return null;
+}
+
 export function plateOriginFromNodes(nodes: { layout?: Point }[]): Point {
   if (nodes.length === 0) return { x: 50, y: 50 };
   let sx = 0;

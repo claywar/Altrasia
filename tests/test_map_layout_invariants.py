@@ -48,6 +48,25 @@ def test_mini_valid_fixture(tmp_path: Path) -> None:
     assert result["valid"], result["errors"]
 
 
+def test_overlap_same_floor_fails(tmp_path: Path) -> None:
+    store = SqlitePersistence(tmp_path / "overlap.db")
+    store.migrate()
+    load_fixture_by_id(store, WORLD_FIXTURES, "demo-spatial-v1")
+    layout = _load_layout("mini-valid.json")
+    scenes = layout.get("scenes") or layout.get("nodes") or []
+    if len(scenes) < 2:
+        pytest.skip("need scenes")
+    a, b = scenes[0], scenes[1]
+    pos = a.get("layout") or a.get("mapPosition") or {"x": 50, "y": 50}
+    b["layout"] = {"x": pos.get("x", 50), "y": pos.get("y", 50)}
+    b["structureId"] = a.get("structureId")
+    b["mapLevel"] = a.get("mapLevel", a.get("levelIndex", 0))
+    b["levelIndex"] = a.get("levelIndex", a.get("mapLevel", 0))
+    inv = check_invariants(layout, store, "demo-spatial-v1")
+    assert not inv["valid"]
+    assert any("overlap" in e for e in inv["errors"])
+
+
 def test_stack_same_level_vertical_edge_fails(tmp_path: Path) -> None:
     store = SqlitePersistence(tmp_path / "inv4.db")
     store.migrate()

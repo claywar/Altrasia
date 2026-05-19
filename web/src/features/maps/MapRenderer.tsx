@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from "react";
-import type { SpatialGraph } from "../../api/client";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { SceneMapArtifact, SpatialGraph } from "../../api/client";
+import { MapArtifactLayer } from "./MapArtifactLayer";
 import { MapCompass, MapScaleBar } from "./MapChrome";
 import { computeViewBox, filterGraphForView, type ViewFitMode } from "./computeViewBox";
 import { computeCorridors } from "./corridorGeometry";
@@ -48,10 +49,13 @@ export type MapRendererProps = {
   selectedSceneId?: string | null;
   selectedExitId?: string | null;
   onNodeSelect?: (sceneId: string) => void;
+  onNodePositionChange?: (sceneId: string, mapPosition: { x: number; y: number }) => void;
   onEdgeSelect?: (exitId: string) => void;
   onEdgeHover?: (exitId: string | null) => void;
   onStructureSelect?: (structureId: string) => void;
   worldMap?: SpatialGraph["worldMap"];
+  sceneArtifacts?: Record<string, SceneMapArtifact>;
+  onArtifactTravel?: (targetSceneId: string) => void;
 };
 
 function toMapGraph(graph: SpatialGraph): MapGraph {
@@ -80,17 +84,43 @@ export function MapRenderer({
   selectedSceneId = null,
   selectedExitId = null,
   onNodeSelect,
+  onNodePositionChange,
   onEdgeSelect,
   onEdgeHover,
   onStructureSelect,
   worldMap,
+  sceneArtifacts,
+  onArtifactTravel,
 }: MapRendererProps) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragNode, setDragNode] = useState<{
+    sceneId: string;
+    startClient: { x: number; y: number };
+    origin: { x: number; y: number };
+  } | null>(null);
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const mg = useMemo(() => (graph ? filterGraphForView(toMapGraph(graph), viewFit) : null), [graph, viewFit]);
   const viewBox = useMemo(() => (mg ? computeViewBox(mg, viewFit) : { x: 0, y: 0, w: 100, h: 100 }), [mg, viewFit]);
+
+  useEffect(() => {
+    if (!dragNode || !onNodePositionChange) return;
+    const onUp = (e: PointerEvent) => {
+      const el = containerRef.current?.querySelector("svg");
+      const rect = el?.getBoundingClientRect();
+      const scaleX = rect ? viewBox.w / rect.width : 0.15;
+      const scaleY = rect ? viewBox.h / rect.height : 0.15;
+      const dx = (e.clientX - dragNode.startClient.x) * scaleX;
+      const dy = (e.clientY - dragNode.startClient.y) * scaleY;
+      const x = Math.max(0, Math.min(100, dragNode.origin.x + dx));
+      const y = Math.max(0, Math.min(100, dragNode.origin.y + dy));
+      onNodePositionChange(dragNode.sceneId, { x, y });
+      setDragNode(null);
+    };
+    window.addEventListener("pointerup", onUp);
+    return () => window.removeEventListener("pointerup", onUp);
+  }, [dragNode, onNodePositionChange, viewBox.h, viewBox.w]);
 
   const archStyle = styleProp ?? resolveArchitectureStyle(graph);
   const activeStructId = graph?.nodes.find((n) => n.isActive)?.structureId;
@@ -263,6 +293,22 @@ export function MapRenderer({
           {corridors.map((c) => (
             <CorridorShape key={c.id} x={c.x} y={c.y} w={c.w} h={c.h} tokens={tokens} />
           ))}
+
+          {/* 2b. Per-scene floor plans (mapArtifact) */}
+          {sceneArtifacts &&
+            nodes.map((n) => {
+              const art = sceneArtifacts[n.sceneId];
+              if (!art) return null;
+              const fp = nodeFootprint(n);
+              return (
+                <g
+                  key={`artifact-${n.sceneId}`}
+                  transform={`translate(${fp.cx - fp.w / 2} ${fp.cy - fp.h / 2}) scale(${fp.w / 100} ${fp.h / 100})`}
+                >
+                  <MapArtifactLayer artifact={art} onTravel={onArtifactTravel} />
+                </g>
+              );
+            })}
 
           {/* 3. Edges */}
           {showEdges &&
@@ -545,6 +591,20 @@ export function MapRenderer({
                     ? (ev) => {
                         ev.stopPropagation();
                         onNodeSelect(n.sceneId);
+                      }
+                    : undefined
+                }
+                onPointerDown={
+                  interactive && onNodePositionChange && selected
+                    ? (ev) => {
+                        ev.stopPropagation();
+                        const lx = n.layout?.x ?? 50;
+                        const ly = n.layout?.y ?? 50;
+                        setDragNode({
+                          sceneId: n.sceneId,
+                          startClient: { x: ev.clientX, y: ev.clientY },
+                          origin: { x: lx, y: ly },
+                        });
                       }
                     : undefined
                 }

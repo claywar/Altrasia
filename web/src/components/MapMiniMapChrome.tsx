@@ -14,7 +14,7 @@ export function MapMiniMapChrome({ graph, onOpenFullMap }: Props) {
   return (
     <div className="map-minimap-chrome">
       <p className="map-minimap-chrome__label">
-        Site · ground floor
+        World map preview
         {caps.hasMultipleFloors && (
           <span className="map-minimap-chrome__floors"> · {caps.floorCount} floors</span>
         )}
@@ -26,7 +26,7 @@ export function MapMiniMapChrome({ graph, onOpenFullMap }: Props) {
       )}
       {onOpenFullMap && (
         <button type="button" className="map-minimap-chrome__open" onClick={onOpenFullMap}>
-          Open map — Floor / Stack views
+          Open world map
         </button>
       )}
     </div>

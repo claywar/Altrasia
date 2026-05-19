@@ -4,12 +4,7 @@ from typing import Any
 
 import httpx
 
-
-def _normalize_base_url(base_url: str) -> str:
-    url = base_url.strip().rstrip("/")
-    if url.endswith("/v1"):
-        return url
-    return url + "/v1"
+from altrasia.inference.openai_compat import models_url
 
 
 async def list_openai_models(base_url: str | None) -> dict[str, Any]:
@@ -21,7 +16,7 @@ async def list_openai_models(base_url: str | None) -> dict[str, Any]:
             "error": "No base URL configured",
             "routerMode": False,
         }
-    url = _normalize_base_url(str(base_url)) + "/models"
+    url = models_url(str(base_url))
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(url)

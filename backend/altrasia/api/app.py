@@ -17,6 +17,12 @@ from pydantic import BaseModel, Field
 from altrasia.api.deps import get_services, verify_auth
 from altrasia.config import Settings, get_settings
 from altrasia.domain.presence import PERSONA_ID, PresenceService
+from altrasia.domain.navigation import (
+    execute_travel,
+    navigation_summary,
+    plan_route,
+    reachable_from,
+)
 from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.perception.scope import can_perceive
 from altrasia.fixtures.loader import load_fixture_by_id
@@ -181,6 +187,26 @@ class CreateCommissionBody(BaseModel):
 class LayoutDraftCreateBody(BaseModel):
     brief: str
     scope: str = "mini"
+
+
+class UnifiedLayoutDraftBody(BaseModel):
+    brief: str
+
+
+class LayoutPatchBody(BaseModel):
+    nodes: list[dict] | None = None
+    edges: list[dict] | None = None
+
+
+class WorldBootstrapCreateBody(BaseModel):
+    description: str
+    connectFromSceneId: str | None = None
+
+
+class NavigationTravelBody(BaseModel):
+    toSceneId: str
+    fromSceneId: str | None = None
+    mode: str = "route"  # route | step | jump
 
 
 class DebateStartBody(BaseModel):
@@ -917,6 +943,46 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def spatial_graph(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
         return build_spatial_graph(svc.store, world_id)
 
+    @app.get("/api/v1/worlds/{world_id}/navigation/summary", dependencies=[Depends(verify_auth)])
+    def navigation_summary_route(
+        world_id: str,
+        fromSceneId: str | None = None,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        try:
+            return navigation_summary(svc.store, world_id, fromSceneId)
+        except ValueError as e:
+            raise HTTPException(404, str(e)) from e
+
+    @app.get("/api/v1/worlds/{world_id}/navigation/route", dependencies=[Depends(verify_auth)])
+    def navigation_route(
+        world_id: str,
+        fromSceneId: str,
+        toSceneId: str,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        graph = build_spatial_graph(svc.store, world_id)
+        return plan_route(graph, fromSceneId, toSceneId)
+
+    @app.post("/api/v1/worlds/{world_id}/navigation/travel", dependencies=[Depends(verify_auth)])
+    def navigation_travel(
+        world_id: str,
+        body: NavigationTravelBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        try:
+            result = execute_travel(
+                svc.store,
+                world_id,
+                from_scene_id=body.fromSceneId,
+                to_scene_id=body.toSceneId,
+                mode=body.mode,
+            )
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        _emit(svc, world_id, "scene.changed", {"activeSceneId": result["activeSceneId"]})
+        return result
+
     @app.get("/api/v1/worlds/{world_id}/map-artifacts/site", dependencies=[Depends(verify_auth)])
     def map_site_artifact(world_id: str, svc: AppServices = Depends(get_services)) -> dict:
         from altrasia.map_artifacts import get_world_site_artifact
@@ -1233,6 +1299,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(400, str(exc)) from exc
 
     @app.post(
+        "/api/v1/worlds/{world_id}/layout-bootstrap-drafts",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_world_bootstrap_draft(
+        world_id: str,
+        body: WorldBootstrapCreateBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.map_world_bootstrap import create_world_bootstrap_draft
+
+        if not body.description.strip():
+            raise HTTPException(400, "description is required")
+        try:
+            return await create_world_bootstrap_draft(
+                svc,
+                world_id,
+                body.description.strip(),
+                connect_from_scene_id=body.connectFromSceneId,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(500, str(exc)) from exc
+
+    @app.post(
         "/api/v1/worlds/{world_id}/layout-drafts",
         dependencies=[Depends(verify_auth)],
     )
@@ -1251,6 +1342,50 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(400, str(exc)) from exc
         except Exception as exc:
             raise HTTPException(500, str(exc)) from exc
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/layout-drafts/unified",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_unified_layout_draft(
+        world_id: str,
+        body: UnifiedLayoutDraftBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.map_authoring import create_unified_layout_draft
+
+        if not body.brief.strip():
+            raise HTTPException(400, "brief is required")
+        try:
+            return await create_unified_layout_draft(svc, world_id, body.brief.strip())
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(500, str(exc)) from exc
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/layout-patch",
+        dependencies=[Depends(verify_auth)],
+    )
+    def post_layout_patch(
+        world_id: str,
+        body: LayoutPatchBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.map_authoring import patch_layout_safe
+
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        patch: dict = {}
+        if body.nodes:
+            patch["nodes"] = body.nodes
+        if body.edges:
+            patch["edges"] = body.edges
+        if not patch:
+            raise HTTPException(400, "nodes or edges required")
+        result = patch_layout_safe(svc, world_id, patch)
+        build_spatial_graph(svc.store, world_id)
+        return result
 
     @app.get(
         "/api/v1/worlds/{world_id}/layout-drafts/{draft_id}",

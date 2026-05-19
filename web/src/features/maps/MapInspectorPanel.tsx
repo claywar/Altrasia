@@ -1,4 +1,5 @@
-import type { SpatialGraph } from "../../api/client";
+import { useEffect, useState } from "react";
+import { api, type NavigationRoute, type SpatialGraph } from "../../api/client";
 import { Button } from "../../ui/Button";
 import { destinationsFromActive, directionGlyph } from "./mapNavigation";
 
@@ -10,10 +11,12 @@ export type MapSelection =
 
 type Props = {
   graph: SpatialGraph | null;
+  worldId?: string;
   selection: MapSelection;
   activeSceneId: string;
   onSwitchScene?: (sceneId: string) => void;
   onTravel?: (targetSceneId: string) => void;
+  onWalkRoute?: (targetSceneId: string) => void | Promise<void>;
   onKnock?: (targetSceneId: string) => void;
   onFitStructure?: (structureId: string) => void;
   onFitScene?: (sceneId: string) => void;
@@ -125,12 +128,102 @@ function NavigateHome({
   );
 }
 
+function SceneRouteActions({
+  worldId,
+  targetSceneId,
+  activeSceneId,
+  onTravel,
+  onWalkRoute,
+  onSwitchScene,
+}: {
+  worldId: string;
+  targetSceneId: string;
+  activeSceneId: string;
+  onTravel?: (id: string) => void;
+  onWalkRoute?: (id: string) => void | Promise<void>;
+  onSwitchScene?: (id: string) => void;
+}) {
+  const [route, setRoute] = useState<NavigationRoute | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (targetSceneId === activeSceneId) {
+      setRoute(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    api
+      .navigationRoute(worldId, activeSceneId, targetSceneId)
+      .then((r) => {
+        if (!cancelled) setRoute(r);
+      })
+      .catch(() => {
+        if (!cancelled) setRoute(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [worldId, activeSceneId, targetSceneId]);
+
+  const go = onTravel ?? onSwitchScene;
+  if (!go) return null;
+
+  if (loading) {
+    return <p className="map-console-inspector__meta">Planning route…</p>;
+  }
+  if (route && !route.reachable) {
+    return <p className="map-console-inspector__warn">No path via exits.</p>;
+  }
+  if (route?.reachable && route.steps.length > 0) {
+    return (
+      <>
+        <div className="map-console-inspector__route">
+          <span className="map-console-inspector__label">Route</span>
+          <ol>
+            {route.steps.map((s, i) => (
+              <li key={s.exitId ?? i}>
+                {s.label ?? s.toSceneId}
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="map-console-inspector__actions-row">
+          {route.steps.length > 1 && onWalkRoute && (
+            <Button variant="primary" size="sm" onClick={() => onWalkRoute(targetSceneId)}>
+              Walk route
+            </Button>
+          )}
+          <Button
+            variant={route.steps.length > 1 ? "ghost" : "primary"}
+            size="sm"
+            onClick={() => go(targetSceneId)}
+          >
+            {route.steps.length > 1 ? "Go now" : "Go"}
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <Button variant="primary" size="sm" onClick={() => go(targetSceneId)}>
+      Go
+    </Button>
+  );
+}
+
 export function MapInspectorPanel({
   graph,
+  worldId,
   selection,
   activeSceneId,
   onSwitchScene,
   onTravel,
+  onWalkRoute,
   onKnock,
   onFitStructure,
   onFitScene,
@@ -205,6 +298,18 @@ export function MapInspectorPanel({
                   Knock instead
                 </Button>
               )}
+            </>
+          ) : worldId && (onTravel || onSwitchScene) ? (
+            <>
+              <p className="map-console-inspector__lead">Move your persona here?</p>
+              <SceneRouteActions
+                worldId={worldId}
+                targetSceneId={node.sceneId}
+                activeSceneId={activeSceneId}
+                onTravel={onTravel}
+                onWalkRoute={onWalkRoute}
+                onSwitchScene={onSwitchScene}
+              />
             </>
           ) : onSwitchScene ? (
             <>
