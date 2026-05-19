@@ -61,6 +61,32 @@ def prior_operator_message(
     return None
 
 
+def pending_directed_followup_for_reply(
+    store: Any,
+    world_id: str,
+    scene_id: str,
+    current_message_id: str,
+) -> tuple[AddressingResult, str] | None:
+    """Prior operator line was directed and not all named addressees have spoken."""
+    prior = prior_operator_message(
+        store, world_id, scene_id, before_message_id=current_message_id
+    )
+    if not prior:
+        return None
+    prior_id = prior.get("messageId")
+    if not prior_id:
+        return None
+    addressing = addressing_from_message_row(prior)
+    if not addressing or addressing.mode != "directed":
+        return None
+    ids = addressee_ids_for(addressing)
+    spoke = cast_spoke_on_trigger(store, world_id, scene_id, prior_id)
+    missing = [cid for cid in ids if cid not in spoke]
+    if not missing and not addressing.unresolved_name_tokens:
+        return None
+    return addressing, prior_id
+
+
 def pending_clarification_for_reply(
     store: Any,
     world_id: str,

@@ -55,6 +55,7 @@ CHARACTERS = [
         "reports to no one",
         ["leadership", "architecture"],
         0.68,
+        aliases=["Jordie"],
     ),
     ch(
         "char-sofia-mendez",
@@ -143,6 +144,7 @@ CHARACTERS = [
         "UX Designer",
         "reports to Sofia Mendez",
         ["ux", "design"],
+        aliases=["LenLen"],
     ),
     ch(
         "char-andre-silva",
@@ -155,7 +157,7 @@ CHARACTERS = [
         "UX Designer",
         "reports to Sofia Mendez",
         ["ux", "design"],
-        aliases=["Andy"],
+        aliases=["Andy", "Andie"],
     ),
     ch(
         "char-hannah-brooks",

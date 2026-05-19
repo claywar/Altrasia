@@ -24,6 +24,8 @@ def single_speaker_system_addendum(
     directed_witness: bool = False,
     directed_co_addressees: list[str] | None = None,
     clarification_names: list[str] | None = None,
+    absent_scene_names: list[str] | None = None,
+    operator_nicknames: list[str] | None = None,
 ) -> str:
     others = [n for n in other_names if n and n.strip() and n.strip() != display_name]
     lines = [
@@ -47,7 +49,21 @@ def single_speaker_system_addendum(
             f"The operator asked {directed_addressee_name} directly; only speak if you have "
             "essential information they cannot provide."
         )
-    if clarification_names:
+    if operator_nicknames:
+        nicks = ", ".join(operator_nicknames[:6])
+        lines.append(
+            f"The operator may call you {nicks}. When addressed that way, respond "
+            f"in character as {display_name}; accept the nickname and do not claim "
+            "that name refers to someone else in the room."
+        )
+    if absent_scene_names:
+        names = ", ".join(absent_scene_names[:6])
+        lines.append(
+            f"The operator asked for {names}, who is not present in this room. "
+            "Say briefly that they are not here and who is present if helpful; "
+            "do not answer the substantive question as if you were them."
+        )
+    elif clarification_names:
         names = ", ".join(clarification_names[:6])
         lines.append(
             f"The operator's message could refer to {names}. Ask briefly who they meant; "

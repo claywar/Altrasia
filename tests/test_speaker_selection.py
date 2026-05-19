@@ -12,6 +12,7 @@ from altrasia.api.app import create_app
 from altrasia.config import Settings
 from altrasia.orchestrator.speaker_selection import (
     parse_addressing,
+    pick_directed_witness,
     score_speakers,
     speak_readiness_score,
 )
@@ -177,6 +178,40 @@ def test_parse_addressing_fuzzy_lean_to_lena(svc: AppServices) -> None:
     assert result.match_reason == "fuzzy"
 
 
+def test_parse_addressing_jordie_alias_to_jordan(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    cast = ["char-jordan-reyes", "char-sofia-mendez"]
+    result = parse_addressing("Jordie, what is your role?", cast, chars)
+    assert result.mode == "directed"
+    assert result.primary_id == "char-jordan-reyes"
+    assert result.match_reason == "exact"
+
+
+def test_pick_directed_witness_skips_unmentioned(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    cast = ["char-jordan-reyes", "char-sofia-mendez"]
+    witness = pick_directed_witness(
+        svc,
+        world_id=world_id,
+        scene_id="scene-lobby",
+        trigger_text="Jordie, what is your role?",
+        primary_id="char-jordan-reyes",
+        eligible=cast,
+        exclude_ids={"char-jordan-reyes"},
+        trigger_message_id=None,
+        relevance_min=0.55,
+        require_mention=True,
+    )
+    assert witness is None
+
+
 def test_parse_addressing_alias_andy_to_andre(svc: AppServices) -> None:
     world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
     if not world:
@@ -188,6 +223,100 @@ def test_parse_addressing_alias_andy_to_andre(svc: AppServices) -> None:
     assert result.mode == "directed"
     assert result.primary_id == "char-andre-silva"
     assert result.match_reason == "exact"
+
+
+def test_parse_addressing_andie_lenlen_multi() -> None:
+    import json
+    from pathlib import Path
+
+    data = json.loads(
+        Path(__file__).resolve().parent.joinpath("fixtures/demo-world/demo-spatial-v1.json").read_text()
+    )
+    cast = [
+        "char-sofia-mendez",
+        "char-priya-nair",
+        "char-marco-delgado",
+        "char-lena-cho",
+        "char-andre-silva",
+    ]
+    chars = {c["characterId"]: c for c in data["characters"]}
+    result = parse_addressing(
+        "Andie, LenLen, what are your roles here?",
+        cast,
+        chars,
+    )
+    assert result.mode == "directed"
+    assert result.addressee_ids == ["char-andre-silva", "char-lena-cho"]
+    assert result.match_reason == "multi_name"
+
+
+def test_parse_addressing_lenlen_followup() -> None:
+    import json
+    from pathlib import Path
+
+    data = json.loads(
+        Path(__file__).resolve().parent.joinpath("fixtures/demo-world/demo-spatial-v1.json").read_text()
+    )
+    cast = ["char-lena-cho", "char-andre-silva", "char-sofia-mendez"]
+    chars = {c["characterId"]: c for c in data["characters"]}
+    result = parse_addressing("LenLen?", cast, chars)
+    assert result.mode == "directed"
+    assert result.primary_id == "char-lena-cho"
+
+
+def test_parse_addressing_partial_multi_present_only() -> None:
+    import json
+    from pathlib import Path
+
+    data = json.loads(
+        Path(__file__).resolve().parent.joinpath("fixtures/demo-world/demo-spatial-v1.json").read_text()
+    )
+    cast = [
+        "char-liam-park",
+        "char-rachel-kim",
+        "char-tom-bradley",
+        "char-nina-patel",
+        "char-chris-doyle",
+    ]
+    chars = {c["characterId"]: c for c in data["characters"]}
+    result = parse_addressing(
+        "Lili, Rach, what do you do here?",
+        cast,
+        chars,
+        fuzzy_enabled=True,
+        fuzzy_max_distance=2,
+    )
+    assert result.mode == "directed"
+    assert result.addressee_ids == ["char-rachel-kim"]
+    assert result.match_reason == "exact"
+
+
+def test_parse_addressing_absent_name_not_open() -> None:
+    import json
+    from pathlib import Path
+
+    data = json.loads(
+        Path(__file__).resolve().parent.joinpath("fixtures/demo-world/demo-spatial-v1.json").read_text()
+    )
+    cast = [
+        "char-liam-park",
+        "char-rachel-kim",
+        "char-tom-bradley",
+        "char-nina-patel",
+        "char-chris-doyle",
+    ]
+    chars = {c["characterId"]: c for c in data["characters"]}
+    result = parse_addressing(
+        "Lili, what is your role?",
+        cast,
+        chars,
+        fuzzy_enabled=True,
+        fuzzy_max_distance=2,
+    )
+    assert result.mode == "clarification"
+    assert result.match_reason == "not_in_scene"
+    assert result.absent_names == ["Lili"]
+    assert result.clarifier_id in cast
 
 
 def test_parse_addressing_marco_and_lena(svc: AppServices) -> None:

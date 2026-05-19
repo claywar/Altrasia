@@ -19,6 +19,7 @@ AddressingMode = Literal["directed", "ensemble", "open", "clarification"]
 AddressingConfidence = Literal["high", "medium", "low"]
 
 _VOCATIVE_START = re.compile(r"^@?([A-Za-z][\w'-]*)[,:]?\s", re.I)
+_LONE_NAME = re.compile(r"^@?([A-Za-z][\w'-]{2,})\s*[?!.]?\s*$", re.I)
 _NAME_JOIN = re.compile(r"\s+(?:and|&)\s+", re.I)
 _MULTI_HEAD = re.compile(
     r"^(.+?)(?:,\s*|\s+)"
@@ -43,6 +44,8 @@ class AddressingResult:
     match_reason: str = ""
     candidate_ids: list[str] = field(default_factory=list)
     clarifier_id: str | None = None
+    absent_names: list[str] = field(default_factory=list)
+    unresolved_name_tokens: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -73,15 +76,18 @@ def _last_name(display: str) -> str:
 
 
 def _character_aliases(ch_row: dict) -> list[str]:
-    raw_def = ch_row.get("definitionJson")
     defn: dict[str, Any] = {}
+    raw_def = ch_row.get("definitionJson")
     if isinstance(raw_def, str) and raw_def.strip():
         try:
             defn = json.loads(raw_def)
         except json.JSONDecodeError:
             defn = {}
     elif isinstance(raw_def, dict):
-        defn = raw_def
+        defn = dict(raw_def)
+    fixture_def = ch_row.get("definition")
+    if isinstance(fixture_def, dict):
+        defn = {**defn, **fixture_def}
     inner = defn.get("definition")
     if isinstance(inner, dict):
         defn = {**defn, **inner}
@@ -89,6 +95,17 @@ def _character_aliases(ch_row: dict) -> list[str]:
     if not isinstance(aliases, list):
         return []
     return [str(a).strip().lower() for a in aliases if a and str(a).strip()]
+
+
+def _all_aliases(
+    ch_row: dict | None,
+    character_id: str,
+    operator_alias_map: dict[str, list[str]] | None,
+) -> list[str]:
+    names = _character_aliases(ch_row) if ch_row else []
+    if operator_alias_map:
+        names = names + list(operator_alias_map.get(character_id, []))
+    return names
 
 
 def _levenshtein(a: str, b: str) -> int:
@@ -133,6 +150,8 @@ def addressing_to_dict(result: AddressingResult) -> dict[str, Any]:
         "matchReason": result.match_reason,
         "candidateIds": list(result.candidate_ids),
         "clarifierId": result.clarifier_id,
+        "absentNames": list(result.absent_names),
+        "unresolvedNameTokens": list(result.unresolved_name_tokens),
     }
 
 
@@ -167,11 +186,23 @@ def addressing_from_dict(data: dict[str, Any] | None) -> AddressingResult | None
         match_reason=str(data.get("matchReason") or ""),
         candidate_ids=[str(c) for c in raw_candidates if c],
         clarifier_id=str(data["clarifierId"]) if data.get("clarifierId") else None,
+        absent_names=[
+            str(n) for n in (data.get("absentNames") or []) if n and str(n).strip()
+        ],
+        unresolved_name_tokens=[
+            str(n)
+            for n in (data.get("unresolvedNameTokens") or [])
+            if n and str(n).strip()
+        ],
     )
 
 
 def _token_matches_character(
-    token: str, character_id: str, display: str, ch_row: dict | None = None
+    token: str,
+    character_id: str,
+    display: str,
+    ch_row: dict | None = None,
+    operator_alias_map: dict[str, list[str]] | None = None,
 ) -> bool:
     t = token.lower().strip()
     if not t:
@@ -187,19 +218,24 @@ def _token_matches_character(
         return True
     if display_lower and t in display_lower.split():
         return True
-    if ch_row and t in _character_aliases(ch_row):
+    if ch_row and t in _all_aliases(ch_row, character_id, operator_alias_map):
         return True
     return False
 
 
 def _candidates_for_token_exact(
-    token: str, cast: list[str], chars: dict[str, dict]
+    token: str,
+    cast: list[str],
+    chars: dict[str, dict],
+    operator_alias_map: dict[str, list[str]] | None = None,
 ) -> list[str]:
     matches: list[str] = []
     for cid in cast:
         ch_row = chars.get(cid, {})
         display = ch_row.get("displayName", "")
-        if display and _token_matches_character(token, cid, display, ch_row):
+        if display and _token_matches_character(
+            token, cid, display, ch_row, operator_alias_map
+        ):
             matches.append(cid)
     return matches
 
@@ -226,6 +262,7 @@ def _fuzzy_ranked_candidates(
     chars: dict[str, dict],
     *,
     max_distance: int,
+    operator_alias_map: dict[str, list[str]] | None = None,
 ) -> list[tuple[str, int]]:
     t = token.lower().strip()
     if len(t) < 4:
@@ -241,7 +278,7 @@ def _fuzzy_ranked_candidates(
             _first_name(display),
             _last_name(display),
             _character_slug(cid),
-            *_character_aliases(ch),
+            *_all_aliases(ch, cid, operator_alias_map),
         ]
         best = min(_levenshtein(t, n) for n in names if n)
         if best <= limit:
@@ -257,9 +294,10 @@ def _resolve_token(
     *,
     fuzzy_enabled: bool,
     fuzzy_max_distance: int,
+    operator_alias_map: dict[str, list[str]] | None = None,
 ) -> tuple[list[str], str, AddressingConfidence]:
     """Return (candidate_ids, match_reason, confidence) for one name token."""
-    exact = _candidates_for_token_exact(token, cast, chars)
+    exact = _candidates_for_token_exact(token, cast, chars, operator_alias_map)
     if len(exact) == 1:
         return exact, "exact", "high"
     if len(exact) > 1:
@@ -273,7 +311,11 @@ def _resolve_token(
         return [], "none", "low"
 
     ranked = _fuzzy_ranked_candidates(
-        token, cast, chars, max_distance=fuzzy_max_distance
+        token,
+        cast,
+        chars,
+        max_distance=fuzzy_max_distance,
+        operator_alias_map=operator_alias_map,
     )
     if not ranked:
         return [], "none", "low"
@@ -306,6 +348,90 @@ def pick_clarifier(
     )
 
 
+def resolve_directed_followup_reply(
+    trigger_text: str,
+    cast: list[str],
+    chars: dict[str, dict],
+    prior: AddressingResult,
+    prior_operator_message_id: str,
+    store: Any,
+    world_id: str,
+    scene_id: str,
+    *,
+    fuzzy_enabled: bool = True,
+    fuzzy_max_distance: int = 2,
+    operator_alias_map: dict[str, list[str]] | None = None,
+) -> AddressingResult | None:
+    """Short follow-up when a prior directed line still has addressees who have not spoken."""
+    if prior.mode != "directed":
+        return None
+    addressees = addressee_ids_for(prior)
+    spoke = set()
+    if prior_operator_message_id:
+        rows = store.conn.execute(
+            """SELECT characterId FROM GenerationJob
+               WHERE worldId = ? AND sceneId = ? AND triggerMessageId = ?
+                 AND status = 'done' AND characterId IS NOT NULL""",
+            (world_id, scene_id, prior_operator_message_id),
+        ).fetchall()
+        spoke = {row[0] for row in rows}
+    missing = [cid for cid in addressees if cid not in spoke]
+    stripped = trigger_text.strip().rstrip("?!.")
+    if not stripped or len(stripped.split()) > 4:
+        return None
+    token = stripped.split()[0].lstrip("@")
+    ids, reason, conf = _resolve_token(
+        token,
+        cast,
+        chars,
+        fuzzy_enabled=fuzzy_enabled,
+        fuzzy_max_distance=fuzzy_max_distance,
+        operator_alias_map=operator_alias_map,
+    )
+    target: str | None = None
+    if len(ids) == 1:
+        if ids[0] in missing:
+            target = ids[0]
+        elif ids[0] in cast and ids[0] not in spoke:
+            target = ids[0]
+    if not target and prior.unresolved_name_tokens:
+        for unresolved in prior.unresolved_name_tokens:
+            uids, _, _ = _resolve_token(
+                unresolved,
+                cast,
+                chars,
+                fuzzy_enabled=fuzzy_enabled,
+                fuzzy_max_distance=fuzzy_max_distance,
+                operator_alias_map=operator_alias_map,
+            )
+            if len(uids) == 1 and uids[0] not in spoke:
+                target = uids[0]
+                break
+        if not target and token.lower() in {t.lower() for t in prior.unresolved_name_tokens}:
+            uids, _, _ = _resolve_token(
+                token,
+                cast,
+                chars,
+                fuzzy_enabled=fuzzy_enabled,
+                fuzzy_max_distance=fuzzy_max_distance,
+                operator_alias_map=operator_alias_map,
+            )
+            if len(uids) == 1:
+                target = uids[0]
+    if not target:
+        return None
+    eligible = [c for c in cast if c != PERSONA_ID]
+    witnesses = [c for c in eligible if c != target]
+    return AddressingResult(
+        mode="directed",
+        primary_id=target,
+        addressee_ids=[target],
+        eligible_continue=witnesses,
+        confidence=conf,
+        match_reason="directed_followup",
+    )
+
+
 def resolve_clarification_reply(
     trigger_text: str,
     cast: list[str],
@@ -314,6 +440,7 @@ def resolve_clarification_reply(
     *,
     fuzzy_enabled: bool = True,
     fuzzy_max_distance: int = 2,
+    operator_alias_map: dict[str, list[str]] | None = None,
 ) -> AddressingResult | None:
     """Resolve a short follow-up after clarification (e.g. operator says 'Lena')."""
     if pending.mode != "clarification":
@@ -330,6 +457,7 @@ def resolve_clarification_reply(
         chars,
         fuzzy_enabled=fuzzy_enabled,
         fuzzy_max_distance=fuzzy_max_distance,
+        operator_alias_map=operator_alias_map,
     )
     if len(ids) == 1 and ids[0] in pool:
         eligible = [c for c in cast if c != PERSONA_ID]
@@ -343,6 +471,30 @@ def resolve_clarification_reply(
             match_reason="clarification_resolve",
         )
     return None
+
+
+def _chars_for_present_cast(
+    chars: dict[str, dict], cast: list[str]
+) -> dict[str, dict]:
+    """Character rows limited to who is present in the scene."""
+    return {cid: chars[cid] for cid in cast if cid in chars}
+
+
+def _operator_name_tokens(trigger_text: str) -> list[str]:
+    """Name tokens the operator used to address someone (vocative or multi-addressee head)."""
+    stripped = trigger_text.strip().rstrip("?!.")
+    head = _MULTI_HEAD.match(stripped)
+    if head:
+        segment = head.group(1).strip().rstrip(",")
+        if "," in segment or _NAME_JOIN.search(segment):
+            return _name_tokens_from_segment(segment.replace(",", " and "))
+    voc = _VOCATIVE_START.match(stripped)
+    if voc:
+        return [voc.group(1)]
+    lone = _LONE_NAME.match(stripped)
+    if lone:
+        return [lone.group(1)]
+    return []
 
 
 def _name_tokens_from_segment(segment: str) -> list[str]:
@@ -365,11 +517,12 @@ def _parse_addressed_list(
     *,
     fuzzy_enabled: bool = True,
     fuzzy_max_distance: int = 2,
+    operator_alias_map: dict[str, list[str]] | None = None,
 ) -> tuple[list[str], str, AddressingConfidence, list[str]]:
     """Returns (addressee_ids, match_reason, confidence, ambiguous_candidates)."""
     if target_character_id and target_character_id in cast:
         return [target_character_id], "explicit_target", "high", []
-    stripped = trigger_text.strip()
+    stripped = trigger_text.strip().rstrip("?!.")
     head_match = _MULTI_HEAD.match(stripped)
     if head_match:
         segment = head_match.group(1).strip().rstrip(",")
@@ -385,6 +538,7 @@ def _parse_addressed_list(
                     chars,
                     fuzzy_enabled=fuzzy_enabled,
                     fuzzy_max_distance=fuzzy_max_distance,
+                    operator_alias_map=operator_alias_map,
                 )
                 if reason == "ambiguous":
                     ambiguous.extend(ids)
@@ -397,6 +551,8 @@ def _parse_addressed_list(
                         conf = "medium"
             if ambiguous and not resolved:
                 return [], "ambiguous", "low", list(dict.fromkeys(ambiguous))
+            if len(resolved) == 1:
+                return resolved, reasons[0] if reasons else "exact", conf, []
             if len(resolved) >= 2:
                 return resolved, "multi_name", conf, []
     mention = re.search(r"@([\w-]+)", trigger_text, re.I)
@@ -407,6 +563,7 @@ def _parse_addressed_list(
             chars,
             fuzzy_enabled=fuzzy_enabled,
             fuzzy_max_distance=fuzzy_max_distance,
+            operator_alias_map=operator_alias_map,
         )
         if len(ids) == 1:
             return ids, reason, conf, []
@@ -430,6 +587,21 @@ def _parse_addressed_list(
             chars,
             fuzzy_enabled=fuzzy_enabled,
             fuzzy_max_distance=fuzzy_max_distance,
+            operator_alias_map=operator_alias_map,
+        )
+        if len(ids) == 1:
+            return ids, reason, conf, []
+        if len(ids) > 1:
+            return [], "ambiguous", "low", ids
+    lone = _LONE_NAME.match(stripped)
+    if lone:
+        ids, reason, conf = _resolve_token(
+            lone.group(1),
+            cast,
+            chars,
+            fuzzy_enabled=fuzzy_enabled,
+            fuzzy_max_distance=fuzzy_max_distance,
+            operator_alias_map=operator_alias_map,
         )
         if len(ids) == 1:
             return ids, reason, conf, []
@@ -460,17 +632,20 @@ def parse_addressing(
     fuzzy_enabled: bool = True,
     fuzzy_max_distance: int = 2,
     pending_clarification: AddressingResult | None = None,
+    operator_alias_map: dict[str, list[str]] | None = None,
 ) -> AddressingResult:
     """Classify operator intent: directed, multi, ensemble, open, or clarification."""
     eligible = [c for c in cast if c != PERSONA_ID]
+    scene_chars = _chars_for_present_cast(chars, eligible)
     if pending_clarification:
         resolved = resolve_clarification_reply(
             trigger_text,
-            cast,
-            chars,
+            eligible,
+            scene_chars,
             pending_clarification,
             fuzzy_enabled=fuzzy_enabled,
             fuzzy_max_distance=fuzzy_max_distance,
+            operator_alias_map=operator_alias_map,
         )
         if resolved:
             return resolved
@@ -485,13 +660,14 @@ def parse_addressing(
     addressees, match_reason, confidence, ambiguous = _parse_addressed_list(
         trigger_text,
         eligible,
-        chars,
+        scene_chars,
         target_character_id,
         fuzzy_enabled=fuzzy_enabled,
         fuzzy_max_distance=fuzzy_max_distance,
+        operator_alias_map=operator_alias_map,
     )
     if ambiguous and not addressees:
-        clarifier = pick_clarifier(ambiguous, chars, prefer_order=ambiguous)
+        clarifier = pick_clarifier(ambiguous, scene_chars, prefer_order=ambiguous)
         return AddressingResult(
             mode="clarification",
             primary_id=None,
@@ -504,6 +680,21 @@ def parse_addressing(
         )
     if addressees:
         witnesses = [c for c in eligible if c not in addressees]
+        name_tokens = _operator_name_tokens(trigger_text)
+        unresolved_tokens: list[str] = []
+        if name_tokens:
+            for token in name_tokens:
+                ids, _, _ = _resolve_token(
+                    token,
+                    eligible,
+                    scene_chars,
+                    fuzzy_enabled=fuzzy_enabled,
+                    fuzzy_max_distance=fuzzy_max_distance,
+                    operator_alias_map=operator_alias_map,
+                )
+                if len(ids) == 1 and ids[0] in addressees:
+                    continue
+                unresolved_tokens.append(token)
         return AddressingResult(
             mode="directed",
             primary_id=addressees[0],
@@ -511,6 +702,21 @@ def parse_addressing(
             eligible_continue=witnesses,
             confidence=confidence,
             match_reason=match_reason,
+            unresolved_name_tokens=list(dict.fromkeys(unresolved_tokens)),
+        )
+    name_tokens = _operator_name_tokens(trigger_text)
+    if name_tokens and not addressees and not ambiguous:
+        clarifier = pick_clarifier(eligible, scene_chars, prefer_order=eligible)
+        return AddressingResult(
+            mode="clarification",
+            primary_id=None,
+            addressee_ids=[],
+            eligible_continue=list(eligible),
+            confidence="low",
+            match_reason="not_in_scene",
+            candidate_ids=list(eligible),
+            clarifier_id=clarifier,
+            absent_names=list(dict.fromkeys(name_tokens)),
         )
     return AddressingResult(
         mode="open",
@@ -540,6 +746,55 @@ def speak_readiness_score(
     return min(1.0, score)
 
 
+def _name_tokens_in_trigger(trigger_text: str) -> list[str]:
+    """Name-like tokens from vocative, @mentions, multi-addressee head, and capitalized words."""
+    stripped = trigger_text.strip()
+    tokens: list[str] = []
+    voc = _VOCATIVE_START.match(stripped)
+    if voc:
+        tokens.append(voc.group(1))
+    for m in re.finditer(r"@([\w-]+)", trigger_text, re.I):
+        tokens.append(m.group(1))
+    head = _MULTI_HEAD.match(stripped)
+    if head:
+        tokens.extend(
+            _name_tokens_from_segment(head.group(1).strip().rstrip(",").replace(",", " and "))
+        )
+    for m in re.finditer(r"\b([A-Z][a-z][\w'-]*)\b", trigger_text):
+        tokens.append(m.group(1))
+    return tokens
+
+
+def _characters_named_in_trigger(
+    trigger_text: str,
+    cast: list[str],
+    chars: dict[str, dict],
+    *,
+    fuzzy_enabled: bool = True,
+    fuzzy_max_distance: int = 2,
+    operator_alias_map: dict[str, list[str]] | None = None,
+) -> set[str]:
+    """Character ids explicitly named in the operator line."""
+    named: set[str] = set()
+    lower = trigger_text.lower()
+    for cid in cast:
+        display = chars.get(cid, {}).get("displayName", "")
+        if display and display.lower() in lower:
+            named.add(cid)
+    for token in _name_tokens_in_trigger(trigger_text):
+        ids, _, _ = _resolve_token(
+            token,
+            cast,
+            chars,
+            fuzzy_enabled=fuzzy_enabled,
+            fuzzy_max_distance=fuzzy_max_distance,
+            operator_alias_map=operator_alias_map,
+        )
+        if len(ids) == 1:
+            named.add(ids[0])
+    return named
+
+
 def pick_directed_witness(
     services: Any,
     *,
@@ -551,6 +806,9 @@ def pick_directed_witness(
     exclude_ids: set[str],
     trigger_message_id: str | None,
     relevance_min: float,
+    require_mention: bool = True,
+    fuzzy_enabled: bool = True,
+    fuzzy_max_distance: int = 2,
 ) -> SpeakerPick | None:
     """Best non-addressee witness if relevance meets threshold."""
     pool = [
@@ -560,6 +818,25 @@ def pick_directed_witness(
     ]
     if not pool:
         return None
+    if require_mention:
+        from altrasia.orchestrator.operator_aliases import operator_alias_map as _op_aliases
+
+        op_map = _op_aliases(services.store, world_id)
+        chars = {
+            c["characterId"]: c
+            for c in services.store.list_world_characters(world_id)
+        }
+        named = _characters_named_in_trigger(
+            trigger_text,
+            eligible,
+            chars,
+            fuzzy_enabled=fuzzy_enabled,
+            fuzzy_max_distance=fuzzy_max_distance,
+            operator_alias_map=op_map,
+        )
+        pool = [c for c in pool if c in named]
+        if not pool:
+            return None
     pick = score_speakers(
         services,
         world_id=world_id,
@@ -569,6 +846,8 @@ def pick_directed_witness(
         exclude_ids=exclude_ids,
         trigger_message_id=trigger_message_id,
         skip_addressed_override=True,
+        fuzzy_enabled=fuzzy_enabled,
+        fuzzy_max_distance=fuzzy_max_distance,
     )
     if not pick:
         return None
@@ -604,16 +883,23 @@ def score_speakers(
     if not cast:
         return None
     cast = cast[:8]
-    chars = {c["characterId"]: c for c in services.store.list_world_characters(world_id)}
+    all_chars = {
+        c["characterId"]: c for c in services.store.list_world_characters(world_id)
+    }
+    scene_chars = _chars_for_present_cast(all_chars, cast)
+    from altrasia.orchestrator.operator_aliases import operator_alias_map as _op_aliases
+
+    op_map = _op_aliases(services.store, world_id)
 
     if not skip_addressed_override:
         addressed = _parse_addressed(
             trigger_text,
             cast,
-            chars,
+            scene_chars,
             target_character_id,
             fuzzy_enabled=fuzzy_enabled,
             fuzzy_max_distance=fuzzy_max_distance,
+            operator_alias_map=op_map,
         )
         if addressed:
             return SpeakerPick(
@@ -633,7 +919,7 @@ def score_speakers(
 
     scores: list[_CharScore] = []
     for cid in cast:
-        ch = chars.get(cid, {})
+        ch = scene_chars.get(cid, {})
         factors: dict[str, float] = {}
         factors["speechWeight"] = float(ch.get("speechWeight", 0.5))
         factors["relevance"] = speak_readiness_score(services.memory, cid, trigger_text)

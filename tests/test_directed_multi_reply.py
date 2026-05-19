@@ -54,6 +54,42 @@ def studio_client(tmp_path: Path) -> tuple[TestClient, str]:
         yield client, world_id
 
 
+def test_andie_lenlen_both_reply(studio_client: tuple) -> None:
+    client, world_id = studio_client
+    resp = client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{PRODUCT_STUDIO}/messages",
+        json={
+            "text": "Andie, LenLen, what are your roles here?",
+            "scope": "public",
+        },
+    )
+    assert resp.status_code == 200
+    msg_id = resp.json()["messageId"]
+    _wait_done(client, world_id, PRODUCT_STUDIO, min_done=2)
+
+    store = client.app.state.services.store
+    meta = json.loads(
+        store.fetchone(
+            "SELECT metaJson FROM Message WHERE messageId = ?",
+            (msg_id,),
+        )["metaJson"]
+    )
+    assert meta["orchestration"]["addressing"]["addresseeIds"] == [
+        "char-andre-silva",
+        "char-lena-cho",
+    ]
+    done_chars = [
+        row[0]
+        for row in store.conn.execute(
+            """SELECT characterId FROM GenerationJob
+               WHERE worldId = ? AND sceneId = ? AND triggerMessageId = ?
+                 AND status = 'done' ORDER BY createdAt""",
+            (world_id, PRODUCT_STUDIO, msg_id),
+        ).fetchall()
+    ]
+    assert done_chars == ["char-andre-silva", "char-lena-cho"]
+
+
 def test_marco_and_lena_both_reply(studio_client: tuple) -> None:
     client, world_id = studio_client
     resp = client.post(

@@ -400,6 +400,8 @@ class Orchestrator:
                 }
         chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
         if addressing is None:
+            from altrasia.orchestrator.operator_aliases import operator_alias_map
+
             cfg = self._world_config(world_id)
             addressing = parse_addressing(
                 trigger_text,
@@ -408,6 +410,7 @@ class Orchestrator:
                 target_character_id=target_character_id,
                 fuzzy_enabled=bool(cfg.get("addressingFuzzyEnabled", True)),
                 fuzzy_max_distance=int(cfg.get("addressingFuzzyMaxDistance", 2)),
+                operator_alias_map=operator_alias_map(self.svc.store, world_id),
             )
         if addressing.mode == "clarification" and addressing.clarifier_id:
             clarifier = addressing.clarifier_id
@@ -617,6 +620,30 @@ class Orchestrator:
                     return aid
             return None
 
+        if addressing and addressing.mode == "directed" and addressing.unresolved_name_tokens:
+            from altrasia.orchestrator.operator_aliases import operator_alias_map
+            from altrasia.orchestrator.speaker_selection import _resolve_token
+
+            cfg = self._world_config(world_id)
+            op_map = operator_alias_map(self.svc.store, world_id)
+            scene_chars = {
+                c["characterId"]: c
+                for c in self.svc.store.list_world_characters(world_id)
+                if c["characterId"] in cast
+            }
+
+            for token in addressing.unresolved_name_tokens:
+                ids, _, _ = _resolve_token(
+                    token,
+                    cast,
+                    scene_chars,
+                    fuzzy_enabled=bool(cfg.get("addressingFuzzyEnabled", True)),
+                    fuzzy_max_distance=int(cfg.get("addressingFuzzyMaxDistance", 2)),
+                    operator_alias_map=op_map,
+                )
+                if len(ids) == 1 and ids[0] not in spoke_on_trigger:
+                    return ids[0]
+
         if addressing and addressing.mode == "directed" and addressing.primary_id:
             cfg = self._world_config(world_id)
             rel_min = float(cfg.get("directedWitnessRelevanceMin", 0.55))
@@ -630,6 +657,9 @@ class Orchestrator:
                 exclude_ids=spoke_on_trigger,
                 trigger_message_id=trigger_message_id,
                 relevance_min=rel_min,
+                require_mention=bool(cfg.get("directedWitnessRequireMention", True)),
+                fuzzy_enabled=bool(cfg.get("addressingFuzzyEnabled", True)),
+                fuzzy_max_distance=int(cfg.get("addressingFuzzyMaxDistance", 2)),
             )
             return witness.character_id if witness else None
 
@@ -990,12 +1020,24 @@ class Orchestrator:
         directed_addressee_name: str | None = None
         directed_co_addressees: list[str] | None = None
         clarification_names: list[str] | None = None
+        absent_scene_names: list[str] | None = None
+        operator_nicknames: list[str] | None = None
+        from altrasia.orchestrator.operator_aliases import operator_aliases_for_character
+
+        op_nicks = operator_aliases_for_character(
+            self.svc.store, job["worldId"], job["characterId"]
+        )
+        if op_nicks:
+            operator_nicknames = op_nicks
         if addressing and addressing.mode == "clarification":
-            clarification_names = [
-                members[c]["displayName"]
-                for c in addressing.candidate_ids
-                if c in members
-            ]
+            if addressing.match_reason == "not_in_scene":
+                absent_scene_names = list(addressing.absent_names)
+            else:
+                clarification_names = [
+                    members[c]["displayName"]
+                    for c in addressing.candidate_ids
+                    if c in members
+                ]
         elif addressing and addressing.mode == "directed":
             ids = addressee_ids_for(addressing)
             if is_multi_directed(addressing):
@@ -1022,6 +1064,8 @@ class Orchestrator:
             directed_witness=directed_witness,
             directed_co_addressees=directed_co_addressees,
             clarification_names=clarification_names,
+            absent_scene_names=absent_scene_names,
+            operator_nicknames=operator_nicknames,
         )}"
         if ensemble_invited and cfg.get("discussionSignalsEnabled", True):
             system += (
@@ -1550,10 +1594,16 @@ class Orchestrator:
         try:
             from altrasia.orchestrator.addressing_policy import (
                 pending_clarification_for_reply,
+                pending_directed_followup_for_reply,
+            )
+            from altrasia.orchestrator.operator_aliases import (
+                apply_operator_alias_declaration,
+                operator_alias_map,
             )
             from altrasia.orchestrator.speaker_selection import (
                 addressee_ids_for,
                 parse_addressing,
+                resolve_directed_followup_reply,
             )
 
             cfg = self._world_config(world_id)
@@ -1564,19 +1614,77 @@ class Orchestrator:
                 c["characterId"]: c
                 for c in self.svc.store.list_world_characters(world_id)
             }
-            pending = pending_clarification_for_reply(
+            scene_chars = {
+                cid: chars[cid] for cid in cast if cid in chars
+            }
+            pending_clarification = pending_clarification_for_reply(
                 self.svc.store, world_id, scene_id, message_id
             )
-            addressing = parse_addressing(
+            directed_followup = pending_directed_followup_for_reply(
+                self.svc.store, world_id, scene_id, message_id
+            )
+            fuzzy_on = bool(cfg.get("addressingFuzzyEnabled", True))
+            fuzzy_dist = int(cfg.get("addressingFuzzyMaxDistance", 2))
+            op_map = operator_alias_map(self.svc.store, world_id)
+            alias_registered = apply_operator_alias_declaration(
+                self.svc.store,
+                world_id,
                 text,
                 cast,
                 chars,
-                target_character_id=target_character_id,
-                fuzzy_enabled=bool(cfg.get("addressingFuzzyEnabled", True)),
-                fuzzy_max_distance=int(cfg.get("addressingFuzzyMaxDistance", 2)),
-                pending_clarification=pending,
+                fuzzy_enabled=fuzzy_on,
+                fuzzy_max_distance=fuzzy_dist,
             )
+            if alias_registered:
+                op_map = operator_alias_map(self.svc.store, world_id)
+            addressing = None
+            if directed_followup:
+                prior_addr, prior_id = directed_followup
+                addressing = resolve_directed_followup_reply(
+                    text,
+                    cast,
+                    scene_chars,
+                    prior_addr,
+                    prior_id,
+                    self.svc.store,
+                    world_id,
+                    scene_id,
+                    fuzzy_enabled=fuzzy_on,
+                    fuzzy_max_distance=fuzzy_dist,
+                    operator_alias_map=op_map,
+                )
+            if addressing is None:
+                addressing = parse_addressing(
+                    text,
+                    cast,
+                    chars,
+                    target_character_id=target_character_id,
+                    fuzzy_enabled=fuzzy_on,
+                    fuzzy_max_distance=fuzzy_dist,
+                    pending_clarification=pending_clarification,
+                    operator_alias_map=op_map,
+                )
             self._persist_message_addressing(message_id, addressing)
+            if alias_registered:
+                cid_reg, alias_reg = alias_registered
+                row = self.svc.store.fetchone(
+                    "SELECT metaJson FROM Message WHERE messageId = ?",
+                    (message_id,),
+                )
+                try:
+                    meta = json.loads(row["metaJson"] or "{}") if row else {}
+                except json.JSONDecodeError:
+                    meta = {}
+                orch = meta.setdefault("orchestration", {})
+                orch["operatorAliasRegistered"] = {
+                    "characterId": cid_reg,
+                    "alias": alias_reg,
+                }
+                self.svc.store.conn.execute(
+                    "UPDATE Message SET metaJson = ? WHERE messageId = ?",
+                    (json.dumps(meta), message_id),
+                )
+                self.svc.store.conn.commit()
             await self._preempt_scene_for_operator_line(
                 world_id, scene_id, message_id, addressing
             )

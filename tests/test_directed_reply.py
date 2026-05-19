@@ -13,6 +13,7 @@ from altrasia.api.app import create_app
 from altrasia.config import Settings
 
 PROGRAM_OFFICE = "scene-program-office"
+LOBBY = "scene-lobby"
 
 
 def _wait_jobs(
@@ -111,6 +112,91 @@ def test_directed_question_routes_to_addressee(directed_client: tuple) -> None:
     speakers = [m["characterId"] for m in finals]
     assert len(speakers) == len(set(speakers))
     assert len(set(speakers)) <= 2
+
+
+def test_nickname_directed_only_addressee_replies(directed_client: tuple) -> None:
+    """Fuzzy nickname to one addressee must not summon unmentioned witnesses."""
+    client, world_id = directed_client
+    client.patch(f"/api/v1/worlds/{world_id}", json={"activeSceneId": LOBBY})
+    client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{LOBBY}/presence/join",
+        json={"characterId": "char-sofia-mendez"},
+    )
+    resp = client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{LOBBY}/messages",
+        json={"text": "Jordie, what is your role?", "scope": "public"},
+    )
+    assert resp.status_code == 200
+    msg_id = resp.json()["messageId"]
+    _wait_jobs(client, world_id, LOBBY, min_done=1, timeout=60.0)
+
+    store = client.app.state.services.store
+    meta = json.loads(
+        store.fetchone("SELECT metaJson FROM Message WHERE messageId = ?", (msg_id,))[
+            "metaJson"
+        ]
+    )
+    assert meta["orchestration"]["addressing"]["mode"] == "directed"
+    assert meta["orchestration"]["addressing"]["primaryId"] == "char-jordan-reyes"
+
+    jobs = store.conn.execute(
+        """SELECT characterId, continueDepth, trigger FROM GenerationJob
+           WHERE worldId = ? AND sceneId = ? AND triggerMessageId = ? AND status = 'done'
+           ORDER BY createdAt""",
+        (world_id, LOBBY, msg_id),
+    ).fetchall()
+    assert len(jobs) == 1
+    assert jobs[0][0] == "char-jordan-reyes"
+    assert jobs[0][2] == "persona_message"
+
+    msgs = client.get(f"/api/v1/worlds/{world_id}/scenes/{LOBBY}/messages").json()
+    finals = [
+        m
+        for m in msgs
+        if m["role"] == "assistant" and m.get("streamStatus") == "final"
+    ]
+    assert len(finals) == 1
+    assert finals[0]["characterId"] == "char-jordan-reyes"
+
+
+def test_partial_multi_only_present_addressees_reply(directed_client: tuple) -> None:
+    """Lili absent, Rach present — only Rachel speaks, not open pile-on."""
+    client, world_id = directed_client
+    resp = client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{PROGRAM_OFFICE}/messages",
+        json={"text": "Lili, Rach, what do you do here?", "scope": "public"},
+    )
+    assert resp.status_code == 200
+    msg_id = resp.json()["messageId"]
+    _wait_jobs(client, world_id, PROGRAM_OFFICE, min_done=1, timeout=60.0)
+
+    store = client.app.state.services.store
+    meta = json.loads(
+        store.fetchone("SELECT metaJson FROM Message WHERE messageId = ?", (msg_id,))[
+            "metaJson"
+        ]
+    )
+    assert meta["orchestration"]["addressing"]["mode"] == "directed"
+    assert meta["orchestration"]["addressing"]["addresseeIds"] == ["char-rachel-kim"]
+
+    jobs = store.conn.execute(
+        """SELECT characterId, trigger FROM GenerationJob
+           WHERE worldId = ? AND sceneId = ? AND triggerMessageId = ? AND status = 'done'""",
+        (world_id, PROGRAM_OFFICE, msg_id),
+    ).fetchall()
+    assert len(jobs) == 1
+    assert jobs[0][0] == "char-rachel-kim"
+
+    msgs = client.get(
+        f"/api/v1/worlds/{world_id}/scenes/{PROGRAM_OFFICE}/messages"
+    ).json()
+    finals = [
+        m
+        for m in msgs
+        if m["role"] == "assistant" and m.get("streamStatus") == "final"
+    ]
+    assert len(finals) == 1
+    assert finals[0]["characterId"] == "char-rachel-kim"
 
 
 def test_directed_jobs_share_operator_trigger_message_id(directed_client: tuple) -> None:
