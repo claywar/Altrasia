@@ -9,7 +9,8 @@ import { SpatialDrawer } from "../features/spatial/SpatialDrawer";
 import { SpatialPanel } from "../features/spatial/SpatialPanel";
 import type { ExitItem } from "../features/spatial/ExitList";
 import { areAdjacentScenes, reachableSceneIdsFromGraph } from "../features/maps/mapNavigation";
-import { PlacesRail } from "../features/rails/PlacesRail";
+import { WorldRail } from "../features/rails/WorldRail";
+import type { Roster } from "../features/rails/rosterByScene";
 import { ToolsRail } from "../features/rails/ToolsRail";
 import { TopBar } from "./TopBar";
 import type { Message, QueueSnapshot } from "../api/client";
@@ -50,6 +51,9 @@ type Props = {
   };
   signalToast: ReactNode;
   rightRail: ReactNode;
+  roster: Roster | null;
+  onMemory: (characterId: string, displayName: string) => void;
+  onPresenceChanged: () => void;
   onPauseToggle: () => void;
   onMapOpen: () => void;
   onMapClose: () => void;
@@ -84,6 +88,9 @@ export function SpatialShell({
   compose,
   signalToast,
   rightRail,
+  roster,
+  onMemory,
+  onPresenceChanged,
   onPauseToggle,
   onMapOpen,
   onMapClose,
@@ -206,15 +213,21 @@ export function SpatialShell({
           className={`spatial-layout__rail${rightRailOpen ? "" : " spatial-layout__rail--hidden"}`}
           data-testid="right-rail"
         >
-          <PlacesRail
-            scenes={scenes}
-            graph={graph}
-            activeSceneId={world.activeSceneId}
-            reachableSceneIds={
-              graph ? reachableSceneIdsFromGraph(graph, world.activeSceneId) : undefined
-            }
-            onSelect={onSwitchScene}
-          />
+          {roster && (
+            <WorldRail
+              worldId={world.worldId}
+              scenes={scenes}
+              graph={graph}
+              activeSceneId={world.activeSceneId}
+              reachableSceneIds={
+                graph ? reachableSceneIdsFromGraph(graph, world.activeSceneId) : undefined
+              }
+              roster={roster}
+              onSelect={onSwitchScene}
+              onMemory={onMemory}
+              onPresenceChanged={onPresenceChanged}
+            />
+          )}
           {rightRail}
           <ToolsRail phone={toolsPhone} debate={toolsDebate} />
         </aside>

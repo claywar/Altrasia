@@ -12,7 +12,6 @@ import {
   type World,
 } from "./api/client";
 import { PhonePanel } from "./components/PhonePanel";
-import { PeopleRail } from "./components/PeopleRail";
 import { SignalsRail } from "./components/SignalsRail";
 import { ObserverDigest } from "./components/ObserverDigest";
 import { CharacterDraftPanel } from "./components/CharacterDraftPanel";
@@ -410,23 +409,13 @@ export default function App() {
           onSend: send,
         }}
         signalToast={signalToast}
+        roster={roster}
+        onMemory={(characterId, displayName) =>
+          setMemoryFor({ characterId, displayName })
+        }
+        onPresenceChanged={() => refresh(world)}
         rightRail={
           <>
-            {roster && scene && (
-              <PeopleRail
-                worldId={world.worldId}
-                activeSceneId={scene.sceneId}
-                scenes={scenes.map((s) => ({
-                  sceneId: s.sceneId,
-                  locationName: s.locationName,
-                }))}
-                roster={roster}
-                onMemory={(characterId, displayName) =>
-                  setMemoryFor({ characterId, displayName })
-                }
-                onPresenceChanged={() => refresh(world)}
-              />
-            )}
             {roster && scene && (
               <SignalsRail
                 worldId={world.worldId}
