@@ -71,16 +71,19 @@ function PlaceSceneBlock({
           className={`place-card${active ? " place-card--active" : ""}`}
           onClick={() => onSelect(sceneId)}
         >
-          <span className="place-card__name">{row.scene.locationName}</span>
+          <span className="place-card__label">
+            <span className="place-card__name">{row.scene.locationName}</span>
+            {cast.length > 0 && (
+              <span
+                className="place-card__badge"
+                aria-label={`${cast.length} present`}
+              >
+                {cast.length}
+              </span>
+            )}
+          </span>
           <span className="place-card__action" aria-hidden={!row.actionLabel}>
             {row.actionLabel ?? ""}
-          </span>
-          <span
-            className="place-card__badge"
-            aria-label={cast.length > 0 ? `${cast.length} present` : undefined}
-            aria-hidden={cast.length === 0}
-          >
-            {cast.length > 0 ? cast.length : ""}
           </span>
         </button>
         {forceExpanded ? (
