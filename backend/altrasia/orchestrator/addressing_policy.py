@@ -15,6 +15,8 @@ from altrasia.orchestrator.speaker_selection import (
 _EXPLICIT_TARGET_TRIGGERS = frozenset(
     {"whisper_target", "knock_answered", "phone_target", "discussion_deliverable"}
 )
+
+
 def addressing_from_message_row(row: dict[str, Any] | None) -> AddressingResult | None:
     if not row:
         return None
@@ -37,10 +39,49 @@ def latest_operator_message(
     return None
 
 
+def prior_operator_message(
+    store: Any,
+    world_id: str,
+    scene_id: str,
+    *,
+    before_message_id: str | None = None,
+) -> dict[str, Any] | None:
+    found_current = before_message_id is None
+    for m in reversed(store.list_messages(world_id, scene_id=scene_id)):
+        if m.get("role") == "assistant":
+            continue
+        text = (m.get("outputText") or "").strip()
+        if not text:
+            continue
+        if not found_current:
+            if m.get("messageId") == before_message_id:
+                found_current = True
+            continue
+        return m
+    return None
+
+
+def pending_clarification_for_reply(
+    store: Any,
+    world_id: str,
+    scene_id: str,
+    current_message_id: str,
+) -> AddressingResult | None:
+    """Prior operator line was clarification; current line may resolve it."""
+    prior = prior_operator_message(
+        store, world_id, scene_id, before_message_id=current_message_id
+    )
+    if not prior:
+        return None
+    addressing = addressing_from_message_row(prior)
+    if addressing and addressing.mode == "clarification":
+        return addressing
+    return None
+
+
 def latest_operator_addressing(
     store: Any, world_id: str, scene_id: str
 ) -> tuple[AddressingResult | None, str | None]:
-    """Most recent operator line and its persisted addressing (if any)."""
     op = latest_operator_message(store, world_id, scene_id)
     if not op:
         return None, None
@@ -77,20 +118,48 @@ def primary_replied_to_trigger(
     return row is not None
 
 
-def scene_has_unanswered_directed(
+def clarifier_replied_to_trigger(
+    store: Any,
+    world_id: str,
+    scene_id: str,
+    operator_message_id: str,
+    clarifier_id: str | None,
+) -> bool:
+    if not clarifier_id:
+        return False
+    return primary_replied_to_trigger(
+        store, world_id, scene_id, operator_message_id, clarifier_id
+    )
+
+
+def scene_has_pending_addressing(
     store: Any, world_id: str, scene_id: str
 ) -> bool:
-    """True when the latest operator line is directed and an addressee has not replied yet."""
+    """Directed addressee unanswered or clarification awaiting operator follow-up."""
     addressing, op_id = latest_operator_addressing(store, world_id, scene_id)
-    if not addressing or addressing.mode != "directed":
+    if not addressing or not op_id:
+        return False
+    if addressing.mode == "clarification":
+        if clarifier_replied_to_trigger(
+            store, world_id, scene_id, op_id, addressing.clarifier_id
+        ):
+            return True
+        return True
+    if addressing.mode != "directed":
         return False
     ids = addressee_ids_for(addressing)
-    if not ids or not op_id:
+    if not ids:
         return False
     return any(
         not primary_replied_to_trigger(store, world_id, scene_id, op_id, aid)
         for aid in ids
     )
+
+
+def scene_has_unanswered_directed(
+    store: Any, world_id: str, scene_id: str
+) -> bool:
+    return scene_has_pending_addressing(store, world_id, scene_id)
 
 
 def may_character_generate(
@@ -100,8 +169,6 @@ def may_character_generate(
 ) -> tuple[bool, str]:
     """
     Generic gate: every scene generation job must pass this before speaking.
-
-    Enforces directed threads regardless of trigger (persona, continue, idle).
     """
     trigger = str(job.get("trigger") or "")
     if trigger in _EXPLICIT_TARGET_TRIGGERS:
@@ -130,7 +197,25 @@ def may_character_generate(
         if op_id is None and latest_op_id:
             op_id = latest_op_id
 
-    if not addressing or addressing.mode != "directed":
+    if not addressing:
+        return True, "no_addressing"
+
+    if addressing.mode == "clarification":
+        if trigger == "idle_timer":
+            return False, "clarification_blocks_idle"
+        clarifier = addressing.clarifier_id
+        if not clarifier:
+            return False, "clarification_no_clarifier"
+        if character_id != clarifier:
+            return False, "not_clarifier"
+        if depth > 0:
+            return False, "clarification_no_continue"
+        spoke = cast_spoke_on_trigger(svc.store, world_id, scene_id, op_id)
+        if character_id in spoke:
+            return False, "clarifier_already_spoke"
+        return True, "clarification"
+
+    if addressing.mode != "directed":
         return True, "not_directed"
 
     addressees = addressee_ids_for(addressing)
@@ -142,6 +227,12 @@ def may_character_generate(
 
     spoke = cast_spoke_on_trigger(svc.store, world_id, scene_id, op_id)
     if character_id in spoke:
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+            if rationale.get("generation_recovery"):
+                return True, "generation_recovery"
+        except json.JSONDecodeError:
+            pass
         return False, "already_spoke_on_operator_line"
 
     if is_multi_directed(addressing):

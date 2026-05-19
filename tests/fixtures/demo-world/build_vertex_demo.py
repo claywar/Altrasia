@@ -19,17 +19,21 @@ def ch(
     reports_to: str,
     tags: list[str],
     weight: float = 0.58,
+    aliases: list[str] | None = None,
 ) -> dict:
+    definition: dict = {
+        "persona": persona,
+        "instructions": instructions,
+        "focusTags": tags,
+    }
+    if aliases:
+        definition["aliases"] = aliases
     return {
         "characterId": cid,
         "displayName": name,
         "speechWeight": weight,
         "sceneRole": role,
-        "definition": {
-            "persona": persona,
-            "instructions": instructions,
-            "focusTags": tags,
-        },
+        "definition": definition,
         "mindLoci": [
             {"key": "role", "value": f"{job_title} at Vertex Labs; {reports_to}"},
             {"key": "skills", "value": skills},
@@ -151,6 +155,7 @@ CHARACTERS = [
         "UX Designer",
         "reports to Sofia Mendez",
         ["ux", "design"],
+        aliases=["Andy"],
     ),
     ch(
         "char-hannah-brooks",

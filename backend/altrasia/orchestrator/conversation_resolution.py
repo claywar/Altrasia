@@ -81,15 +81,16 @@ def effective_continue_depth_limit(
 ) -> int:
     """Depth ceiling for the next agent_continue (0-based current_depth)."""
     cap = max(2, int(cfg.get("maxContinueDepthCap", 24)))
+    if addressing_mode == "clarification":
+        return min(max(0, int(cfg.get("clarificationMaxDepth", 0))), cap)
     if addressing_mode == "directed":
         if directed_addressee_count > 1:
             return min(max(0, directed_addressee_count - 1), cap)
         directed_max = max(0, int(cfg.get("directedReplyMaxDepth", 1)))
         return min(directed_max, cap)
-    if addressing_mode == "open":
+    if addressing_mode == "open" and not unresolved:
         open_cap = max(0, int(cfg.get("openReplyMaxDepth", 2)))
-        base = max(0, int(cfg.get("maxContinueDepth", 2)))
-        return min(min(base, open_cap), cap)
+        return min(open_cap, cap)
     base = max(0, int(cfg.get("maxContinueDepth", 2)))
     extended = max(base, int(cfg.get("maxContinueDepthExtended", base + 8)))
     if not cfg.get("continueUntilResolved", True):

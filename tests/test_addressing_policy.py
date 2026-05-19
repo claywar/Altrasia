@@ -49,6 +49,57 @@ def test_andre_directed_parsing(studio_client: tuple) -> None:
     assert result.primary_id == "char-andre-silva"
 
 
+def test_may_character_generate_clarification_only_clarifier(
+    studio_client: tuple,
+) -> None:
+    client, world_id = studio_client
+    svc = client.app.state.services
+    store = svc.store
+    cfg = svc.orchestrator._world_config(world_id)
+    msg_id = "op-clarify-1"
+    store.insert_message(
+        {
+            "messageId": msg_id,
+            "worldId": world_id,
+            "channelKind": "scene",
+            "sceneId": PRODUCT_STUDIO,
+            "role": "user",
+            "characterId": None,
+            "outputText": "Dan, what is your role?",
+            "reasoning": None,
+            "streamStatus": "final",
+            "generationJobId": None,
+            "metaJson": json.dumps(
+                {
+                    "orchestration": {
+                        "addressing": {
+                            "mode": "clarification",
+                            "candidateIds": ["char-lena-cho", "char-marco-delgado"],
+                            "clarifierId": "char-lena-cho",
+                            "confidence": "low",
+                            "matchReason": "ambiguous",
+                        }
+                    }
+                }
+            ),
+            "createdAt": "2026-01-01T00:00:00+00:00",
+        }
+    )
+    idle_job = {
+        "worldId": world_id,
+        "sceneId": PRODUCT_STUDIO,
+        "characterId": "char-marco-delgado",
+        "trigger": "idle_timer",
+        "continueDepth": 0,
+        "triggerMessageId": msg_id,
+    }
+    assert may_character_generate(svc, idle_job, cfg) == (False, "clarification_blocks_idle")
+    wrong = {**idle_job, "trigger": "persona_message", "characterId": "char-marco-delgado"}
+    assert may_character_generate(svc, wrong, cfg) == (False, "not_clarifier")
+    ok = {**idle_job, "trigger": "persona_message", "characterId": "char-lena-cho"}
+    assert may_character_generate(svc, ok, cfg) == (True, "clarification")
+
+
 def test_may_character_generate_blocks_idle_and_wrong_speaker(
     studio_client: tuple,
 ) -> None:

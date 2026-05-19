@@ -17,6 +17,7 @@ def world_generation_policy(cfg: dict[str, Any]) -> dict[str, Any]:
             30.0, float(cfg.get("inferenceTimeoutSeconds", 180.0))
         ),
         "max_continue_depth": max(0, int(cfg.get("maxContinueDepth", 2))),
+        "max_tool_rounds_per_job": max(1, int(cfg.get("maxToolRoundsPerJob", 5))),
     }
 
 

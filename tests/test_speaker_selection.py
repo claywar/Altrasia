@@ -158,6 +158,38 @@ def test_parse_addressing_ensemble_cues(svc: AppServices) -> None:
     assert result.primary_id is None
 
 
+def test_parse_addressing_fuzzy_lean_to_lena(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    cast = ["char-lena-cho", "char-marco-delgado", "char-sofia-mendez"]
+    result = parse_addressing(
+        "Lean, what is your role?",
+        cast,
+        chars,
+        fuzzy_enabled=True,
+        fuzzy_max_distance=2,
+    )
+    assert result.mode == "directed"
+    assert result.primary_id == "char-lena-cho"
+    assert result.match_reason == "fuzzy"
+
+
+def test_parse_addressing_alias_andy_to_andre(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    cast = list(chars.keys())
+    result = parse_addressing("Andy, quick question", cast, chars)
+    assert result.mode == "directed"
+    assert result.primary_id == "char-andre-silva"
+    assert result.match_reason == "exact"
+
+
 def test_parse_addressing_marco_and_lena(svc: AppServices) -> None:
     world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
     if not world:

@@ -117,12 +117,20 @@ When `agentContinueEnabled` is true (world or preset default on):
 | `maxContinueDepth` | 2 | 3 | 1 |
 | `directedReplyMaxDepth` | 1 | 1 | 0 |
 | `openReplyMaxDepth` | 2 | 2 | 1 |
+| `clarificationMaxDepth` | 0 | 0 | 0 |
+| `maxToolRoundsPerJob` | 5 | 5 | 5 |
+| `addressingFuzzyEnabled` | true | true | true |
+| `addressingFuzzyMaxDistance` | 2 | 2 | 2 |
 | `directedWitnessRelevanceMin` | 0.55 | 0.55 | 0.55 |
 | `personaArrivalMaxReplies` | 1 | 1 | 1 |
 
-**Directed replies:** When the operator names one cast member (first name, full name, `@slug`, or whisper/DM `participants`), orchestration stores `orchestration.addressing` on the operator message. The addressee speaks first (`continueDepth=0`); at most one witness may continue if AO-17 relevance ≥ `directedWitnessRelevanceMin`. **Multi-addressee** lines (`Marco and Lena, …`) set `addresseeIds`; each named character speaks in order via `agent_continue` (no witnesses). Ensemble cues bypass this cap.
+**Speaker-turn depth vs tool rounds:** `agent_continue` / `maxContinueDepth` / `openReplyMaxDepth` cap how many **different cast members** may speak per operator line. **`maxToolRoundsPerJob`** caps LLM↔tool loops **inside one** `GenerationJob` (memory search, scene tools, etc.) and does not consume speaker-turn depth. `generation_recovery` may re-queue the same character after a failed tool-heavy job without counting as a witness.
 
-**Generic enforcement (`addressing_policy`):** Every scene `GenerationJob` — including `idle_timer` and mistaken picks — is checked in `_run_job` via `may_character_generate` before tokens are emitted. Directed threads block idle, preempt conflicting queued jobs when a new operator line arrives, and never drop `persona_message` because a chain was already active.
+**Directed replies:** When the operator names one cast member (first name, full name, `@slug`, optional `definition.aliases`, or whisper/DM `participants`), orchestration stores `orchestration.addressing` on the operator message. The addressee speaks first (`continueDepth=0`); at most one witness may continue if AO-17 relevance ≥ `directedWitnessRelevanceMin`. **Multi-addressee** lines (`Marco and Lena, …`) set `addresseeIds`; each named character speaks in order via `agent_continue` (no witnesses). Ensemble cues bypass directed caps.
+
+**Forgiving match:** Light fuzzy typos (Levenshtein, unique best match), unique last-name in room, and per-character `aliases` in `definitionJson`. Ambiguous tokens (`mode: clarification`) enqueue **one** clarifier to ask who was meant; the next operator line resolves (e.g. `Lena`) and then runs as directed.
+
+**Generic enforcement (`addressing_policy`):** Every scene `GenerationJob` is checked in `_run_job` via `may_character_generate` before tokens are emitted. Directed/clarification threads block idle; conflicting jobs are preempted when a new operator line arrives.
 
 Presets: [20-product-principles.md](20-product-principles.md) §6.
 

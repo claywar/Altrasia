@@ -23,6 +23,7 @@ def single_speaker_system_addendum(
     directed_addressee_name: str | None = None,
     directed_witness: bool = False,
     directed_co_addressees: list[str] | None = None,
+    clarification_names: list[str] | None = None,
 ) -> str:
     others = [n for n in other_names if n and n.strip() and n.strip() != display_name]
     lines = [
@@ -45,6 +46,12 @@ def single_speaker_system_addendum(
         lines.append(
             f"The operator asked {directed_addressee_name} directly; only speak if you have "
             "essential information they cannot provide."
+        )
+    if clarification_names:
+        names = ", ".join(clarification_names[:6])
+        lines.append(
+            f"The operator's message could refer to {names}. Ask briefly who they meant; "
+            "do not answer the substantive question yet."
         )
     if ensemble_invited:
         lines.append(

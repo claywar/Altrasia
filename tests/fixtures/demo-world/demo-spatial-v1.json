@@ -10,7 +10,11 @@
     "maxContinueDepth": 3,
     "directedReplyMaxDepth": 1,
     "openReplyMaxDepth": 2,
+    "clarificationMaxDepth": 0,
     "directedWitnessRelevanceMin": 0.55,
+    "maxToolRoundsPerJob": 5,
+    "addressingFuzzyEnabled": true,
+    "addressingFuzzyMaxDistance": 2,
     "continueUntilResolved": true,
     "conversationJudgementEnabled": true,
     "discussionSignalsEnabled": true,
@@ -311,6 +315,9 @@
         "focusTags": [
           "ux",
           "design"
+        ],
+        "aliases": [
+          "Andy"
         ]
       },
       "mindLoci": [

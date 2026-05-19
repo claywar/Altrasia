@@ -281,6 +281,8 @@ class Orchestrator:
         if movement_tools_ran(tool_log):
             return False
         addressing = self._addressing_for_job(job)
+        if addressing and addressing.mode == "clarification":
+            return False
         if addressing and addressing.mode == "directed":
             if next_character_id is None:
                 return False
@@ -398,9 +400,24 @@ class Orchestrator:
                 }
         chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
         if addressing is None:
+            cfg = self._world_config(world_id)
             addressing = parse_addressing(
-                trigger_text, cast, chars, target_character_id=target_character_id
+                trigger_text,
+                cast,
+                chars,
+                target_character_id=target_character_id,
+                fuzzy_enabled=bool(cfg.get("addressingFuzzyEnabled", True)),
+                fuzzy_max_distance=int(cfg.get("addressingFuzzyMaxDistance", 2)),
             )
+        if addressing.mode == "clarification" and addressing.clarifier_id:
+            clarifier = addressing.clarifier_id
+            rationale = {
+                "pick": "clarification",
+                "characterId": clarifier,
+                "addressing": addressing_to_dict(addressing),
+                "candidateIds": addressing.candidate_ids,
+            }
+            return clarifier, rationale
         ids = addressee_ids_for(addressing)
         if addressing.mode == "directed" and ids:
             primary = ids[0]
@@ -645,7 +662,7 @@ class Orchestrator:
             job = self.svc.store.get_job(row["jobId"])
             if not job:
                 continue
-            if addressing.mode == "directed":
+            if addressing.mode in ("directed", "clarification"):
                 if row.get("triggerMessageId") != operator_message_id:
                     self.cancel_job(row["jobId"])
                     continue
@@ -972,7 +989,14 @@ class Orchestrator:
         directed_witness = False
         directed_addressee_name: str | None = None
         directed_co_addressees: list[str] | None = None
-        if addressing and addressing.mode == "directed":
+        clarification_names: list[str] | None = None
+        if addressing and addressing.mode == "clarification":
+            clarification_names = [
+                members[c]["displayName"]
+                for c in addressing.candidate_ids
+                if c in members
+            ]
+        elif addressing and addressing.mode == "directed":
             ids = addressee_ids_for(addressing)
             if is_multi_directed(addressing):
                 co = [
@@ -997,6 +1021,7 @@ class Orchestrator:
             directed_addressee_name=directed_addressee_name,
             directed_witness=directed_witness,
             directed_co_addressees=directed_co_addressees,
+            clarification_names=clarification_names,
         )}"
         if ensemble_invited and cfg.get("discussionSignalsEnabled", True):
             system += (
@@ -1092,7 +1117,8 @@ class Orchestrator:
         )
         depth = 0
         is_commission = str(job.get("trigger", "")).startswith("commission")
-        while depth < 5:
+        max_tool_rounds = int(self._generation_policy(job["worldId"])["max_tool_rounds_per_job"])
+        while depth < max_tool_rounds:
             if is_commission:
                 tools_payload = job_tools
             elif depth == 0 and blocking and not memory_gate_open:
@@ -1522,8 +1548,15 @@ class Orchestrator:
             return existing
         job: dict[str, Any] | None = None
         try:
-            from altrasia.orchestrator.speaker_selection import parse_addressing
+            from altrasia.orchestrator.addressing_policy import (
+                pending_clarification_for_reply,
+            )
+            from altrasia.orchestrator.speaker_selection import (
+                addressee_ids_for,
+                parse_addressing,
+            )
 
+            cfg = self._world_config(world_id)
             scene = self.svc.store.get_scene(scene_id)
             present = json.loads(scene["presentJson"])
             cast = [c for c in present if c not in (PERSONA_ID,)]
@@ -1531,8 +1564,17 @@ class Orchestrator:
                 c["characterId"]: c
                 for c in self.svc.store.list_world_characters(world_id)
             }
+            pending = pending_clarification_for_reply(
+                self.svc.store, world_id, scene_id, message_id
+            )
             addressing = parse_addressing(
-                text, cast, chars, target_character_id=target_character_id
+                text,
+                cast,
+                chars,
+                target_character_id=target_character_id,
+                fuzzy_enabled=bool(cfg.get("addressingFuzzyEnabled", True)),
+                fuzzy_max_distance=int(cfg.get("addressingFuzzyMaxDistance", 2)),
+                pending_clarification=pending,
             )
             self._persist_message_addressing(message_id, addressing)
             await self._preempt_scene_for_operator_line(
@@ -1549,17 +1591,24 @@ class Orchestrator:
             )
             if not cid:
                 return None
-            from altrasia.orchestrator.speaker_selection import addressee_ids_for
-
-            ids = addressee_ids_for(addressing)
-            if addressing.mode == "directed" and ids:
-                cid = ids[0]
+            if addressing.mode == "clarification" and addressing.clarifier_id:
+                cid = addressing.clarifier_id
                 rationale = {
                     **rationale,
-                    "pick": "addressed_multi" if len(ids) > 1 else "addressed",
+                    "pick": "clarification",
                     "characterId": cid,
-                    "addresseeIds": ids,
+                    "candidateIds": addressing.candidate_ids,
                 }
+            else:
+                ids = addressee_ids_for(addressing)
+                if addressing.mode == "directed" and ids:
+                    cid = ids[0]
+                    rationale = {
+                        **rationale,
+                        "pick": "addressed_multi" if len(ids) > 1 else "addressed",
+                        "characterId": cid,
+                        "addresseeIds": ids,
+                    }
             job = await self.enqueue_generation(
                 world_id=world_id,
                 scene_id=scene_id,

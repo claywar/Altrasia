@@ -51,7 +51,12 @@ def test_directed_and_open_depth_caps() -> None:
         "maxContinueDepthCap": 24,
     }
     assert effective_continue_depth_limit(cfg, 0, unresolved=False, addressing_mode="directed") == 1
-    assert effective_continue_depth_limit(cfg, 5, unresolved=True, addressing_mode="open") == 2
+    assert effective_continue_depth_limit(cfg, 5, unresolved=False, addressing_mode="open") == 2
+    assert effective_continue_depth_limit(cfg, 5, unresolved=True, addressing_mode="open") == 8
+    assert (
+        effective_continue_depth_limit(cfg, 0, unresolved=False, addressing_mode="clarification")
+        == 0
+    )
 
 
 def test_resolution_detected_stops_extension() -> None:
