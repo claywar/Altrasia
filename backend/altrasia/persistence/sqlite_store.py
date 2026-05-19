@@ -4,6 +4,7 @@ import json
 import sqlite3
 import threading
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from typing import Any, Iterator
@@ -28,6 +29,7 @@ class SqlitePersistence:
         self._lock = threading.RLock()
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA foreign_keys = ON")
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -57,10 +59,46 @@ class SqlitePersistence:
     def commit(self) -> None:
         self.conn.commit()
 
+    def _ensure_schema_migrations(self) -> None:
+        self.conn.execute(
+            """CREATE TABLE IF NOT EXISTS SchemaMigration (
+                name TEXT PRIMARY KEY,
+                appliedAt TEXT NOT NULL
+            )"""
+        )
+
+    def _applied_migration_names(self) -> set[str]:
+        cur = self.conn.execute("SELECT name FROM SchemaMigration")
+        return {row[0] for row in cur.fetchall()}
+
+    def _has_column(self, table: str, column: str) -> bool:
+        cur = self.conn.execute(f"PRAGMA table_info({table})")
+        return any(row[1] == column for row in cur.fetchall())
+
+    def _mark_migration(self, name: str) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        self.conn.execute(
+            "INSERT OR IGNORE INTO SchemaMigration (name, appliedAt) VALUES (?, ?)",
+            (name, now),
+        )
+
     @_uses_db_lock
     def migrate(self) -> None:
+        self._ensure_schema_migrations()
+        applied = self._applied_migration_names()
+        # Backfill: column added before migration tracking shipped
+        if (
+            "005_social_state.sql" not in applied
+            and self._has_column("Scene", "socialStateJson")
+        ):
+            self._mark_migration("005_social_state.sql")
+            applied = self._applied_migration_names()
         for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+            name = path.name
+            if name in applied:
+                continue
             self.conn.executescript(path.read_text(encoding="utf-8"))
+            self._mark_migration(name)
         self.conn.commit()
 
     @_uses_db_lock
@@ -157,6 +195,15 @@ class SqlitePersistence:
                :modelProfile, :speechWeight, :createdAt)""",
             row,
         )
+        self.conn.commit()
+
+    @_uses_db_lock
+    def update_character(self, character_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [character_id]
+        self.conn.execute(f"UPDATE Character SET {cols} WHERE characterId = ?", vals)
         self.conn.commit()
 
     @_uses_db_lock
@@ -516,8 +563,10 @@ class SqlitePersistence:
     @_uses_db_lock
     def insert_approval(self, row: dict[str, Any]) -> None:
         self.conn.execute(
-            """INSERT INTO Approval (approvalId, worldId, toolName, paramsJson, state, createdAt)
-               VALUES (:approvalId, :worldId, :toolName, :paramsJson, :state, :createdAt)""",
+            """INSERT INTO Approval (approvalId, worldId, toolName, paramsJson, state, createdAt,
+               characterId, jobId, messageId, resultJson)
+               VALUES (:approvalId, :worldId, :toolName, :paramsJson, :state, :createdAt,
+               :characterId, :jobId, :messageId, :resultJson)""",
             row,
         )
         self.conn.commit()

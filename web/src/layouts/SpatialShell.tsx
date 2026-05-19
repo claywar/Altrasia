@@ -200,6 +200,7 @@ export function SpatialShell({
           <SceneStage
             scene={scene}
             graph={graph}
+            messages={messages}
             rosterAtLocation={rosterAtLocation}
             spatialOpen={spatialOpen}
             onToggleSpatial={() => setSpatialOpen((v) => !v)}

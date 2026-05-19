@@ -93,7 +93,24 @@ A character MAY be scheduled when:
 
 **Triggers:** `banter_turn`, `idle_continue` (social idle; `orchestration.socialIdle` on messages).
 
+**Tone (`idleSocialTone`):** `roleplay` (default) favors in-voice color; `professional` steers banter toward grounded workplace small talk, `memory_search` / `diary_search` before factual claims, and sparse `social_signal` updates.
+
+**Task affinity:** Dyad pick scores higher when both speakers have **recent active work** (open commissions, pending discussion deliverables), with extra weight when tasks share a target scene. `idleSocialTaskAffinityEnabled`, `idleSocialTaskAffinityWeight`. Matched tasks are passed into banter prompts as `taskHints`.
+
+**Diary:** Banter captures use `DiarySegment.kind=banter` with a short window (`idleSocialBanterDiaryWindow`, `idleSocialBanterDiaryMaxChars`). Mandatory recall injects at most `idleSocialBanterDiaryMaxEntries` condensed banter lines (`idleSocialBanterRecallMaxChars` each) so sidebar chat does not crowd out witnessed play.
+
 **Floor hold:** Operator or cast floor/attention cues, cast-to-cast directed lines, and open unresolved discussions block or halt banter (`Scene.socialStateJson.floorHold`).
+
+**Banter gates (volume control):** New dyad sessions are additionally gated by session cooldown, probabilistic start, and a digest window (operator lines, active commissions/deliverables at the scene). When banter is enabled but gates block a start, the idle tick falls through to solo `idle_timer` instead of silence.
+
+| Config | Default | Effect |
+|--------|---------|--------|
+| `idleSocialSessionCooldownSeconds` | 180 | Min seconds after any banter session ends before a new one |
+| `idleSocialStartProbability` | 0.4 | Per-tick chance to start banter when otherwise eligible |
+| `idleSocialDigestWindowSeconds` | 300 | Block new banter while operator-influenced work is recent |
+| `idleSocialTabIntervalSeconds` | 45 | Tab-visible idle tick interval |
+
+**Balanced social preset** (`BALANCED_SOCIAL_PRESET` in `world_config.py`): apply via `merge_world_policy` for quieter worlds — `idleSocialMaxDepth` 2, recency half-life 600s, exploration 0, jitter 0.08, task affinity weight 0.35, `idleSocialTone` professional, floor hold 120s, plus the gate defaults above.
 
 ## 6. Reactive and continue chains
 

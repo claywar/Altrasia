@@ -77,23 +77,30 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
     async def webtools_invoke(params: dict, ctx: ToolContext) -> Any:
         from altrasia.approvals import (
             create_approval,
+            execute_web_fetch,
             mark_approval_applied,
             world_tool_policy,
         )
-        from altrasia.tools.web_fetch import safe_fetch
-        from altrasia.world_config import get_world_config
+        from altrasia.tools.web_access import resolve_web_tools_policy
 
-        query = (params.get("query") or params.get("url") or "").strip()
-        policy = world_tool_policy(services.store, ctx.world_id)
-        wcfg = get_world_config(services.store, ctx.world_id)
-        use_mock = services.settings.web_tools_mock or wcfg.get("webToolsMock", True)
-        if policy["requireWebToolApproval"]:
+        char_policy = resolve_web_tools_policy(
+            services.store, ctx.world_id, ctx.character_id
+        )
+        if not char_policy["exposed"]:
+            return {
+                "ok": False,
+                "error": "web tools not enabled for this character",
+            }
+        if char_policy["require_approval"]:
             approval = create_approval(
                 services.store,
                 world_id=ctx.world_id,
                 tool_name="webtools_invoke",
                 params=params,
                 state="pending",
+                character_id=ctx.character_id,
+                job_id=ctx.job_id,
+                message_id=ctx.message_id,
             )
             services.event_bus.emit(
                 services.store,
@@ -107,27 +114,18 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "approvalId": approval["approvalId"],
                 "message": "Operator must approve this web fetch before results are available.",
             }
-        if use_mock:
-            summary = (
-                f"[mock web] No live fetch in dev. Treat as placeholder fact for: {query[:200]}"
-                if query
-                else "[mock web] supply query or url"
-            )
-            result = {"ok": True, "query": query, "summary": summary, "mock": True}
-        else:
-            url = params.get("url") or (
-                f"https://www.example.org/?q={query}" if query else ""
-            )
-            result = await safe_fetch(
-                url, allowlist=services.settings.web_allowlist_set()
-            )
-        if policy["auditWebTools"]:
+        result = await execute_web_fetch(services, ctx.world_id, params)
+        world_policy = world_tool_policy(services.store, ctx.world_id)
+        if world_policy["auditWebTools"]:
             approval = create_approval(
                 services.store,
                 world_id=ctx.world_id,
                 tool_name="webtools_invoke",
                 params=params,
                 state="approved",
+                character_id=ctx.character_id,
+                job_id=ctx.job_id,
+                message_id=ctx.message_id,
             )
             mark_approval_applied(services.store, approval["approvalId"])
         return result

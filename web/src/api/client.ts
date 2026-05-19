@@ -171,12 +171,15 @@ export type OperatorSettings = {
   };
 };
 
+export type WebToolsAccess = "off" | "ask" | "allow";
+
 export type CharacterDefinition = {
   persona: string;
   instructions: string;
   focusTags?: string[];
   speechWeight?: number;
   modelProfile?: string;
+  webToolsAccess?: WebToolsAccess;
 };
 
 export type Commission = {
@@ -252,6 +255,10 @@ export type Approval = {
   params: Record<string, unknown>;
   state: string;
   createdAt: string;
+  characterId?: string | null;
+  jobId?: string | null;
+  messageId?: string | null;
+  result?: Record<string, unknown> | null;
 };
 
 export type Position3d = { x: number; y: number; z: number };
@@ -500,9 +507,10 @@ export const api = {
   listApprovals: (worldId: string, state = "pending") =>
     request<Approval[]>(`/worlds/${worldId}/approvals?state=${state}`),
   approveApproval: (worldId: string, approvalId: string) =>
-    request<Approval>(`/worlds/${worldId}/approvals/${approvalId}/approve`, {
-      method: "POST",
-    }),
+    request<Approval & { followUpJobId?: string }>(
+      `/worlds/${worldId}/approvals/${approvalId}/approve`,
+      { method: "POST" }
+    ),
   denyApproval: (worldId: string, approvalId: string) =>
     request<Approval>(`/worlds/${worldId}/approvals/${approvalId}/deny`, { method: "POST" }),
   patchCommission: (
@@ -707,6 +715,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  patchCharacter: (characterId: string, body: { definition: Partial<CharacterDefinition> }) =>
+    request<{ characterId: string; definition: CharacterDefinition }>(
+      `/characters/${characterId}`,
+      { method: "PATCH", body: JSON.stringify(body) }
+    ),
   addWorldMember: (worldId: string, characterId: string) =>
     request<{ worldId: string; characterId: string }>(`/worlds/${worldId}/members`, {
       method: "POST",

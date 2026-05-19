@@ -43,6 +43,10 @@ stateDiagram-v2
 
 **Requirement (APR-1):** Approve SHOULD apply immediately in one step (no mandatory second "apply" click) unless audit mode requires two-phase commit.
 
+For `webtools_invoke`, approve MUST run the fetch (`safe_fetch` or mock), persist `resultJson`, set state `applied`, and enqueue an `agent_tool` follow-up so the requesting character can reply using the approved summary.
+
+Approval rows SHOULD record `characterId`, `jobId`, and `messageId` when created from generation.
+
 ## 2. When approval is required
 
 | Operation class | Default |

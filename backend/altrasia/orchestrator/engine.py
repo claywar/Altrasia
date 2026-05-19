@@ -324,6 +324,18 @@ class Orchestrator:
     def _filter_tools(self, all_tools: list[dict], allowed: set[str]) -> list[dict]:
         return [t for t in all_tools if t["function"]["name"] in allowed]
 
+    def _apply_web_tool_filter(
+        self, job: dict[str, Any], tool_names: set[str]
+    ) -> set[str]:
+        from altrasia.tools.web_access import filter_tool_names_for_web_access
+
+        return filter_tool_names_for_web_access(
+            self.svc.store,
+            job["worldId"],
+            job["characterId"],
+            tool_names,
+        )
+
     def _tools_for_job(
         self, job: dict[str, Any], all_tools: list[dict], memory_only: set[str]
     ) -> list[dict]:
@@ -340,7 +352,9 @@ class Orchestrator:
             row = self.svc.store.get_commission(com_id)
             allowed = parse_allowed_tools(row)
             if allowed is not None:
-                allowed = set(allowed) | memory_only
+                allowed = self._apply_web_tool_filter(
+                    job, set(allowed) | memory_only
+                )
                 return self._filter_tools(all_tools, allowed)
         from altrasia.tools.cast_tools import (
             OBSERVER_ONLY_SCENE_TOOLS,
@@ -372,6 +386,7 @@ class Orchestrator:
                 if not t["function"]["name"].startswith("scene_")
                 and not t["function"]["name"].startswith("map_")
             }
+        cast_tools = self._apply_web_tool_filter(job, cast_tools)
         return self._filter_tools(all_tools, cast_tools)
 
     def pick_reactive_character(
@@ -783,6 +798,46 @@ class Orchestrator:
         self._emit_queue(world_id)
         return {"jobId": job_id, "status": "queued"}
 
+    async def resume_after_web_approval(
+        self,
+        approval_row: dict[str, Any],
+        result: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        character_id = approval_row.get("characterId")
+        world_id = approval_row.get("worldId")
+        if not character_id or not world_id:
+            return None
+        scene_id: str | None = None
+        job_id = approval_row.get("jobId")
+        if job_id:
+            job = self.svc.store.get_job(job_id)
+            if job:
+                scene_id = job.get("sceneId")
+        if not scene_id:
+            world = self.svc.store.get_world(world_id)
+            if world:
+                scene_id = world.get("activeSceneId")
+        if not scene_id:
+            return None
+        summary = (
+            result.get("summary")
+            or result.get("text")
+            or json.dumps(result, ensure_ascii=False)[:4000]
+        )
+        rationale = {
+            "pick": "web_approval_resume",
+            "characterId": character_id,
+            "webApprovalId": approval_row["approvalId"],
+            "webApprovalSummary": str(summary)[:4000],
+        }
+        return await self.enqueue_generation(
+            world_id=world_id,
+            scene_id=scene_id,
+            character_id=character_id,
+            trigger="agent_tool",
+            selection_rationale_json=json.dumps(rationale),
+        )
+
     async def _run_job(self, job_id: str, stream: TokenStream) -> None:
         job = self.svc.store.get_job(job_id)
         if not job:
@@ -1138,6 +1193,13 @@ class Orchestrator:
                     f"When finished, call memory_store on your mind pool with key "
                     f'"{summary_key}" containing your findings.'
                 )
+        web_summary = rationale.get("webApprovalSummary")
+        if web_summary:
+            system += (
+                "\n\nOperator approved a web lookup. Use this factual result in your "
+                "reply; do not claim you lack web access:\n"
+                f"{web_summary}"
+            )
         if str(job.get("trigger", "")) == "discussion_deliverable":
             from altrasia.orchestrator.discussion_judgement import _transcript_excerpt
 
@@ -1194,6 +1256,40 @@ class Orchestrator:
                             session_lines.append(m["outputText"])
                     except json.JSONDecodeError:
                         continue
+                tone = str(cfg.get("idleSocialTone", "roleplay"))
+                try:
+                    job_rat = json.loads(job.get("selectionRationaleJson") or "{}")
+                except json.JSONDecodeError:
+                    job_rat = {}
+                task_hints = list(job_rat.get("taskHints") or [])
+                if not task_hints and activity:
+                    from altrasia.orchestrator.idle_task_affinity import (
+                        collect_active_tasks_by_character,
+                        task_hints_for_characters,
+                    )
+
+                    order = activity.get("speakingOrder") or []
+                    other = next(
+                        (c for c in order if c != job["characterId"]), None
+                    )
+                    ids = [job["characterId"], other] if other else [job["characterId"]]
+                    by_char = collect_active_tasks_by_character(
+                        self.svc,
+                        world_id=job["worldId"],
+                        scene_id=job["sceneId"],
+                    )
+                    task_hints = task_hints_for_characters(by_char, ids)
+                from altrasia.orchestrator.idle_social_state import scene_digest_window_active
+
+                digest_sec = float(
+                    cfg.get("idleSocialDigestWindowSeconds", 300)
+                )
+                digest_active = scene_digest_window_active(
+                    self.svc,
+                    job["worldId"],
+                    job["sceneId"],
+                    window_seconds=digest_sec,
+                )
                 system += f"\n\n{banter_system_addendum(
                     self.svc,
                     world_id=job['worldId'],
@@ -1202,12 +1298,26 @@ class Orchestrator:
                     activity=activity,
                     members=members,
                     recent_session_lines=session_lines,
+                    tone=tone,
+                    task_hints=task_hints,
+                    digest_active=digest_active,
                 )}"
             if cfg.get("socialSignalEnabled", True):
-                system += (
-                    "\n\nYou may call social_signal to note a relationship beat with "
-                    "your counterpart (mind pool) or a rare culture update (world pool)."
-                )
+                if str(cfg.get("idleSocialTone", "roleplay")).lower() == "professional":
+                    system += (
+                        "\n\nYou may call social_signal sparingly—only when a relationship "
+                        "or culture shift should persist beyond this chat (mind or world pool)."
+                    )
+                else:
+                    system += (
+                        "\n\nYou may call social_signal to note a relationship beat with "
+                        "your counterpart (mind pool) or a rare culture update (world pool)."
+                    )
+                if str(cfg.get("idleSocialTone", "roleplay")).lower() == "professional":
+                    system += (
+                        "\n\nUse memory_search and diary_search when you need facts from "
+                        "your role, mind loci, or what you witnessed—before inventing details."
+                    )
             hold = get_floor_hold(scene)
             if hold:
                 system += f"\n\n{floor_focus_addendum(hold, members, job['characterId'])}"
@@ -1243,6 +1353,7 @@ class Orchestrator:
             services=self.svc,
             commission_id=com_id,
             message_id=msg_id,
+            job_id=job.get("jobId"),
         )
         depth = 0
         is_commission = str(job.get("trigger", "")).startswith("commission")
@@ -1558,6 +1669,44 @@ class Orchestrator:
             rationale=rationale,
         )
 
+    def _diary_fanout_payload(
+        self,
+        job: dict[str, Any],
+        recent: list[dict[str, Any]],
+        *,
+        cfg: dict[str, Any],
+    ) -> tuple[str, str, list[str]]:
+        trigger = str(job.get("trigger") or "")
+        if trigger in ("banter_turn", "idle_continue"):
+            window = int(cfg.get("idleSocialBanterDiaryWindow", 2))
+            max_chars = int(cfg.get("idleSocialBanterDiaryMaxChars", 480))
+            banter_msgs: list[dict[str, Any]] = []
+            for m in reversed(recent):
+                try:
+                    meta = json.loads(m.get("metaJson") or "{}")
+                except json.JSONDecodeError:
+                    meta = {}
+                orch = meta.get("orchestration") or {}
+                if orch.get("socialIdle") and m.get("outputText"):
+                    banter_msgs.append(m)
+                if len(banter_msgs) >= window:
+                    break
+            banter_msgs.reverse()
+            if not banter_msgs and recent:
+                banter_msgs = [recent[-1]]
+            lines = [
+                f"{m.get('characterId') or 'persona'}: {m['outputText']}"
+                for m in banter_msgs
+                if m.get("outputText")
+            ]
+            snippet = "\n".join(lines)[:max_chars]
+            msg_ids = [m["messageId"] for m in banter_msgs if m.get("messageId")]
+            return snippet, "banter", msg_ids or [recent[-1]["messageId"]]
+        snippet = "\n".join(
+            f"{m.get('characterId') or 'persona'}: {m['outputText']}" for m in recent
+        )
+        return snippet, "witnessed", [m["messageId"] for m in recent]
+
     async def _after_reply(
         self,
         job: dict,
@@ -1642,14 +1791,15 @@ class Orchestrator:
         scene = self.svc.store.get_scene(job["sceneId"])
         present = [c for c in json.loads(scene["presentJson"]) if c != PERSONA_ID]
         recent = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])[-6:]
-        snippet = "\n".join(
-            f"{m.get('characterId') or 'persona'}: {m['outputText']}" for m in recent
+        snippet, diary_kind, diary_msg_ids = self._diary_fanout_payload(
+            job, recent, cfg=cfg
         )
         self.svc.memory.capture_diary_fanout(
             scene_id=job["sceneId"],
             present_ids=present,
             snippet=snippet,
-            message_ids=[m["messageId"] for m in recent],
+            message_ids=diary_msg_ids,
+            kind=diary_kind,
         )
 
         await self._handle_cast_social_after_reply(job, msg_id, text, cfg=cfg)
@@ -1970,6 +2120,15 @@ class Orchestrator:
             )
             if op_claim:
                 apply_floor_claim(self.svc, scene_id, op_claim, source_message_id=message_id)
+            from altrasia.orchestrator.idle_social_state import extend_digest_window
+            from altrasia.world_config import get_idle_social_config
+
+            digest_sec = int(
+                get_idle_social_config(self.svc.store, world_id).get(
+                    "idleSocialDigestWindowSeconds", 300
+                )
+            )
+            extend_digest_window(self.svc.store, scene_id, seconds=digest_sec)
             if alias_registered:
                 cid_reg, alias_reg = alias_registered
                 row = self.svc.store.fetchone(

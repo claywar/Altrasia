@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from altrasia.persistence.sqlite_store import SqlitePersistence
+from altrasia.tools.web_access import WEB_TOOL_NAMES
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
 
@@ -31,6 +32,9 @@ def create_approval(
     tool_name: str,
     params: dict[str, Any],
     state: str = "pending",
+    character_id: str | None = None,
+    job_id: str | None = None,
+    message_id: str | None = None,
 ) -> dict[str, Any]:
     approval_id = str(uuid.uuid4())
     row = {
@@ -40,6 +44,10 @@ def create_approval(
         "paramsJson": json.dumps(params),
         "state": state,
         "createdAt": ISO(),
+        "characterId": character_id,
+        "jobId": job_id,
+        "messageId": message_id,
+        "resultJson": None,
     }
     store.insert_approval(row)
     return _serialize(row)
@@ -70,11 +78,55 @@ def mark_approval_applied(store: SqlitePersistence, approval_id: str) -> None:
     store.update_approval(approval_id, state="applied")
 
 
+async def execute_web_fetch(services: Any, world_id: str, params: dict[str, Any]) -> dict[str, Any]:
+    from altrasia.tools.web_fetch import safe_fetch
+    from altrasia.world_config import get_world_config
+
+    query = (params.get("query") or params.get("url") or "").strip()
+    wcfg = get_world_config(services.store, world_id)
+    use_mock = services.settings.web_tools_mock or wcfg.get("webToolsMock", True)
+    if use_mock:
+        summary = (
+            f"[mock web] No live fetch in dev. Treat as placeholder fact for: {query[:200]}"
+            if query
+            else "[mock web] supply query or url"
+        )
+        return {"ok": True, "query": query, "summary": summary, "mock": True}
+    url = params.get("url") or (f"https://www.example.org/?q={query}" if query else "")
+    return await safe_fetch(url, allowlist=services.settings.web_allowlist_set())
+
+
+async def apply_web_approval(
+    store: SqlitePersistence, services: Any, approval_row: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        params = json.loads(approval_row.get("paramsJson") or "{}")
+    except json.JSONDecodeError:
+        params = {}
+    result = await execute_web_fetch(services, approval_row["worldId"], params)
+    store.update_approval(
+        approval_row["approvalId"],
+        resultJson=json.dumps(result),
+    )
+    return result
+
+
+def is_web_tool(tool_name: str) -> bool:
+    return tool_name in WEB_TOOL_NAMES
+
+
 def _serialize(row: dict[str, Any]) -> dict[str, Any]:
     try:
         params = json.loads(row.get("paramsJson") or "{}")
     except json.JSONDecodeError:
         params = {}
+    result = None
+    raw_result = row.get("resultJson")
+    if raw_result:
+        try:
+            result = json.loads(raw_result)
+        except json.JSONDecodeError:
+            result = raw_result
     return {
         "approvalId": row["approvalId"],
         "worldId": row["worldId"],
@@ -82,4 +134,8 @@ def _serialize(row: dict[str, Any]) -> dict[str, Any]:
         "params": params,
         "state": row["state"],
         "createdAt": row["createdAt"],
+        "characterId": row.get("characterId"),
+        "jobId": row.get("jobId"),
+        "messageId": row.get("messageId"),
+        "result": result,
     }

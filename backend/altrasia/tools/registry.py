@@ -15,6 +15,7 @@ class ToolContext:
     services: Any
     commission_id: str | None = None
     message_id: str | None = None
+    job_id: str | None = None
 
 
 @dataclass

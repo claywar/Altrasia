@@ -11,15 +11,20 @@ def test_commission_with_webtools(app_client: tuple[TestClient, object]) -> None
         "/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}
     ).json()["worldId"]
     kitchen = "scene-conference-room"
+    assignee = "char-jordan-reyes"
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{kitchen}/presence/join",
-        json={"characterId": "char-jordan-reyes"},
+        json={"characterId": assignee},
+    )
+    client.patch(
+        f"/api/v1/characters/{assignee}",
+        json={"definition": {"webToolsAccess": "allow"}},
     )
 
     created = client.post(
         f"/api/v1/worlds/{world_id}/commissions",
         json={
-            "assigneeCharacterId": "char-jordan-reyes",
+            "assigneeCharacterId": assignee,
             "targetSceneId": kitchen,
             "brief": "Research Vertex Labs public API status page online.",
             "allowedTools": ["webtools_invoke", "memory_store", "memory_search"],

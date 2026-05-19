@@ -1,9 +1,17 @@
-import type { Scene, SpatialGraph } from "../../api/client";
+import { useMemo } from "react";
+import type { Message, Scene, SpatialGraph } from "../../api/client";
 import { Button } from "../../ui/Button";
 import { Chip } from "../../ui/Chip";
 import { MiniMap3D } from "../map3d/MiniMap3D";
 import { compassFromActive } from "../maps/mapNavigation";
-import { parsePresent, sceneStructureHints, structureLabel, structureTint } from "../../lib/parse";
+import {
+  parsePresent,
+  sceneHasSocialIdleMessages,
+  sceneStructureHints,
+  structureLabel,
+  structureTint,
+} from "../../lib/parse";
+import { BanterTranscriptToggle } from "../transcript/BanterTranscriptToggle";
 
 type PresencePerson = {
   characterId: string;
@@ -13,6 +21,7 @@ type PresencePerson = {
 type Props = {
   scene: Scene | null;
   graph?: SpatialGraph | null;
+  messages?: Message[];
   rosterAtLocation: PresencePerson[];
   spatialOpen: boolean;
   onToggleSpatial: () => void;
@@ -29,12 +38,15 @@ function displayNameForId(id: string, roster: PresencePerson[]): string {
 export function SceneStage({
   scene,
   graph,
+  messages = [],
   rosterAtLocation,
   spatialOpen,
   onToggleSpatial,
   onMapOpen,
 }: Props) {
   if (!scene) return null;
+
+  const hasBanter = useMemo(() => sceneHasSocialIdleMessages(messages), [messages]);
 
   const { structureId, fixtures } = sceneStructureHints(scene.layoutHintsJson);
   const presentIds = parsePresent(scene.presentJson);
@@ -114,6 +126,13 @@ export function SceneStage({
             ))
           )}
         </div>
+        {hasBanter && (
+          <div className="scene-stage__banter" data-testid="scene-stage-banter">
+            <span className="scene-stage__banter-label">Sidebar banter</span>
+            <span className="scene-stage__banter-hint">Shown in chronicle below</span>
+            <BanterTranscriptToggle visible />
+          </div>
+        )}
       </div>
     </header>
   );

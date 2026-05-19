@@ -96,7 +96,21 @@ Server routes (examples) proxy third-party search APIs and fetch URLs:
 
 **Requirement (WEB-5):** Agent access to visit SHOULD go through the web-tools plugin (with approval) unless explicitly hardened for autonomous use.
 
-## 5. Automatic memory lookup
+## 5. Per-character access (v1)
+
+Web tools are gated per **Character** via `definitionJson.webToolsAccess`:
+
+| Value | Tool exposed to model | On invoke |
+|-------|----------------------|-----------|
+| `off` (default) | No | — |
+| `ask` | Yes | Always queue operator approval |
+| `allow` | Yes | Fetch immediately; **overrides** world `requireWebToolApproval` |
+
+Configure in cast settings (PATCH `/api/v1/characters/{characterId}`) or when authoring a draft.
+
+Commissions may list `webtools_invoke` in `allowedTools`, but the assignee MUST have non-`off` access.
+
+## 6. Automatic memory lookup
 
 Agents SHOULD use **memory tools** ([02-memory.md](02-memory.md)) for endogenous facts before web search:
 
@@ -105,11 +119,11 @@ Agents SHOULD use **memory tools** ([02-memory.md](02-memory.md)) for endogenous
 
 Mandatory recall blocking enforces step 1 before other tools when enabled.
 
-### 5.1 Commissions (post-v1)
+### 6.1 Commissions (post-v1)
 
 During an active **commission** ([23-in-world-work.md](23-in-world-work.md)), web/FS tools MAY run only when listed in `allowedTools`. Fetched facts MUST be stored via `memory_store` to the assignee **mind pool** by default (COM-1, COM-2) with **EvidenceRecord** provenance (MP-21). Post-completion Q&A MUST follow COM-5 (memory before re-fetch).
 
-## 6. Operator checklist
+## 7. Operator checklist
 
 1. Enable server plugins and deploy `web-tools` plugin package.
 2. Configure API keys for search providers in secrets store.
@@ -117,7 +131,7 @@ During an active **commission** ([23-in-world-work.md](23-in-world-work.md)), we
 4. Enable approval polling for risky plugin tools.
 5. Train character prompts: memory first, web second, cite sources in dialogue.
 
-## 7. Requirements summary
+## 8. Requirements summary
 
 | ID | Requirement |
 |----|-------------|

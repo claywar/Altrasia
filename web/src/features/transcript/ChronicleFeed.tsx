@@ -4,9 +4,7 @@ import {
   chronicleMessages,
   hideSocialBanterInTranscript,
   parseScope,
-  sceneHasSocialIdleMessages,
 } from "../../lib/parse";
-import { BanterTranscriptToggle } from "./BanterTranscriptToggle";
 import { ChronicleEntry } from "./ChronicleEntry";
 
 type Props = {
@@ -16,10 +14,7 @@ type Props = {
 
 function subscribeBanterFilter(cb: () => void) {
   const onStorage = (e: StorageEvent) => {
-    if (
-      e.key === "altrasia.hideSocialBanterInTranscript" ||
-      e.key === "altrasia.showSocialIdleInTranscript"
-    ) {
+    if (e.key === "altrasia.hideSocialBanterInTranscript") {
       cb();
     }
   };
@@ -45,18 +40,10 @@ export function ChronicleFeed({ messages, worldId }: Props) {
     () => false
   );
 
-  const hasBanter = useMemo(() => sceneHasSocialIdleMessages(messages), [messages]);
-
   const visible = useMemo(() => chronicleMessages(messages), [messages, hideBanter]);
 
   return (
     <div className="chronicle-feed" data-testid="chronicle-feed">
-      {hasBanter && (
-        <div className="chronicle-feed__toolbar">
-          <span className="chronicle-feed__toolbar-label">Sidebar banter</span>
-          <BanterTranscriptToggle visible />
-        </div>
-      )}
       {visible.length === 0 && (
         <p className="chronicle-feed__empty">The scene is quiet. Speak as persona to begin.</p>
       )}

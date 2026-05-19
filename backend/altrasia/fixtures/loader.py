@@ -21,10 +21,55 @@ def _row_exists(store: SqlitePersistence, table: str, column: str, value: str) -
 
 def _delete_world(store: SqlitePersistence, world_id: str) -> None:
     # MapArtifact/MediaAsset migrations omit ON DELETE CASCADE (004_map_artifacts.sql).
+    # Scene/Structure are deleted explicitly so purge stays correct if FK enforcement is off.
     with store.transaction() as conn:
         conn.execute("DELETE FROM MapArtifact WHERE worldId = ?", (world_id,))
         conn.execute("DELETE FROM MediaAsset WHERE worldId = ?", (world_id,))
+        conn.execute("DELETE FROM Scene WHERE worldId = ?", (world_id,))
+        conn.execute("DELETE FROM Structure WHERE worldId = ?", (world_id,))
         conn.execute("DELETE FROM World WHERE worldId = ?", (world_id,))
+
+
+def _fixture_structure_ids(data: dict[str, Any]) -> list[str]:
+    ids = [st["structureId"] for st in data.get("structures", [])]
+    for placement in (data.get("worldMap") or {}).get("structurePlacements", []):
+        sid = placement.get("structureId")
+        if sid:
+            ids.append(sid)
+    return list(dict.fromkeys(ids))
+
+
+def _fixture_scene_ids(data: dict[str, Any]) -> list[str]:
+    return [sc["sceneId"] for sc in data.get("scenes", [])]
+
+
+def _purge_fixture_stable_ids(store: SqlitePersistence, data: dict[str, Any]) -> None:
+    """Drop fixture-owned stable ids that can outlive world delete (partial failed loads)."""
+    scene_ids = _fixture_scene_ids(data)
+    structure_ids = _fixture_structure_ids(data)
+    if not scene_ids and not structure_ids:
+        return
+    with store.transaction() as conn:
+        if scene_ids:
+            placeholders = ",".join("?" * len(scene_ids))
+            conn.execute(
+                f"DELETE FROM MapArtifact WHERE sceneId IN ({placeholders})",
+                scene_ids,
+            )
+            conn.execute(
+                f"DELETE FROM Message WHERE sceneId IN ({placeholders})",
+                scene_ids,
+            )
+            conn.execute(
+                f"DELETE FROM Scene WHERE sceneId IN ({placeholders})",
+                scene_ids,
+            )
+        if structure_ids:
+            placeholders = ",".join("?" * len(structure_ids))
+            conn.execute(
+                f"DELETE FROM Structure WHERE structureId IN ({placeholders})",
+                structure_ids,
+            )
 
 
 def _purge_fixture_entity_loci(store: SqlitePersistence, data: dict[str, Any]) -> None:
@@ -74,6 +119,7 @@ def purge_fixture_installation(
     for wid in to_delete:
         if store.get_world(wid):
             _delete_world(store, wid)
+    _purge_fixture_stable_ids(store, data)
     _purge_fixture_entity_loci(store, data)
 
 
@@ -105,6 +151,41 @@ def _seed_cto_team_locus(
         return
     value = "Key reports and directors: " + ", ".join(sorted(set(names)))
     store.upsert_locus("mind", cto["characterId"], "team", value, now)
+
+
+def _upsert_fixture_structure(
+    store: SqlitePersistence,
+    st: dict[str, Any],
+    world_id: str,
+    now: str,
+) -> None:
+    sid = st["structureId"]
+    row = (
+        st.get("displayName", sid),
+        st.get("kind", "building"),
+        json.dumps(st["boundary"]) if st.get("boundary") else None,
+        now,
+        world_id,
+        sid,
+    )
+    if _row_exists(store, "Structure", "structureId", sid):
+        store.run(
+            """UPDATE Structure SET displayName = ?, kind = ?, boundaryJson = ?,
+               updatedAt = ?, worldId = ? WHERE structureId = ?""",
+            row,
+        )
+        store.commit()
+    else:
+        store.insert_structure(
+            {
+                "structureId": sid,
+                "worldId": world_id,
+                "displayName": row[0],
+                "kind": row[1],
+                "boundaryJson": row[2],
+                "updatedAt": now,
+            }
+        )
 
 
 def _upsert_fixture_character(
@@ -165,16 +246,7 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
             }
         )
         for st in data.get("structures", []):
-            store.insert_structure(
-                {
-                    "structureId": st["structureId"],
-                    "worldId": world_id,
-                    "displayName": st["displayName"],
-                    "kind": st.get("kind", "building"),
-                    "boundaryJson": json.dumps(st["boundary"]) if st.get("boundary") else None,
-                    "updatedAt": now,
-                }
-            )
+            _upsert_fixture_structure(store, st, world_id, now)
         for ch in data.get("characters", []):
             cid = ch["characterId"]
             _upsert_fixture_character(store, ch, now)

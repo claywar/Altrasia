@@ -4,11 +4,36 @@ import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from altrasia.memory.strip_reasoning import is_durable_value_ok, strip_reasoning
 from altrasia.persistence.sqlite_store import SqlitePersistence
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
+
+
+def _diary_recall_lines(
+    diary: list[dict[str, Any]],
+    *,
+    witnessed_limit: int = 8,
+    banter_limit: int = 2,
+    banter_max_chars: int = 120,
+) -> list[str]:
+    witnessed = [s for s in diary if (s.get("kind") or "witnessed") != "banter"]
+    banter = [s for s in diary if s.get("kind") == "banter"]
+    lines: list[str] = []
+    if witnessed:
+        lines.append("## Recent diary (witnessed)")
+        for seg in witnessed[-witnessed_limit:]:
+            lines.append(f"- {seg['text']}")
+    if banter:
+        lines.append("## Recent sidebar banter (condensed)")
+        for seg in banter[-banter_limit:]:
+            text = (seg.get("text") or "").strip()
+            if len(text) > banter_max_chars:
+                text = text[: banter_max_chars - 1].rstrip() + "…"
+            lines.append(f"- {text}")
+    return lines
 
 
 class MemoryService:
@@ -86,9 +111,17 @@ class MemoryService:
         parts: list[str] = []
         diary = self.store.list_diary(character_id, limit=12)
         if diary:
-            parts.append("## Recent diary (witnessed)")
-            for seg in diary[-8:]:
-                parts.append(f"- {seg['text']}")
+            idle_cfg = get_world_config(self.store, world_id) if world_id else {}
+            banter_limit = int(idle_cfg.get("idleSocialBanterDiaryMaxEntries", 2))
+            banter_chars = int(idle_cfg.get("idleSocialBanterRecallMaxChars", 120))
+            parts.extend(
+                _diary_recall_lines(
+                    diary,
+                    witnessed_limit=8,
+                    banter_limit=banter_limit,
+                    banter_max_chars=banter_chars,
+                )
+            )
         mind = self.store.fetchall(
             "SELECT locusKey, value FROM Locus WHERE pool = 'mind' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 20",
             (character_id,),
@@ -141,6 +174,7 @@ class MemoryService:
         present_ids: list[str],
         snippet: str,
         message_ids: list[str],
+        kind: str = "witnessed",
     ) -> None:
         """MP-20: same segment for every present cast member."""
         cleaned = strip_reasoning(snippet)
@@ -149,6 +183,7 @@ class MemoryService:
         dedupe_src = "|".join(sorted(message_ids))
         dedupe_key = hashlib.sha256(dedupe_src.encode()).hexdigest()[:32]
         now = ISO()
+        segment_kind = kind if kind in ("witnessed", "banter") else "witnessed"
         for cid in present_ids:
             if cid == "__persona__":
                 continue
@@ -160,7 +195,7 @@ class MemoryService:
                     "sourceSceneId": scene_id,
                     "messageIdsJson": json.dumps(message_ids),
                     "dedupeKey": dedupe_key,
-                    "kind": "witnessed",
+                    "kind": segment_kind,
                     "createdAt": now,
                 }
             )

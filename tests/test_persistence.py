@@ -17,6 +17,18 @@ def store(tmp_path: Path) -> SqlitePersistence:
     db.close()
 
 
+def test_migrate_is_idempotent(tmp_path: Path) -> None:
+    db = SqlitePersistence(tmp_path / "idempotent.db")
+    db.migrate()
+    db.migrate()
+    row = db.fetchone(
+        "SELECT name FROM SchemaMigration ORDER BY name DESC LIMIT 1"
+    )
+    assert row is not None
+    assert db._has_column("Scene", "socialStateJson")
+    db.close()
+
+
 def test_migration_creates_world_table(store: SqlitePersistence) -> None:
     row = store.fetchone(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='World'"
@@ -35,6 +47,55 @@ def test_load_demo_fixture(store: SqlitePersistence) -> None:
     world = store.get_world(result["worldId"])
     assert world["activeSceneId"] == "scene-lobby"
     assert world.get("worldMapJson")
+
+
+def test_load_demo_fixture_after_orphan_structure(store: SqlitePersistence) -> None:
+    """Recover when a prior failed load left fixture structure ids without a world."""
+    import json
+
+    fixtures = Path(__file__).resolve().parent / "fixtures"
+    raw = json.loads(
+        (fixtures / "demo-world" / "demo-spatial-v1.json").read_text(encoding="utf-8")
+    )
+    now = "2026-01-01T00:00:00+00:00"
+    wid = raw["worldId"]
+    store.insert_world(
+        {
+            "worldId": wid,
+            "name": "stale",
+            "activeSceneId": raw["activeSceneId"],
+            "defaultModelProfile": "qwen3.6-35b-a3b",
+            "configJson": "{}",
+            "worldMapJson": None,
+            "eventSeq": 0,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+    )
+    st = raw["structures"][0]
+    store.insert_structure(
+        {
+            "structureId": st["structureId"],
+            "worldId": wid,
+            "displayName": st["displayName"],
+            "kind": st.get("kind", "building"),
+            "boundaryJson": None,
+            "updatedAt": now,
+        }
+    )
+    # Simulate partial failed load when FK enforcement was off: world row gone, structure remains.
+    store.conn.execute("PRAGMA foreign_keys = OFF")
+    store.run("DELETE FROM World WHERE worldId = ?", (wid,))
+    store.commit()
+    store.conn.execute("PRAGMA foreign_keys = ON")
+    assert store.get_world(wid) is None
+    assert store.fetchone(
+        "SELECT 1 FROM Structure WHERE structureId = ?", (st["structureId"],)
+    )
+
+    result = load_fixture_by_id(store, fixtures, "demo-spatial-v1")
+    assert result["worldId"] == wid
+    assert len(store.list_structures(wid)) == 1
 
 
 def test_load_demo_fixture_twice_on_same_db(store: SqlitePersistence) -> None:

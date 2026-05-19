@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from typing import Any
 
 from altrasia.debate_activity import get_active_banter, parse_activity
@@ -11,7 +12,11 @@ from altrasia.orchestrator.addressing_policy import (
 )
 from altrasia.orchestrator.conversation_resolution import is_scene_conversation_unresolved
 from altrasia.orchestrator.discussion_judgement import get_ensemble_discussion
-from altrasia.orchestrator.idle_social_state import scene_has_floor_hold
+from altrasia.orchestrator.idle_social_state import (
+    scene_digest_window_active,
+    scene_has_floor_hold,
+    seconds_since_last_banter,
+)
 from altrasia.world_config import get_idle_social_config
 
 
@@ -54,4 +59,17 @@ def should_start_idle_banter(
         return False, "banter_already_active"
     if scene_has_floor_hold(svc.store, scene_id):
         return False, "floor_hold_active"
+    cooldown = float(cfg.get("idleSocialSessionCooldownSeconds", 180))
+    if cooldown > 0:
+        since = seconds_since_last_banter(scene)
+        if since is not None and since < cooldown:
+            return False, "session_cooldown"
+    digest_sec = float(cfg.get("idleSocialDigestWindowSeconds", 300))
+    if scene_digest_window_active(
+        svc, world_id, scene_id, window_seconds=digest_sec
+    ):
+        return False, "digest_window_active"
+    prob = float(cfg.get("idleSocialStartProbability", 0.4))
+    if prob < 1.0 and random.random() >= prob:
+        return False, "start_probability_skip"
     return True, "ok"

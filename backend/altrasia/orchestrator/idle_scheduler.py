@@ -37,11 +37,24 @@ class IdleScheduler:
             self._last_hb_tick = time.monotonic()
             self._task = asyncio.create_task(self._loop())
 
+    def _tab_idle_seconds(self, world_id: str) -> float:
+        from altrasia.world_config import get_idle_social_config
+
+        cfg = get_idle_social_config(self.svc.store, world_id)
+        return float(cfg.get("idleSocialTabIntervalSeconds", TAB_IDLE_SECONDS))
+
     async def _loop(self) -> None:
         while True:
             await asyncio.sleep(LOOP_GRANULARITY_SECONDS)
             now = time.monotonic()
-            if now - self._last_tab_tick >= TAB_IDLE_SECONDS:
+            tab_due = False
+            for world_id in list(self._active_worlds):
+                if world_id in self.svc.paused_worlds:
+                    continue
+                if now - self._last_tab_tick >= self._tab_idle_seconds(world_id):
+                    tab_due = True
+                    break
+            if tab_due:
                 self._last_tab_tick = now
                 for world_id in list(self._active_worlds):
                     if world_id in self.svc.paused_worlds:
@@ -158,7 +171,25 @@ class IdleScheduler:
         if cfg.get("idleSocialEnabled", True) and len(cast) >= int(
             cfg.get("idleSocialMinCast", 2)
         ):
-            return None, {"pick": "banter_preferred"}
+            from altrasia.orchestrator.banter_gates import should_start_idle_banter
+
+            ok, gate_reason = should_start_idle_banter(
+                self.svc,
+                world_id,
+                scene["sceneId"],
+                orchestrator=self.svc.orchestrator,
+            )
+            if ok:
+                return None, {"pick": "banter_preferred"}
+            cid, rationale = pick_idle_participant(
+                self.svc,
+                world_id=world_id,
+                scene=scene,
+                cast=cast,
+            )
+            if cid:
+                rationale = {**rationale, "banterGated": gate_reason}
+            return cid, rationale
         return pick_idle_participant(
             self.svc, world_id=world_id, scene=scene, cast=cast
         )

@@ -11,7 +11,7 @@ from altrasia.tools.handlers import register_core_tools
 from altrasia.tools.registry import ToolContext, ToolRegistry
 
 
-def test_webtools_requires_approval_when_configured(tmp_path: Path) -> None:
+def test_webtools_requires_approval_when_character_asks(tmp_path: Path) -> None:
     settings = Settings(
         db_path=tmp_path / "apr.db",
         mock_llm=True,
@@ -23,10 +23,11 @@ def test_webtools_requires_approval_when_configured(tmp_path: Path) -> None:
     world_id = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"}).json()[
         "worldId"
     ]
-    world = svc.store.get_world(world_id)
-    cfg = json.loads(world["configJson"])
-    cfg["requireWebToolApproval"] = True
-    svc.store.update_world(world_id, configJson=json.dumps(cfg))
+    cid = "char-jordan-reyes"
+    client.patch(
+        f"/api/v1/characters/{cid}",
+        json={"definition": {"webToolsAccess": "ask"}},
+    )
 
     tools = ToolRegistry()
     register_core_tools(tools, svc)
@@ -39,8 +40,10 @@ def test_webtools_requires_approval_when_configured(tmp_path: Path) -> None:
             ToolContext(
                 world_id=world_id,
                 scene_id="scene-lobby",
-                character_id="char-jordan-reyes",
+                character_id=cid,
                 services=svc,
+                job_id="job-test",
+                message_id="msg-test",
             ),
         )
     )
@@ -48,6 +51,12 @@ def test_webtools_requires_approval_when_configured(tmp_path: Path) -> None:
     assert data.get("approvalRequired") is True
     pending = client.get(f"/api/v1/worlds/{world_id}/approvals").json()
     assert len(pending) >= 1
-    aid = pending[0]["approvalId"]
+    row = pending[0]
+    assert row["characterId"] == cid
+    assert row["jobId"] == "job-test"
+    aid = row["approvalId"]
     approved = client.post(f"/api/v1/worlds/{world_id}/approvals/{aid}/approve").json()
-    assert approved["state"] == "approved"
+    assert approved["state"] == "applied"
+    assert approved.get("result") is not None
+    stored = svc.store.get_approval(aid)
+    assert stored.get("resultJson")

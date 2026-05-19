@@ -12,6 +12,11 @@ from altrasia.orchestrator.idle_social_state import (
     relationship_tension_score,
     seconds_since_dyad_banter,
 )
+from altrasia.orchestrator.idle_task_affinity import (
+    collect_active_tasks_by_character,
+    dyad_task_affinity_score,
+    task_hints_for_characters,
+)
 from altrasia.world_config import get_idle_social_config
 
 _TIE_EPSILON = 0.02
@@ -83,6 +88,15 @@ def score_idle_dyads(
     ledger = get_variety_ledger(scene)
     chars = {c["characterId"]: c for c in services.store.list_world_characters(world_id)}
     memory = getattr(services, "memory", None)
+    task_enabled = cfg.get("idleSocialTaskAffinityEnabled", True)
+    tasks_by_char = (
+        collect_active_tasks_by_character(
+            services, world_id=world_id, scene_id=scene["sceneId"]
+        )
+        if task_enabled
+        else {}
+    )
+    task_weight = float(cfg.get("idleSocialTaskAffinityWeight", 0.22))
 
     last_social: dict[str, float] = {}
     for m in reversed(services.store.list_messages(world_id, scene_id=scene["sceneId"])):
@@ -130,13 +144,21 @@ def score_idle_dyads(
                 factors["dyadStarvation"] = 1.2
             else:
                 factors["dyadStarvation"] = 1.0
+            factors["taskAffinity"] = (
+                dyad_task_affinity_score(
+                    a, b, tasks_by_char, scene_id=scene["sceneId"], half_life=half_life
+                )
+                if task_enabled
+                else 0.0
+            )
             factors["jitter"] = 1.0 + random.uniform(0, jitter_scale)
             total = (
-                factors["pairAppetite"] * 0.35
+                factors["pairAppetite"] * 0.32
                 + factors["relationshipTension"] * 0.2
                 + factors["recencyDecay"] * 0.2
                 + factors["starvation"] * 0.15
                 + factors["dyadStarvation"] * 0.1
+                + factors["taskAffinity"] * task_weight
             ) * factors["jitter"]
             scores.append(DyadScore(a=a, b=b, total=total, factors=factors))
     return scores
@@ -172,6 +194,12 @@ def pick_idle_dyad(
     first = random.choices([pick_row.a, pick_row.b], weights=[wa, wb], k=1)[0]
     second = pick_row.b if first == pick_row.a else pick_row.a
     session_id = str(uuid.uuid4())
+    tasks_by_char = collect_active_tasks_by_character(
+        services, world_id=world_id, scene_id=scene["sceneId"]
+    )
+    task_hints = task_hints_for_characters(
+        tasks_by_char, [pick_row.a, pick_row.b]
+    )
     return DyadPick(
         speaking_order=[first, second],
         session_id=session_id,
@@ -183,6 +211,7 @@ def pick_idle_dyad(
                 dyad_key(s.a, s.b): {"total": s.total, **s.factors} for s in scores[:12]
             },
             "banterSessionId": session_id,
+            "taskHints": task_hints,
         },
     )
 

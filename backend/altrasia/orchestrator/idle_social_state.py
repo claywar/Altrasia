@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 ISO = lambda: datetime.now(timezone.utc).isoformat()
@@ -60,7 +60,142 @@ def append_banter_session(
         }
     )
     state["recentBanter"] = recent[-max(1, window) :]
+    state["lastBanterEndedAt"] = ISO()
     save_social_state(store, scene_id, state)
+
+
+def seconds_since_last_banter(scene: dict[str, Any]) -> float | None:
+    """Seconds since any banter session ended at this scene."""
+    state = get_social_state(scene)
+    ended = state.get("lastBanterEndedAt")
+    if ended:
+        try:
+            dt = datetime.fromisoformat(str(ended).replace("Z", "+00:00"))
+            return (datetime.now(timezone.utc) - dt).total_seconds()
+        except ValueError:
+            pass
+    ledger = get_variety_ledger(scene)
+    if not ledger:
+        return None
+    now = datetime.now(timezone.utc)
+    best: float | None = None
+    for entry in reversed(ledger):
+        ts = entry.get("endedAt")
+        if not ts:
+            continue
+        try:
+            dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            sec = (now - dt).total_seconds()
+            if best is None or sec < best:
+                best = sec
+        except ValueError:
+            continue
+    return best
+
+
+def extend_digest_window(
+    store: Any,
+    scene_id: str,
+    *,
+    seconds: int,
+) -> None:
+    """Pause new banter starts so cast can digest operator-influenced work."""
+    if seconds <= 0:
+        return
+    scene = store.get_scene(scene_id)
+    if not scene:
+        return
+    state = get_social_state(scene)
+    now = datetime.now(timezone.utc)
+    until = now + timedelta(seconds=seconds)
+    state["digestUntil"] = until.isoformat()
+    save_social_state(store, scene_id, state)
+
+
+def _digest_until_active(scene: dict[str, Any]) -> bool:
+    state = get_social_state(scene)
+    raw = state.get("digestUntil")
+    if not raw:
+        return False
+    try:
+        until = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) >= until:
+            return False
+        return True
+    except ValueError:
+        return False
+
+
+def scene_has_recent_operator_activity(
+    store: Any,
+    world_id: str,
+    scene_id: str,
+    *,
+    window_seconds: float,
+    message_limit: int = 8,
+) -> bool:
+    if window_seconds <= 0:
+        return False
+    now = datetime.now(timezone.utc)
+    msgs = store.list_messages(world_id, scene_id=scene_id)[-message_limit:]
+    for m in reversed(msgs):
+        if m.get("characterId"):
+            continue
+        if m.get("role") != "user":
+            continue
+        created = m.get("createdAt")
+        if not created:
+            return True
+        try:
+            dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
+            if (now - dt).total_seconds() <= window_seconds:
+                return True
+        except ValueError:
+            return True
+    return False
+
+
+def scene_digest_window_active(
+    svc: Any,
+    world_id: str,
+    scene_id: str,
+    *,
+    window_seconds: float,
+) -> bool:
+    """True when operator-influenced work should block new banter starts."""
+    if window_seconds <= 0:
+        return False
+    scene = svc.store.get_scene(scene_id)
+    if not scene:
+        return False
+    if _digest_until_active(scene):
+        return True
+    if scene_has_recent_operator_activity(
+        svc.store,
+        world_id,
+        scene_id,
+        window_seconds=window_seconds,
+    ):
+        return True
+    from altrasia.domain.presence import PERSONA_ID
+    from altrasia.orchestrator.idle_task_affinity import collect_active_tasks_by_character
+
+    present = [
+        c
+        for c in json.loads(scene.get("presentJson") or "[]")
+        if c not in (PERSONA_ID,)
+    ]
+    if not present:
+        return False
+    by_char = collect_active_tasks_by_character(
+        svc, world_id=world_id, scene_id=scene_id
+    )
+    for cid in present:
+        tasks = by_char.get(cid) or []
+        for task in tasks:
+            if task.get("targetSceneId") == scene_id:
+                return True
+    return False
 
 
 def get_floor_hold(scene: dict[str, Any]) -> dict[str, Any] | None:

@@ -197,6 +197,10 @@ class CharacterApproveBody(BaseModel):
     worldId: str | None = None
 
 
+class CharacterPatchBody(BaseModel):
+    definition: dict[str, Any] | None = None
+
+
 class WorldMemberBody(BaseModel):
     characterId: str
 
@@ -1383,6 +1387,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
 
+    @app.patch(
+        "/api/v1/characters/{character_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def patch_character(
+        character_id: str,
+        body: CharacterPatchBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        ch = svc.store.get_character(character_id)
+        if not ch:
+            raise HTTPException(404, "character not found")
+        try:
+            definition = json.loads(ch.get("definitionJson") or "{}")
+        except json.JSONDecodeError:
+            definition = {}
+        if body.definition:
+            for key, value in body.definition.items():
+                if key == "webToolsAccess":
+                    access = str(value).strip().lower()
+                    if access not in ("off", "ask", "allow"):
+                        raise HTTPException(400, "webToolsAccess must be off, ask, or allow")
+                    definition["webToolsAccess"] = access
+                else:
+                    definition[key] = value
+        svc.store.update_character(
+            character_id, definitionJson=json.dumps(definition)
+        )
+        return {"characterId": character_id, "definition": definition}
+
     @app.post(
         "/api/v1/worlds/{world_id}/layout-bootstrap-drafts",
         dependencies=[Depends(verify_auth)],
@@ -1772,7 +1806,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         "/api/v1/worlds/{world_id}/approvals/{approval_id}/approve",
         dependencies=[Depends(verify_auth)],
     )
-    def post_approval_approve(
+    async def post_approval_approve(
         world_id: str, approval_id: str, svc: AppServices = Depends(get_services)
     ) -> dict:
         row = svc.store.get_approval(approval_id)
@@ -1782,9 +1816,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             out = resolve_approval(svc.store, approval_id, approve=True)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
-        from altrasia.approvals import mark_approval_applied
+        from altrasia.approvals import (
+            apply_web_approval,
+            is_web_tool,
+            mark_approval_applied,
+        )
 
-        mark_approval_applied(svc.store, approval_id)
+        if is_web_tool(row["toolName"]):
+            result = await apply_web_approval(svc.store, svc, row)
+            mark_approval_applied(svc.store, approval_id)
+            follow_up = await svc.orchestrator.resume_after_web_approval(row, result)
+            row = svc.store.get_approval(approval_id)
+            from altrasia.approvals import _serialize
+
+            out = _serialize(row)  # type: ignore[arg-type]
+            out["result"] = result
+            if follow_up:
+                out["followUpJobId"] = follow_up.get("jobId")
+        else:
+            mark_approval_applied(svc.store, approval_id)
+            row = svc.store.get_approval(approval_id)
+            from altrasia.approvals import _serialize
+
+            out = _serialize(row)  # type: ignore[arg-type]
         _emit(svc, world_id, "approval.updated", {"approvalId": approval_id, "state": "applied"})
         return out
 
