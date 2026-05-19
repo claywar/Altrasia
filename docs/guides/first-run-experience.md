@@ -103,6 +103,18 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 - Mermaid diagram displays or shows explicit error fallback (UI-R2, UI-R5)
 - Streaming shows plain text until finalize (UI-R3)
 
+### 7a. Web research (CTO / directors)
+
+**Operator action:** Ask Jordan Reyes (CTO) or another director to search the web for a fact.
+
+**Expected:**
+
+- Demo world: `cto` and `director` roles default to **Ask each time** via world policy (`defaultWebToolsAccessBySceneRole`); Jordan exposes `webtools_invoke` without manual setup after a fresh demo load.
+- First fetch queues an approval in the banner; approve to continue the job with results.
+- Override per character under **Settings → Cast → Web tools** (`off`, `ask`, or `allowed`).
+
+**Dev note:** `webToolsMock` may return stub content until live fetch is configured ([06-web-tools.md](../06-web-tools.md)).
+
 ### 7b. CTO briefing assembly (leadership summon)
 
 **Operator action:** In the Lobby with Jordan Reyes (CTO), send a public line such as: *Call the members into your conference room so I may observe your briefing and their thoughts. I will meet you there.*

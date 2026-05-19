@@ -65,7 +65,7 @@ Persisted in `Character.definitionJson` ([11-data-model.md](11-data-model.md) §
 | `focusTags` | No | `[]` |
 | `speechWeight` | No | `0.5` |
 | `modelProfile` | No | World `defaultModelProfile` |
-| `webToolsAccess` | No | `off` — `off` \| `ask` \| `allow` ([06-web-tools.md](06-web-tools.md) §5) |
+| `webToolsAccess` | No | `off` when unset and no role default — `off` \| `ask` \| `allow` ([06-web-tools.md](06-web-tools.md) §5). Worlds may set `defaultWebToolsAccessBySceneRole` (e.g. demo: `cto` and `director` → `ask`). New characters from the draft UI default to `ask`. |
 
 ## 5. Draft entity (implementation)
 

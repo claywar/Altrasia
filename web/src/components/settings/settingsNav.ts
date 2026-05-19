@@ -20,7 +20,8 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   {
     id: "cast",
     label: "Cast",
-    description: "Characters in this world and AI-assisted creation.",
+    description:
+      "Characters in this world, per-character web tool access, and AI-assisted creation.",
   },
   {
     id: "operations",

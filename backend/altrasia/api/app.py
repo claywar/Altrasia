@@ -470,6 +470,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "displayName": c["displayName"],
                 "modelProfile": c.get("modelProfile"),
                 "speechWeight": c.get("speechWeight"),
+                "sceneRole": c.get("sceneRole"),
                 "muted": bool(c.get("muted")),
                 "disabled": bool(c.get("disabled")),
             }

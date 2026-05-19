@@ -33,6 +33,10 @@
     "sceneFramingEnabled": true,
     "castSummonEnabled": true,
     "summonRoles": ["cto", "director"],
+    "defaultWebToolsAccessBySceneRole": {
+      "cto": "ask",
+      "director": "ask"
+    },
     "narrativePresenceMode": "auto",
     "briefingMaxReplies": 2
   },

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { api, type CharacterDraft } from "../api/client";
+import { api, type CharacterDraft, type WebToolsAccess } from "../api/client";
+import { WEB_ACCESS_OPTIONS } from "../lib/webToolsAccess";
 import { SettingsBlock } from "./settings/SettingsBlock";
 
 type Props = {
@@ -8,6 +9,8 @@ type Props = {
   variant?: "settings" | "observer";
   embedded?: boolean;
 };
+
+const DEFAULT_WEB_ACCESS: WebToolsAccess = "ask";
 
 export function CharacterDraftPanel({
   worldId,
@@ -18,6 +21,7 @@ export function CharacterDraftPanel({
   const [brief, setBrief] = useState("");
   const [draft, setDraft] = useState<CharacterDraft | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [webToolsAccess, setWebToolsAccess] = useState<WebToolsAccess>(DEFAULT_WEB_ACCESS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +33,7 @@ export function CharacterDraftPanel({
       const d = await api.createCharacterDraft(brief.trim());
       setDraft(d);
       setDisplayName("");
+      setWebToolsAccess(DEFAULT_WEB_ACCESS);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Draft failed");
     } finally {
@@ -41,14 +46,19 @@ export function CharacterDraftPanel({
     setBusy(true);
     setError(null);
     try {
+      const definitionJson = {
+        ...(draft.definitionJson ?? {}),
+        webToolsAccess,
+      };
       await api.approveCharacter({
         draftId: draft.draftId,
         worldId,
         displayName: displayName.trim() || undefined,
-        definitionJson: draft.definitionJson ?? undefined,
+        definitionJson,
       });
       setBrief("");
       setDraft(null);
+      setWebToolsAccess(DEFAULT_WEB_ACCESS);
       onCharacterAdded();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Approve failed");
@@ -107,6 +117,20 @@ export function CharacterDraftPanel({
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Optional"
             />
+          </label>
+          <label className="settings-field">
+            <span className="settings-field-label">Web tools</span>
+            <select
+              value={webToolsAccess}
+              onChange={(e) => setWebToolsAccess(e.target.value as WebToolsAccess)}
+              disabled={busy}
+            >
+              {WEB_ACCESS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} title={opt.hint}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </label>
           <p>
             <strong>Persona:</strong> {draft.definitionJson.persona}

@@ -26,6 +26,8 @@ def ch(
         "instructions": instructions,
         "focusTags": tags,
     }
+    if role in ("cto", "director"):
+        definition["webToolsAccess"] = "ask"
     if aliases:
         definition["aliases"] = aliases
     return {
@@ -768,6 +770,7 @@ def main() -> None:
             "maxContinueDepth": 2,
             "demoMapShowcase": True,
             "architectureStyle": "blueprint",
+            "defaultWebToolsAccessBySceneRole": {"cto": "ask", "director": "ask"},
         },
         "worldMap": {
             "schemaVersion": 1,

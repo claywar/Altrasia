@@ -106,7 +106,9 @@ Web tools are gated per **Character** via `definitionJson.webToolsAccess`:
 | `ask` | Yes | Always queue operator approval |
 | `allow` | Yes | Fetch immediately; **overrides** world `requireWebToolApproval` |
 
-Configure in cast settings (PATCH `/api/v1/characters/{characterId}`) or when authoring a draft.
+When `webToolsAccess` is **omitted** on the character, the world may supply `defaultWebToolsAccessBySceneRole` (map of `sceneRole` → access). The demo fixture sets `cto` and `director` to `ask`.
+
+Configure in **Settings → Cast** (PATCH `/api/v1/characters/{characterId}`) or when authoring a draft (defaults to `ask`).
 
 Commissions may list `webtools_invoke` in `allowedTools`, but the assignee MUST have non-`off` access.
 

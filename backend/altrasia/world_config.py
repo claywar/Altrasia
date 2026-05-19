@@ -61,6 +61,7 @@ POLICY_KEYS = (
     "castFloorClaimReactive",
     "addressingFuzzyEnabled",
     "addressingFuzzyMaxDistance",
+    "defaultWebToolsAccessBySceneRole",
 )
 
 IDLE_SOCIAL_DEFAULTS: dict[str, Any] = {

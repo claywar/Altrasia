@@ -46,6 +46,18 @@ export type WorldPolicy = {
   speakIntentOnTie?: boolean;
   demoMapShowcase?: boolean;
   loadedFixtureId?: string;
+  defaultWebToolsAccessBySceneRole?: Partial<Record<string, WebToolsAccess>>;
+};
+
+export type CastCharacter = {
+  characterId: string;
+  displayName: string;
+  modelProfile?: string;
+  speechWeight?: number;
+  sceneRole?: string;
+  muted?: boolean;
+  disabled?: boolean;
+  definition?: CharacterDefinition;
 };
 
 export type EvidenceRecord = {
@@ -572,15 +584,7 @@ export const api = {
     ),
   listScenes: (worldId: string) => request<Scene[]>(`/worlds/${worldId}/scenes`),
   listCharacters: (worldId: string) =>
-    request<
-      Array<{
-        characterId: string;
-        displayName: string;
-        definition?: CharacterDefinition;
-        muted?: boolean;
-        disabled?: boolean;
-      }>
-    >(`/worlds/${worldId}/characters`),
+    request<CastCharacter[]>(`/worlds/${worldId}/characters`),
   getScene: (worldId: string, sceneId: string) =>
     request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`),
   listMessages: (worldId: string, sceneId: string) =>
