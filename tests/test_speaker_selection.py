@@ -10,8 +10,20 @@ from fastapi.testclient import TestClient
 
 from altrasia.api.app import create_app
 from altrasia.config import Settings
-from altrasia.orchestrator.speaker_selection import score_speakers, speak_readiness_score
+from altrasia.orchestrator.speaker_selection import (
+    parse_addressing,
+    score_speakers,
+    speak_readiness_score,
+)
 from altrasia.services import AppServices
+
+PROGRAM_OFFICE_CAST = [
+    "char-liam-park",
+    "char-rachel-kim",
+    "char-tom-bradley",
+    "char-nina-patel",
+    "char-chris-doyle",
+]
 
 
 @pytest.fixture
@@ -99,3 +111,102 @@ def test_ao18_classroom_teacher_question(svc: AppServices, tmp_path: Path) -> No
         assert pick is not None
         assert pick.character_id == sofia["characterId"]
     assert pick.rationale.get("scores")
+
+
+def test_parse_addressing_liam_first_name(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    result = parse_addressing(
+        "Liam, what is your last name?",
+        PROGRAM_OFFICE_CAST,
+        chars,
+    )
+    assert result.mode == "directed"
+    assert result.primary_id == "char-liam-park"
+
+
+def test_parse_addressing_full_name(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    result = parse_addressing(
+        "Hey Liam Park, are you free?",
+        PROGRAM_OFFICE_CAST,
+        chars,
+    )
+    assert result.mode == "directed"
+    assert result.primary_id == "char-liam-park"
+
+
+def test_parse_addressing_ensemble_cues(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    result = parse_addressing(
+        "Everyone, discuss how program management works here.",
+        PROGRAM_OFFICE_CAST,
+        chars,
+    )
+    assert result.mode == "ensemble"
+    assert result.primary_id is None
+
+
+def test_parse_addressing_marco_and_lena(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    cast = [
+        "char-sofia-mendez",
+        "char-priya-nair",
+        "char-marco-delgado",
+        "char-lena-cho",
+        "char-andre-silva",
+        "char-hannah-brooks",
+        "char-omar-haddad",
+    ]
+    result = parse_addressing("Marco and Lena, what are your roles?", cast, chars)
+    assert result.mode == "directed"
+    assert result.addressee_ids == ["char-marco-delgado", "char-lena-cho"]
+
+
+def test_parse_addressing_andre_product_studio(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    cast = [
+        "char-sofia-mendez",
+        "char-priya-nair",
+        "char-marco-delgado",
+        "char-lena-cho",
+        "char-andre-silva",
+        "char-hannah-brooks",
+        "char-omar-haddad",
+    ]
+    result = parse_addressing(
+        "Andre, what is your last name and who do you report to?",
+        cast,
+        chars,
+    )
+    assert result.mode == "directed"
+    assert result.primary_id == "char-andre-silva"
+
+
+def test_parse_addressing_open_question(svc: AppServices) -> None:
+    world = svc.store.conn.execute("SELECT worldId FROM World").fetchone()
+    if not world:
+        pytest.skip("no world")
+    world_id = world[0]
+    chars = {c["characterId"]: c for c in svc.store.list_world_characters(world_id)}
+    result = parse_addressing("Hello everyone", PROGRAM_OFFICE_CAST, chars)
+    assert result.mode == "open"

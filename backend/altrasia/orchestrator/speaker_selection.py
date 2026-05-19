@@ -6,19 +6,38 @@ import random
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from altrasia.domain.presence import PERSONA_ID
+from altrasia.orchestrator.single_speaker import trigger_invites_ensemble
 
 _SCORE_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 _CACHE_TTL = 30.0
 _TIE_EPSILON = 0.05
+
+AddressingMode = Literal["directed", "ensemble", "open"]
+
+_VOCATIVE_START = re.compile(r"^@?([A-Za-z][\w'-]*)[,:]?\s", re.I)
+_NAME_JOIN = re.compile(r"\s+(?:and|&)\s+", re.I)
+_MULTI_HEAD = re.compile(
+    r"^(.+?)(?:,\s*|\s+)"
+    r"(?=(?:what|who|where|when|how|why|tell|describe|explain|are|is|do|can)\b)",
+    re.I,
+)
 
 
 @dataclass
 class SpeakerPick:
     character_id: str
     rationale: dict[str, Any]
+
+
+@dataclass
+class AddressingResult:
+    mode: AddressingMode
+    primary_id: str | None = None
+    addressee_ids: list[str] = field(default_factory=list)
+    eligible_continue: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -33,6 +52,130 @@ def _cache_key(scene_id: str, trigger_message_id: str | None, eligible: list[str
     return f"{scene_id}:{trigger_message_id or 'none'}:{h}"
 
 
+def _character_slug(character_id: str) -> str:
+    if character_id.startswith("char-"):
+        return character_id[5:].lower()
+    return character_id.lower()
+
+
+def _first_name(display: str) -> str:
+    return (display.split() or [""])[0].lower()
+
+
+def addressee_ids_for(addressing: AddressingResult | None) -> list[str]:
+    if not addressing:
+        return []
+    if addressing.addressee_ids:
+        return list(addressing.addressee_ids)
+    if addressing.primary_id:
+        return [addressing.primary_id]
+    return []
+
+
+def is_multi_directed(addressing: AddressingResult | None) -> bool:
+    return len(addressee_ids_for(addressing)) > 1
+
+
+def addressing_to_dict(result: AddressingResult) -> dict[str, Any]:
+    ids = addressee_ids_for(result)
+    return {
+        "mode": result.mode,
+        "primaryId": result.primary_id or (ids[0] if ids else None),
+        "addresseeIds": ids,
+        "eligibleContinue": list(result.eligible_continue),
+    }
+
+
+def addressing_from_dict(data: dict[str, Any] | None) -> AddressingResult | None:
+    if not data or not isinstance(data, dict):
+        return None
+    mode = data.get("mode")
+    if mode not in ("directed", "ensemble", "open"):
+        return None
+    primary = data.get("primaryId")
+    raw_ids = data.get("addresseeIds") or []
+    if not isinstance(raw_ids, list):
+        raw_ids = []
+    addressee_ids = [str(c) for c in raw_ids if c]
+    if not addressee_ids and primary:
+        addressee_ids = [str(primary)]
+    eligible = data.get("eligibleContinue") or []
+    if not isinstance(eligible, list):
+        eligible = []
+    return AddressingResult(
+        mode=mode,
+        primary_id=str(primary) if primary else (addressee_ids[0] if addressee_ids else None),
+        addressee_ids=addressee_ids,
+        eligible_continue=[str(c) for c in eligible],
+    )
+
+
+def _token_matches_character(token: str, character_id: str, display: str) -> bool:
+    t = token.lower().strip()
+    if not t:
+        return False
+    slug = _character_slug(character_id)
+    first = _first_name(display)
+    display_lower = display.lower()
+    if t == first or t == slug:
+        return True
+    if t.replace("-", "") == first.replace("-", ""):
+        return True
+    if t in slug or slug.startswith(t + "-"):
+        return True
+    if display_lower and t in display_lower.split():
+        return True
+    return False
+
+
+def _candidates_for_token(
+    token: str, cast: list[str], chars: dict[str, dict]
+) -> list[str]:
+    matches: list[str] = []
+    for cid in cast:
+        display = chars.get(cid, {}).get("displayName", "")
+        if display and _token_matches_character(token, cid, display):
+            matches.append(cid)
+    return matches
+
+
+def _name_tokens_from_segment(segment: str) -> list[str]:
+    tokens: list[str] = []
+    for part in _NAME_JOIN.split(segment):
+        part = part.strip().strip(",")
+        if not part:
+            continue
+        match = re.match(r"([A-Za-z][\w'-]*)", part)
+        if match:
+            tokens.append(match.group(1))
+    return tokens
+
+
+def _parse_addressed_list(
+    trigger_text: str,
+    cast: list[str],
+    chars: dict[str, dict],
+    target_character_id: str | None = None,
+) -> list[str]:
+    """All explicitly named addressees in operator text (order preserved)."""
+    if target_character_id and target_character_id in cast:
+        return [target_character_id]
+    stripped = trigger_text.strip()
+    head_match = _MULTI_HEAD.match(stripped)
+    if head_match:
+        segment = head_match.group(1).strip().rstrip(",")
+        if _NAME_JOIN.search(segment) or "," in segment:
+            resolved: list[str] = []
+            for token in _name_tokens_from_segment(segment.replace(",", " and ")):
+                matches = _candidates_for_token(token, cast, chars)
+                if len(matches) == 1 and matches[0] not in resolved:
+                    resolved.append(matches[0])
+            if len(resolved) >= 2:
+                return resolved
+    single = _parse_addressed(trigger_text, cast, chars, target_character_id)
+    return [single] if single else []
+
+
 def _parse_addressed(
     trigger_text: str,
     cast: list[str],
@@ -41,19 +184,56 @@ def _parse_addressed(
 ) -> str | None:
     if target_character_id and target_character_id in cast:
         return target_character_id
-    mention = re.search(r"@(\w+)", trigger_text, re.I)
+    mention = re.search(r"@([\w-]+)", trigger_text, re.I)
     if mention:
         name = mention.group(1).lower()
-        for cid in cast:
-            display = chars.get(cid, {}).get("displayName", "")
-            if display and name in display.lower():
-                return cid
+        matches = _candidates_for_token(name, cast, chars)
+        if len(matches) == 1:
+            return matches[0]
     lower = trigger_text.lower()
+    full_name_matches: list[str] = []
     for cid in cast:
         display = chars.get(cid, {}).get("displayName", "")
         if display and display.lower() in lower:
-            return cid
+            full_name_matches.append(cid)
+    if len(full_name_matches) == 1:
+        return full_name_matches[0]
+    stripped = trigger_text.strip()
+    vocative = _VOCATIVE_START.match(stripped)
+    if vocative:
+        matches = _candidates_for_token(vocative.group(1), cast, chars)
+        if len(matches) == 1:
+            return matches[0]
     return None
+
+
+def parse_addressing(
+    trigger_text: str,
+    cast: list[str],
+    chars: dict[str, dict],
+    *,
+    target_character_id: str | None = None,
+) -> AddressingResult:
+    """Classify operator intent: directed (one or more addressees), ensemble, or open."""
+    eligible = [c for c in cast if c != PERSONA_ID]
+    if trigger_invites_ensemble(trigger_text or ""):
+        return AddressingResult(
+            mode="ensemble",
+            primary_id=None,
+            eligible_continue=list(eligible),
+        )
+    addressees = _parse_addressed_list(
+        trigger_text, eligible, chars, target_character_id
+    )
+    if addressees:
+        witnesses = [c for c in eligible if c not in addressees]
+        return AddressingResult(
+            mode="directed",
+            primary_id=addressees[0],
+            addressee_ids=list(addressees),
+            eligible_continue=witnesses,
+        )
+    return AddressingResult(mode="open", primary_id=None, eligible_continue=list(eligible))
 
 
 def speak_readiness_score(
@@ -75,6 +255,45 @@ def speak_readiness_score(
     return min(1.0, score)
 
 
+def pick_directed_witness(
+    services: Any,
+    *,
+    world_id: str,
+    scene_id: str,
+    trigger_text: str,
+    primary_id: str,
+    eligible: list[str],
+    exclude_ids: set[str],
+    trigger_message_id: str | None,
+    relevance_min: float,
+) -> SpeakerPick | None:
+    """Best non-addressee witness if relevance meets threshold."""
+    pool = [
+        c
+        for c in eligible
+        if c not in exclude_ids and c != primary_id and c != PERSONA_ID
+    ]
+    if not pool:
+        return None
+    pick = score_speakers(
+        services,
+        world_id=world_id,
+        scene_id=scene_id,
+        trigger_text=trigger_text,
+        eligible=pool,
+        exclude_ids=exclude_ids,
+        trigger_message_id=trigger_message_id,
+        skip_addressed_override=True,
+    )
+    if not pick:
+        return None
+    rel = float((pick.rationale.get("scores") or {}).get(pick.character_id, {}).get("relevance", 0))
+    if rel < relevance_min:
+        return None
+    pick.rationale["pick"] = "directed_witness"
+    return pick
+
+
 def score_speakers(
     services: Any,
     *,
@@ -83,28 +302,34 @@ def score_speakers(
     trigger_text: str,
     eligible: list[str],
     exclude_id: str | None = None,
+    exclude_ids: set[str] | None = None,
     target_character_id: str | None = None,
     trigger_message_id: str | None = None,
     last_speaker_id: str | None = None,
     session_spoke: set[str] | None = None,
+    skip_addressed_override: bool = False,
 ) -> SpeakerPick | None:
     """AO-18: weighted speaker selection with AO-17 relevance."""
-    cast = [c for c in eligible if c not in (PERSONA_ID, exclude_id)]
+    blocked = set(exclude_ids or ())
+    if exclude_id:
+        blocked.add(exclude_id)
+    cast = [c for c in eligible if c not in (PERSONA_ID,) and c not in blocked]
     if not cast:
         return None
     cast = cast[:8]
     chars = {c["characterId"]: c for c in services.store.list_world_characters(world_id)}
 
-    addressed = _parse_addressed(trigger_text, cast, chars, target_character_id)
-    if addressed:
-        return SpeakerPick(
-            character_id=addressed,
-            rationale={
-                "pick": "addressed",
-                "characterId": addressed,
-                "scores": {addressed: {"total": 1.0, "addressed": 1.0}},
-            },
-        )
+    if not skip_addressed_override:
+        addressed = _parse_addressed(trigger_text, cast, chars, target_character_id)
+        if addressed:
+            return SpeakerPick(
+                character_id=addressed,
+                rationale={
+                    "pick": "addressed",
+                    "characterId": addressed,
+                    "scores": {addressed: {"total": 1.0, "addressed": 1.0}},
+                },
+            )
 
     ck = _cache_key(scene_id, trigger_message_id, cast)
     now = time.monotonic()

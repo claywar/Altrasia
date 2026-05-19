@@ -114,6 +114,10 @@ class IdleScheduler:
             scene_id = scene["sceneId"]
             if scene_id in orch._scene_chain_active:
                 continue
+            from altrasia.orchestrator.addressing_policy import scene_has_unanswered_directed
+
+            if scene_has_unanswered_directed(self.svc.store, world_id, scene_id):
+                continue
             cast = [
                 c
                 for c in json.loads(scene["presentJson"])

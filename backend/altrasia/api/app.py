@@ -812,8 +812,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             }
         )
         if body.asPersona:
+            target_id: str | None = None
+            if body.scope in ("whisper", "dm") and body.participants:
+                target_id = body.participants[0]
             job = await svc.orchestrator.on_persona_message(
-                world_id, scene_id, msg_id, body.text
+                world_id,
+                scene_id,
+                msg_id,
+                body.text,
+                target_character_id=target_id,
             )
         return {"messageId": msg_id, "generationJob": job}
 

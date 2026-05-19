@@ -229,7 +229,20 @@ class Orchestrator:
             cfg=cfg,
             current_depth=depth,
         )
-        limit = effective_continue_depth_limit(cfg, depth, unresolved=unresolved)
+        addressing = self._addressing_for_job(job)
+        addressing_mode = addressing.mode if addressing else "open"
+        detail["addressingMode"] = addressing_mode
+        from altrasia.orchestrator.speaker_selection import addressee_ids_for
+
+        addressee_count = len(addressee_ids_for(addressing)) if addressing else 1
+        detail["addresseeCount"] = addressee_count
+        limit = effective_continue_depth_limit(
+            cfg,
+            depth,
+            unresolved=unresolved,
+            addressing_mode=addressing_mode,
+            directed_addressee_count=max(1, addressee_count),
+        )
         stop_reason: str | None = None
         if depth + 1 > limit:
             if cfg.get("continueUntilResolved", True) and depth >= int(
@@ -252,6 +265,7 @@ class Orchestrator:
         debate_active: bool,
         tool_log: list[dict[str, Any]],
         depth_limit: int,
+        next_character_id: str | None = None,
     ) -> bool:
         if not self._agent_continue_enabled(job["worldId"]):
             return False
@@ -266,6 +280,25 @@ class Orchestrator:
 
         if movement_tools_ran(tool_log):
             return False
+        addressing = self._addressing_for_job(job)
+        if addressing and addressing.mode == "directed":
+            if next_character_id is None:
+                return False
+            from altrasia.orchestrator.speaker_selection import (
+                addressee_ids_for,
+                is_multi_directed,
+            )
+
+            ids = addressee_ids_for(addressing)
+            if is_multi_directed(addressing):
+                if depth >= max(0, len(ids) - 1):
+                    return False
+            else:
+                directed_max = int(
+                    self._world_config(job["worldId"]).get("directedReplyMaxDepth", 1)
+                )
+                if depth >= directed_max:
+                    return False
         return True
 
     def _mandatory_recall_blocking(self, world_id: str) -> bool:
@@ -338,11 +371,16 @@ class Orchestrator:
         *,
         trigger_message_id: str | None = None,
         target_character_id: str | None = None,
+        addressing: Any | None = None,
     ) -> tuple[str | None, dict]:
         """AO-17/18: scoreSpeakers with debate/activity overrides."""
         from altrasia.debate_activity import debate_current_speaker, parse_activity
-        from altrasia.orchestrator.speaker_selection import score_speakers
-        from altrasia.world_config import get_world_config
+        from altrasia.orchestrator.speaker_selection import (
+            addressee_ids_for,
+            addressing_to_dict,
+            parse_addressing,
+            score_speakers,
+        )
 
         scene = self.svc.store.get_scene(scene_id)
         present = json.loads(scene["presentJson"])
@@ -358,6 +396,22 @@ class Orchestrator:
                     "phase": activity.get("phase"),
                     "characterId": speaker,
                 }
+        chars = {c["characterId"]: c for c in self.svc.store.list_world_characters(world_id)}
+        if addressing is None:
+            addressing = parse_addressing(
+                trigger_text, cast, chars, target_character_id=target_character_id
+            )
+        ids = addressee_ids_for(addressing)
+        if addressing.mode == "directed" and ids:
+            primary = ids[0]
+            rationale = {
+                "pick": "addressed_multi" if len(ids) > 1 else "addressed",
+                "characterId": primary,
+                "addresseeIds": ids,
+                "addressing": addressing_to_dict(addressing),
+                "scores": {primary: {"total": 1.0, "addressed": 1.0}},
+            }
+            return primary, rationale
         pick = score_speakers(
             self.svc,
             world_id=world_id,
@@ -369,7 +423,8 @@ class Orchestrator:
         )
         if not pick:
             return None, {}
-        return pick.character_id, pick.rationale
+        rationale = {**pick.rationale, "addressing": addressing_to_dict(addressing)}
+        return pick.character_id, rationale
 
     async def pick_reactive_character_async(
         self,
@@ -379,6 +434,7 @@ class Orchestrator:
         *,
         trigger_message_id: str | None = None,
         target_character_id: str | None = None,
+        addressing: Any | None = None,
     ) -> tuple[str | None, dict]:
         """AO-17 v1.1: optional speak_intent LLM resolve on score tie."""
         from altrasia.orchestrator.speaker_selection import resolve_speak_intent_tie
@@ -390,6 +446,7 @@ class Orchestrator:
             trigger_text,
             trigger_message_id=trigger_message_id,
             target_character_id=target_character_id,
+            addressing=addressing,
         )
         if not cid:
             return None, {}
@@ -433,6 +490,75 @@ class Orchestrator:
                 spoke.add(m["characterId"])
         return spoke
 
+    def _cast_spoke_on_trigger(
+        self, world_id: str, scene_id: str, operator_message_id: str | None
+    ) -> set[str]:
+        if not operator_message_id:
+            return set()
+        spoke: set[str] = set()
+        jobs = self.svc.store.conn.execute(
+            """SELECT characterId FROM GenerationJob
+               WHERE worldId = ? AND sceneId = ? AND triggerMessageId = ?
+                 AND status = 'done' AND characterId IS NOT NULL""",
+            (world_id, scene_id, operator_message_id),
+        ).fetchall()
+        for row in jobs:
+            spoke.add(row[0])
+        return spoke
+
+    def _operator_line_for_job(self, job: dict[str, Any]) -> str:
+        op_id = job.get("triggerMessageId")
+        if not op_id:
+            return ""
+        row = self.svc.store.fetchone(
+            "SELECT outputText, metaJson FROM Message WHERE messageId = ?",
+            (op_id,),
+        )
+        if not row:
+            return ""
+        return (row.get("outputText") or "").strip()
+
+    def _addressing_from_message_row(self, row: dict[str, Any] | None) -> Any | None:
+        if not row:
+            return None
+        from altrasia.orchestrator.speaker_selection import addressing_from_dict
+
+        try:
+            meta = json.loads(row.get("metaJson") or "{}")
+        except json.JSONDecodeError:
+            return None
+        orch = meta.get("orchestration") or {}
+        return addressing_from_dict(orch.get("addressing"))
+
+    def _addressing_for_job(self, job: dict[str, Any]) -> Any | None:
+        op_id = job.get("triggerMessageId")
+        if not op_id:
+            return None
+        row = self.svc.store.fetchone(
+            "SELECT metaJson FROM Message WHERE messageId = ?",
+            (op_id,),
+        )
+        return self._addressing_from_message_row(row)
+
+    def _persist_message_addressing(
+        self, message_id: str, addressing: Any
+    ) -> None:
+        from altrasia.orchestrator.speaker_selection import addressing_to_dict
+
+        row = self.svc.store.fetchone(
+            "SELECT metaJson FROM Message WHERE messageId = ?",
+            (message_id,),
+        )
+        if not row:
+            return
+        try:
+            meta = json.loads(row.get("metaJson") or "{}")
+        except json.JSONDecodeError:
+            meta = {}
+        orch = meta.setdefault("orchestration", {})
+        orch["addressing"] = addressing_to_dict(addressing)
+        self.svc.store.update_message(message_id, metaJson=json.dumps(meta))
+
     def _pick_continue_character(
         self,
         world_id: str,
@@ -441,25 +567,94 @@ class Orchestrator:
         *,
         trigger_text: str = "",
         trigger_message_id: str | None = None,
+        addressing: Any | None = None,
     ) -> str | None:
         """AO-19: scoreSpeakers for agent_continue."""
-        from altrasia.orchestrator.speaker_selection import score_speakers
+        from altrasia.orchestrator.speaker_selection import (
+            addressee_ids_for,
+            is_multi_directed,
+            pick_directed_witness,
+            score_speakers,
+        )
 
         scene = self.svc.store.get_scene(scene_id)
         present = json.loads(scene["presentJson"])
-        cast = [c for c in present if c not in (PERSONA_ID, exclude_id)]
+        cast = [c for c in present if c not in (PERSONA_ID,)]
+        spoke_on_trigger = self._cast_spoke_on_trigger(
+            world_id, scene_id, trigger_message_id
+        )
+        if addressing is None and trigger_message_id:
+            row = self.svc.store.fetchone(
+                "SELECT metaJson FROM Message WHERE messageId = ?",
+                (trigger_message_id,),
+            )
+            addressing = self._addressing_from_message_row(row)
+
+        op_text = trigger_text or self._operator_line_for_job(
+            {"triggerMessageId": trigger_message_id, "worldId": world_id, "sceneId": scene_id}
+        )
+
+        if addressing and addressing.mode == "directed" and is_multi_directed(addressing):
+            for aid in addressee_ids_for(addressing):
+                if aid not in spoke_on_trigger:
+                    return aid
+            return None
+
+        if addressing and addressing.mode == "directed" and addressing.primary_id:
+            cfg = self._world_config(world_id)
+            rel_min = float(cfg.get("directedWitnessRelevanceMin", 0.55))
+            witness = pick_directed_witness(
+                self.svc,
+                world_id=world_id,
+                scene_id=scene_id,
+                trigger_text=op_text or "continue",
+                primary_id=addressing.primary_id,
+                eligible=cast,
+                exclude_ids=spoke_on_trigger,
+                trigger_message_id=trigger_message_id,
+                relevance_min=rel_min,
+            )
+            return witness.character_id if witness else None
+
         pick = score_speakers(
             self.svc,
             world_id=world_id,
             scene_id=scene_id,
-            trigger_text=trigger_text or "continue",
+            trigger_text=op_text or "continue",
             eligible=cast,
             exclude_id=exclude_id,
+            exclude_ids=spoke_on_trigger,
             last_speaker_id=exclude_id,
             trigger_message_id=trigger_message_id,
             session_spoke=self._cast_spoke_in_scene(world_id, scene_id),
         )
         return pick.character_id if pick else None
+
+    async def _preempt_scene_for_operator_line(
+        self,
+        world_id: str,
+        scene_id: str,
+        operator_message_id: str,
+        addressing: Any,
+    ) -> None:
+        """Cancel in-flight scene jobs that conflict with a new operator line."""
+        from altrasia.orchestrator.addressing_policy import list_scene_jobs
+
+        cfg = self._world_config(world_id)
+        for row in list_scene_jobs(self.svc.store, world_id, scene_id):
+            job = self.svc.store.get_job(row["jobId"])
+            if not job:
+                continue
+            if addressing.mode == "directed":
+                if row.get("triggerMessageId") != operator_message_id:
+                    self.cancel_job(row["jobId"])
+                    continue
+            eval_job = {**job, "triggerMessageId": operator_message_id}
+            from altrasia.orchestrator.addressing_policy import may_character_generate
+
+            allowed, _ = may_character_generate(self.svc, eval_job, cfg)
+            if not allowed:
+                self.cancel_job(row["jobId"])
 
     async def enqueue_generation(
         self,
@@ -524,6 +719,33 @@ class Orchestrator:
     async def _run_job(self, job_id: str, stream: TokenStream) -> None:
         job = self.svc.store.get_job(job_id)
         if not job:
+            return
+        cfg = self._world_config(job["worldId"])
+        from altrasia.orchestrator.addressing_policy import may_character_generate
+
+        allowed, suppress_reason = may_character_generate(self.svc, job, cfg)
+        if not allowed:
+            log.info(
+                "generation suppressed job=%s character=%s trigger=%s reason=%s",
+                job_id,
+                job.get("characterId"),
+                job.get("trigger"),
+                suppress_reason,
+            )
+            try:
+                rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+            except json.JSONDecodeError:
+                rationale = {}
+            rationale["suppressed"] = suppress_reason
+            self.svc.store.update_job(
+                job_id,
+                status="cancelled",
+                selectionRationaleJson=json.dumps(rationale),
+            )
+            await stream.close()
+            if not self._scene_has_pending_jobs(job["worldId"], job["sceneId"]):
+                self._scene_chain_active.discard(job["sceneId"])
+            self._emit_queue(job["worldId"])
             return
         self.svc.store.update_job(job_id, status="running")
         msg_id = str(uuid.uuid4())
@@ -741,10 +963,40 @@ class Orchestrator:
         history_rows = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
         op_trigger = operator_trigger_text(history_rows)
         ensemble_invited = trigger_invites_ensemble(op_trigger)
+        addressing = self._addressing_for_job(job)
+        from altrasia.orchestrator.speaker_selection import (
+            addressee_ids_for,
+            is_multi_directed,
+        )
+
+        directed_witness = False
+        directed_addressee_name: str | None = None
+        directed_co_addressees: list[str] | None = None
+        if addressing and addressing.mode == "directed":
+            ids = addressee_ids_for(addressing)
+            if is_multi_directed(addressing):
+                co = [
+                    members[c]["displayName"]
+                    for c in ids
+                    if c != job["characterId"] and c in members
+                ]
+                directed_co_addressees = co
+            elif addressing.primary_id:
+                primary_ch = members.get(addressing.primary_id) or {}
+                directed_addressee_name = primary_ch.get("displayName")
+                depth = int(job.get("continueDepth") or 0)
+                if (
+                    depth > 0
+                    and job.get("characterId") != addressing.primary_id
+                ):
+                    directed_witness = True
         system += f"\n\n{single_speaker_system_addendum(
             ch['displayName'],
             other_names=other_names,
             ensemble_invited=ensemble_invited,
+            directed_addressee_name=directed_addressee_name,
+            directed_witness=directed_witness,
+            directed_co_addressees=directed_co_addressees,
         )}"
         if ensemble_invited and cfg.get("discussionSignalsEnabled", True):
             system += (
@@ -1152,19 +1404,24 @@ class Orchestrator:
 
         await maybe_enqueue_briefing_followups(self, job, tool_log)
 
+        operator_msg_id = job.get("triggerMessageId")
+        addressing = self._addressing_for_job(job)
+        op_line = self._operator_line_for_job(job)
+        nxt = self._pick_continue_character(
+            job["worldId"],
+            job["sceneId"],
+            job["characterId"],
+            trigger_text=op_line,
+            trigger_message_id=operator_msg_id,
+            addressing=addressing,
+        )
         if self._should_enqueue_agent_continue(
             job,
             debate_active=debate_active,
             tool_log=tool_log,
             depth_limit=limit,
+            next_character_id=nxt,
         ):
-            nxt = self._pick_continue_character(
-                job["worldId"],
-                job["sceneId"],
-                job["characterId"],
-                trigger_text=text,
-                trigger_message_id=msg_id,
-            )
             if nxt:
                 await self.enqueue_generation(
                     world_id=job["worldId"],
@@ -1172,7 +1429,7 @@ class Orchestrator:
                     character_id=nxt,
                     trigger="agent_continue",
                     continue_depth=depth + 1,
-                    trigger_message_id=msg_id,
+                    trigger_message_id=operator_msg_id,
                 )
         elif stop_reason:
             log.info(
@@ -1248,7 +1505,13 @@ class Orchestrator:
         return {"jobId": row["jobId"], "status": row["status"]}
 
     async def on_persona_message(
-        self, world_id: str, scene_id: str, message_id: str, text: str
+        self,
+        world_id: str,
+        scene_id: str,
+        message_id: str,
+        text: str,
+        *,
+        target_character_id: str | None = None,
     ) -> dict | None:
         """AO-20: exactly one reactive job per persona line."""
         lock_geography_on_first_play(self.svc.store, world_id)
@@ -1257,16 +1520,46 @@ class Orchestrator:
         existing = self._persona_message_job(world_id, message_id)
         if existing:
             return existing
-        if scene_id in self._scene_chain_active:
-            return None
-        self._scene_chain_active.add(scene_id)
         job: dict[str, Any] | None = None
         try:
+            from altrasia.orchestrator.speaker_selection import parse_addressing
+
+            scene = self.svc.store.get_scene(scene_id)
+            present = json.loads(scene["presentJson"])
+            cast = [c for c in present if c not in (PERSONA_ID,)]
+            chars = {
+                c["characterId"]: c
+                for c in self.svc.store.list_world_characters(world_id)
+            }
+            addressing = parse_addressing(
+                text, cast, chars, target_character_id=target_character_id
+            )
+            self._persist_message_addressing(message_id, addressing)
+            await self._preempt_scene_for_operator_line(
+                world_id, scene_id, message_id, addressing
+            )
+            self._scene_chain_active.add(scene_id)
             cid, rationale = await self.pick_reactive_character_async(
-                world_id, scene_id, text, trigger_message_id=message_id
+                world_id,
+                scene_id,
+                text,
+                trigger_message_id=message_id,
+                target_character_id=target_character_id,
+                addressing=addressing,
             )
             if not cid:
                 return None
+            from altrasia.orchestrator.speaker_selection import addressee_ids_for
+
+            ids = addressee_ids_for(addressing)
+            if addressing.mode == "directed" and ids:
+                cid = ids[0]
+                rationale = {
+                    **rationale,
+                    "pick": "addressed_multi" if len(ids) > 1 else "addressed",
+                    "characterId": cid,
+                    "addresseeIds": ids,
+                }
             job = await self.enqueue_generation(
                 world_id=world_id,
                 scene_id=scene_id,

@@ -20,6 +20,9 @@ def single_speaker_system_addendum(
     *,
     other_names: list[str],
     ensemble_invited: bool = False,
+    directed_addressee_name: str | None = None,
+    directed_witness: bool = False,
+    directed_co_addressees: list[str] | None = None,
 ) -> str:
     others = [n for n in other_names if n and n.strip() and n.strip() != display_name]
     lines = [
@@ -31,6 +34,18 @@ def single_speaker_system_addendum(
         if len(others) > 6:
             preview += ", …"
         lines.append(f"Other present cast ({preview}) will speak in their own separate messages.")
+    if directed_co_addressees:
+        names = ", ".join(directed_co_addressees[:6])
+        lines.append(
+            f"The operator asked you and {names} individually; answer only for yourself. "
+            "Do not describe other people's roles, jobs, or biographical facts—they will "
+            "speak for themselves in their own messages."
+        )
+    elif directed_witness and directed_addressee_name:
+        lines.append(
+            f"The operator asked {directed_addressee_name} directly; only speak if you have "
+            "essential information they cannot provide."
+        )
     if ensemble_invited:
         lines.append(
             "The operator invited a group discussion: give only your perspective now; "

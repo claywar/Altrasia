@@ -115,7 +115,14 @@ When `agentContinueEnabled` is true (world or preset default on):
 |--------|----------------------|--------|----------|
 | `agentContinueEnabled` | true | true | false |
 | `maxContinueDepth` | 2 | 3 | 1 |
+| `directedReplyMaxDepth` | 1 | 1 | 0 |
+| `openReplyMaxDepth` | 2 | 2 | 1 |
+| `directedWitnessRelevanceMin` | 0.55 | 0.55 | 0.55 |
 | `personaArrivalMaxReplies` | 1 | 1 | 1 |
+
+**Directed replies:** When the operator names one cast member (first name, full name, `@slug`, or whisper/DM `participants`), orchestration stores `orchestration.addressing` on the operator message. The addressee speaks first (`continueDepth=0`); at most one witness may continue if AO-17 relevance ≥ `directedWitnessRelevanceMin`. **Multi-addressee** lines (`Marco and Lena, …`) set `addresseeIds`; each named character speaks in order via `agent_continue` (no witnesses). Ensemble cues bypass this cap.
+
+**Generic enforcement (`addressing_policy`):** Every scene `GenerationJob` — including `idle_timer` and mistaken picks — is checked in `_run_job` via `may_character_generate` before tokens are emitted. Directed threads block idle, preempt conflicting queued jobs when a new operator line arrives, and never drop `persona_message` because a chain was already active.
 
 Presets: [20-product-principles.md](20-product-principles.md) §6.
 

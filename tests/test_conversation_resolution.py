@@ -23,9 +23,35 @@ def test_unresolved_extends_past_base_depth() -> None:
         "maxContinueDepthExtended": 20,
         "maxContinueDepthCap": 24,
     }
-    assert effective_continue_depth_limit(cfg, 8, unresolved=True) == 20
-    assert effective_continue_depth_limit(cfg, 8, unresolved=False) == 8
-    assert effective_continue_depth_limit(cfg, 3, unresolved=True) == 8
+    assert (
+        effective_continue_depth_limit(
+            cfg, 8, unresolved=True, addressing_mode="ensemble"
+        )
+        == 20
+    )
+    assert (
+        effective_continue_depth_limit(
+            cfg, 8, unresolved=False, addressing_mode="ensemble"
+        )
+        == 8
+    )
+    assert (
+        effective_continue_depth_limit(
+            cfg, 3, unresolved=True, addressing_mode="ensemble"
+        )
+        == 8
+    )
+
+
+def test_directed_and_open_depth_caps() -> None:
+    cfg = {
+        "maxContinueDepth": 8,
+        "directedReplyMaxDepth": 1,
+        "openReplyMaxDepth": 2,
+        "maxContinueDepthCap": 24,
+    }
+    assert effective_continue_depth_limit(cfg, 0, unresolved=False, addressing_mode="directed") == 1
+    assert effective_continue_depth_limit(cfg, 5, unresolved=True, addressing_mode="open") == 2
 
 
 def test_resolution_detected_stops_extension() -> None:

@@ -75,17 +75,22 @@ def test_should_enqueue_agent_continue_gates(orch_client: tuple) -> None:
     }
     limit, _, _ = asyncio.run(orch._continue_depth_limit(base_job))
     assert orch._should_enqueue_agent_continue(
-        base_job, debate_active=False, tool_log=[], depth_limit=limit
-    )
-    # At demo maxContinueDepth (8), next step is blocked unless discussion still open.
-    limit8, _, _ = asyncio.run(
-        orch._continue_depth_limit({**base_job, "continueDepth": 8})
-    )
-    assert not orch._should_enqueue_agent_continue(
-        {**base_job, "continueDepth": 8},
+        base_job,
         debate_active=False,
         tool_log=[],
-        depth_limit=limit8,
+        depth_limit=limit,
+        next_character_id="char-rachel-kim",
+    )
+    # At demo maxContinueDepth (3), next step is blocked unless discussion still open.
+    limit3, _, _ = asyncio.run(
+        orch._continue_depth_limit({**base_job, "continueDepth": 3})
+    )
+    assert not orch._should_enqueue_agent_continue(
+        {**base_job, "continueDepth": 3},
+        debate_active=False,
+        tool_log=[],
+        depth_limit=limit3,
+        next_character_id="char-rachel-kim",
     )
     assert not orch._should_enqueue_agent_continue(
         {**base_job, "trigger": "idle_timer"},
