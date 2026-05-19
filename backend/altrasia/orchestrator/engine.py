@@ -2123,11 +2123,10 @@ class Orchestrator:
             from altrasia.orchestrator.idle_social_state import extend_digest_window
             from altrasia.world_config import get_idle_social_config
 
-            digest_sec = int(
-                get_idle_social_config(self.svc.store, world_id).get(
-                    "idleSocialDigestWindowSeconds", 300
-                )
-            )
+            idle_cfg = get_idle_social_config(self.svc.store, world_id)
+            digest_sec = int(idle_cfg.get("operatorInteractionCooldownSeconds", 120))
+            if digest_sec <= 0:
+                digest_sec = int(idle_cfg.get("idleSocialDigestWindowSeconds", 300))
             extend_digest_window(self.svc.store, scene_id, seconds=digest_sec)
             if alias_registered:
                 cid_reg, alias_reg = alias_registered

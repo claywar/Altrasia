@@ -18,6 +18,7 @@ from altrasia.orchestrator.idle_social_state import (
     append_banter_session,
     extend_digest_window,
     scene_has_floor_hold,
+    scene_operator_quiet_active,
     set_floor_hold,
 )
 from altrasia.orchestrator.idle_scheduler import IdleScheduler
@@ -479,3 +480,31 @@ def test_banter_addendum_digest_guidance(svc_client):
     )
     assert "diary_search" in addendum
     assert "memory_search" in addendum
+
+
+def test_idle_banter_disabled_blocks_start(svc_client):
+    _, services, world_id = svc_client
+    scene_id = services.store.get_world(world_id)["activeSceneId"]
+    merge_world_policy(services.store, world_id, {"idleBanterEnabled": False})
+    ok, reason = should_start_idle_banter(
+        services, world_id, scene_id, orchestrator=services.orchestrator
+    )
+    assert not ok
+    assert reason == "idle_banter_disabled"
+
+
+def test_operator_quiet_blocks_banter_start(svc_client):
+    _, services, world_id = svc_client
+    scene_id = services.store.get_world(world_id)["activeSceneId"]
+    merge_world_policy(
+        services.store,
+        world_id,
+        {"operatorInteractionCooldownSeconds": 300, "idleSocialDigestWindowSeconds": 0},
+    )
+    extend_digest_window(services.store, scene_id, seconds=300)
+    ok, reason = should_start_idle_banter(
+        services, world_id, scene_id, orchestrator=services.orchestrator
+    )
+    assert not ok
+    assert reason == "operator_quiet_period"
+    assert scene_operator_quiet_active(services, world_id, scene_id)

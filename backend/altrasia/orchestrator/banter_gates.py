@@ -28,8 +28,14 @@ def should_start_idle_banter(
     orchestrator: Any | None = None,
 ) -> tuple[bool, str]:
     cfg = get_idle_social_config(svc.store, world_id)
+    if not cfg.get("idleBanterEnabled", True):
+        return False, "idle_banter_disabled"
     if not cfg.get("idleSocialEnabled", True):
         return False, "idle_social_disabled"
+    from altrasia.orchestrator.idle_social_state import scene_operator_quiet_active
+
+    if scene_operator_quiet_active(svc, world_id, scene_id):
+        return False, "operator_quiet_period"
     scene = svc.store.get_scene(scene_id)
     if not scene:
         return False, "scene_not_found"

@@ -34,7 +34,9 @@ POLICY_KEYS = (
     "narrativePresenceMode",
     "briefingMaxReplies",
     "presenceAnnounce",
+    "idleBanterEnabled",
     "idleSocialEnabled",
+    "operatorInteractionCooldownSeconds",
     "idleSocialMaxDepth",
     "idleSocialMinCast",
     "idleSocialRecencyHalfLifeSeconds",
@@ -65,7 +67,9 @@ POLICY_KEYS = (
 )
 
 IDLE_SOCIAL_DEFAULTS: dict[str, Any] = {
+    "idleBanterEnabled": True,
     "idleSocialEnabled": True,
+    "operatorInteractionCooldownSeconds": 120,
     "idleSocialMaxDepth": 3,
     "idleSocialMinCast": 2,
     "idleSocialRecencyHalfLifeSeconds": 300,

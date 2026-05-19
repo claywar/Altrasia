@@ -141,6 +141,10 @@ class IdleScheduler:
             ]
             if len(cast) < 1:
                 continue
+            from altrasia.orchestrator.idle_social_state import scene_operator_quiet_active
+
+            if scene_operator_quiet_active(self.svc, world_id, scene_id):
+                continue
             cid, rationale = self._pick_idle_character(scene, cast, world_id)
             if not cid:
                 continue

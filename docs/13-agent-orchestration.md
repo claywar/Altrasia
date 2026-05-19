@@ -109,6 +109,8 @@ A character MAY be scheduled when:
 | `idleSocialStartProbability` | 0.4 | Per-tick chance to start banter when otherwise eligible |
 | `idleSocialDigestWindowSeconds` | 300 | Block new banter while operator-influenced work is recent |
 | `idleSocialTabIntervalSeconds` | 45 | Tab-visible idle tick interval |
+| `idleBanterEnabled` | true | When false, no banter starts or continues (debug) |
+| `operatorInteractionCooldownSeconds` | 120 | After each operator in-scene line, block banter and solo `idle_timer` for this many seconds (single-GPU courtesy) |
 
 **Balanced social preset** (`BALANCED_SOCIAL_PRESET` in `world_config.py`): apply via `merge_world_policy` for quieter worlds — `idleSocialMaxDepth` 2, recency half-life 600s, exploration 0, jitter 0.08, task affinity weight 0.35, `idleSocialTone` professional, floor hold 120s, plus the gate defaults above.
 

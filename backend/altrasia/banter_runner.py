@@ -125,6 +125,12 @@ async def tick_banter_scenes(svc: Any, world_id: str) -> dict[str, Any] | None:
         return None
     if svc.store.list_queued_jobs(world_id):
         return None
+    cfg = get_idle_social_config(svc.store, world_id)
+    if not cfg.get("idleBanterEnabled", True):
+        for scene in svc.store.list_scenes(world_id):
+            if get_active_banter(scene):
+                clear_banter_and_cancel_jobs(svc, scene["sceneId"])
+        return None
     for scene in svc.store.list_scenes(world_id):
         scene_id = scene["sceneId"]
         if scene_id in svc.orchestrator._scene_chain_active:
@@ -133,6 +139,10 @@ async def tick_banter_scenes(svc: Any, world_id: str) -> dict[str, Any] | None:
                 continue
         activity = get_active_banter(scene)
         if activity:
+            from altrasia.orchestrator.idle_social_state import scene_operator_quiet_active
+
+            if scene_operator_quiet_active(svc, world_id, scene_id):
+                continue
             speaker = activity_current_speaker(activity)
             if speaker:
                 return await enqueue_banter_turn(svc, scene_id, character_id=speaker)

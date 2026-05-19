@@ -155,6 +155,31 @@ def scene_has_recent_operator_activity(
     return False
 
 
+def scene_operator_quiet_active(
+    svc: Any,
+    world_id: str,
+    scene_id: str,
+) -> bool:
+    """True while operator dialogue should block ambient idle/banter (single-GPU courtesy)."""
+    from altrasia.world_config import get_idle_social_config
+
+    cfg = get_idle_social_config(svc.store, world_id)
+    cooldown = float(cfg.get("operatorInteractionCooldownSeconds", 120))
+    if cooldown <= 0:
+        return False
+    scene = svc.store.get_scene(scene_id)
+    if not scene:
+        return False
+    if _digest_until_active(scene):
+        return True
+    return scene_has_recent_operator_activity(
+        svc.store,
+        world_id,
+        scene_id,
+        window_seconds=cooldown,
+    )
+
+
 def scene_digest_window_active(
     svc: Any,
     world_id: str,

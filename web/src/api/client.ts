@@ -47,6 +47,8 @@ export type WorldPolicy = {
   demoMapShowcase?: boolean;
   loadedFixtureId?: string;
   defaultWebToolsAccessBySceneRole?: Partial<Record<string, WebToolsAccess>>;
+  idleBanterEnabled?: boolean;
+  operatorInteractionCooldownSeconds?: number;
 };
 
 export type CastCharacter = {

@@ -262,6 +262,8 @@ class WorldPolicyPatch(BaseModel):
     pauseCommissionsDuringPersonaDialogue: bool | None = None
     citeProvenanceInPrompt: bool | None = None
     commonsAccessIds: list[str] | None = None
+    idleBanterEnabled: bool | None = None
+    operatorInteractionCooldownSeconds: int | None = None
 
 
 class CommonsBody(BaseModel):
