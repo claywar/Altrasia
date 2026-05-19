@@ -55,6 +55,14 @@ export default function App() {
   const [mapOpen, setMapOpen] = useState(false);
   const [layoutDesignMode, setLayoutDesignMode] = useState(true);
   const sendInFlight = useRef(false);
+  const refreshSeq = useRef(0);
+
+  const applyActiveScene = useCallback((activeSceneId: string, scList: Scene[]) => {
+    const next = scList.find((s) => s.sceneId === activeSceneId) ?? scList[0];
+    if (next) setScene(next);
+    setMessages([]);
+    setAmbientActivity([]);
+  }, []);
 
   useEffect(() => {
     if (!world) return;
@@ -77,6 +85,7 @@ export default function App() {
   }, [world]);
 
   const refresh = useCallback(async (w: World) => {
+    const seq = ++refreshSeq.current;
     const [scList, g, r, sig, q, chs] = await Promise.all([
       api.listScenes(w.worldId),
       api.spatialGraph(w.worldId),
@@ -85,6 +94,7 @@ export default function App() {
       api.queue(w.worldId),
       api.listChannels(w.worldId).catch(() => []),
     ]);
+    if (seq !== refreshSeq.current) return;
     setPhoneChannelId(chs[0]?.channelId ?? null);
     setScenes(scList);
     setGraph(g);
@@ -96,6 +106,7 @@ export default function App() {
     const active = scList.find((s) => s.sceneId === w.activeSceneId) ?? scList[0];
     setScene(active);
     const msgs = await api.listMessages(w.worldId, active.sceneId);
+    if (seq !== refreshSeq.current) return;
     const split = splitSceneMessages(msgs);
     setMessages(split.dialogueMessages);
     setAmbientActivity(split.ambientActivity);
@@ -151,6 +162,7 @@ export default function App() {
 
   const switchScene = async (sceneId: string) => {
     if (!world || sceneId === world.activeSceneId) return;
+    ++refreshSeq.current;
     const active = world.activeSceneId;
     let mode: "route" | "jump" = "route";
     if (graph && active) {
@@ -176,6 +188,7 @@ export default function App() {
       });
       const w = { ...world, activeSceneId: result.activeSceneId };
       setWorld(w);
+      applyActiveScene(result.activeSceneId, scenes);
       await refresh(w);
     } catch {
       if (mode === "route") {
@@ -187,6 +200,7 @@ export default function App() {
           });
           const w = { ...world, activeSceneId: result.activeSceneId };
           setWorld(w);
+          applyActiveScene(result.activeSceneId, scenes);
           await refresh(w);
         } catch {
           /* unreachable */
@@ -245,6 +259,7 @@ export default function App() {
 
   const movePersonaToExit = async (targetSceneId: string) => {
     if (!world) return;
+    ++refreshSeq.current;
     const result = await api.navigationTravel(world.worldId, {
       toSceneId: targetSceneId,
       fromSceneId: world.activeSceneId,
@@ -252,6 +267,7 @@ export default function App() {
     });
     const w = { ...world, activeSceneId: result.activeSceneId };
     setWorld(w);
+    applyActiveScene(result.activeSceneId, scenes);
     await refresh(w);
   };
 

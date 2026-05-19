@@ -195,7 +195,11 @@ export function SpatialShell({
             onToggleSpatial={() => setSpatialOpen((v) => !v)}
             onMapOpen={onMapOpen}
           />
-          <ChronicleFeed messages={messages} worldId={world.worldId} />
+          <ChronicleFeed
+            key={scene?.sceneId ?? "no-scene"}
+            messages={messages}
+            worldId={world.worldId}
+          />
           <PersonaCompose {...compose} />
         </main>
         <aside

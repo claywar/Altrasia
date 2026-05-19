@@ -440,6 +440,17 @@
   word-break: break-all;
 }
 
+.msg-rationale-tools {
+  display: block;
+  margin-top: 6px;
+}
+
+.msg-rationale-tools strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
 .people-row {
   display: flex;
   align-items: center;

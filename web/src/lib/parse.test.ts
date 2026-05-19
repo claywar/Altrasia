@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import type { Message } from "../api/client";
 import {
   isAmbientMessage,
+  parseToolCallsFromRationale,
   setShowAmbientInTranscript,
   splitSceneMessages,
 } from "./parse";
@@ -19,6 +20,19 @@ function msg(overrides: Partial<Message> = {}): Message {
     ...overrides,
   };
 }
+
+describe("parseToolCallsFromRationale", () => {
+  it("returns toolCalls array from rationale JSON", () => {
+    const calls = parseToolCallsFromRationale(
+      JSON.stringify({
+        pick: "reactive",
+        toolCalls: [{ name: "memory_search", arguments: { q: "x" }, result: "hit" }],
+      })
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0].name).toBe("memory_search");
+  });
+});
 
 describe("isAmbientMessage", () => {
   it("matches idle_timer trigger", () => {

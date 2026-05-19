@@ -53,6 +53,26 @@ export function splitSceneMessages(msgs: Message[]): {
   };
 }
 
+export type ToolCallRecord = {
+  name: string;
+  arguments: Record<string, unknown>;
+  result: string;
+};
+
+export function parseToolCallsFromRationale(
+  selectionRationaleJson?: string | null
+): ToolCallRecord[] {
+  if (!selectionRationaleJson) return [];
+  try {
+    const parsed = JSON.parse(selectionRationaleJson) as {
+      toolCalls?: ToolCallRecord[];
+    };
+    return Array.isArray(parsed.toolCalls) ? parsed.toolCalls : [];
+  } catch {
+    return [];
+  }
+}
+
 export function parseScope(metaJson: string): string {
   try {
     return JSON.parse(metaJson).communication?.scope ?? "public";

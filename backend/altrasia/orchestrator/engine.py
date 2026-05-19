@@ -20,6 +20,19 @@ ISO = lambda: datetime.now(timezone.utc).isoformat()
 log = logging.getLogger(__name__)
 
 
+def _merge_tool_calls_rationale(
+    selection_rationale_json: str | None, tool_log: list[dict[str, Any]]
+) -> str:
+    try:
+        rationale = json.loads(selection_rationale_json or "{}")
+    except (json.JSONDecodeError, TypeError):
+        rationale = {}
+    if not isinstance(rationale, dict):
+        rationale = {}
+    rationale["toolCalls"] = tool_log
+    return json.dumps(rationale)
+
+
 def _scene_message_meta(job: dict[str, Any]) -> dict[str, Any]:
     """Communication + orchestration metadata stored on scene messages (UI-AMB)."""
     meta: dict[str, Any] = {"communication": {"scope": "public"}}
@@ -316,12 +329,21 @@ class Orchestrator:
             {"jobId": job_id, "messageId": msg_id},
         )
 
+        tool_log: list[dict[str, Any]] = []
+
         async def work() -> str:
-            return await self._generate_text(job, msg_id)
+            return await self._generate_text(job, msg_id, tool_log)
 
         try:
             text = await self.svc.gpu_queue.run(job_id, "chat", work)
             cleaned = strip_from_message_payload({"content": text})
+            if tool_log:
+                self.svc.store.update_job(
+                    job_id,
+                    selectionRationaleJson=_merge_tool_calls_rationale(
+                        job.get("selectionRationaleJson"), tool_log
+                    ),
+                )
             self.svc.store.update_message(
                 msg_id,
                 outputText=cleaned,
@@ -367,7 +389,9 @@ class Orchestrator:
         ).fetchone()
         return row is not None
 
-    async def _generate_text(self, job: dict, msg_id: str) -> str:
+    async def _generate_text(
+        self, job: dict, msg_id: str, tool_log: list[dict[str, Any]] | None = None
+    ) -> str:
         ch = self.svc.store.get_character(job["characterId"])
         cfg = self._world_config(job["worldId"])
         max_recall = int(cfg.get("mandatoryRecallMaxChars", 12000))
@@ -460,6 +484,11 @@ class Orchestrator:
                         memory_gate_open = True
                     args = json.loads(fn.get("arguments") or "{}")
                     result = await self.svc.tools.invoke(name, args, ctx)
+                    if tool_log is not None:
+                        preview = result if len(result) <= 500 else f"{result[:500]}…"
+                        tool_log.append(
+                            {"name": name, "arguments": args, "result": preview}
+                        )
                     messages.append(
                         {
                             "role": "tool",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from altrasia.orchestrator.engine import _scene_message_meta
+from altrasia.orchestrator.engine import _merge_tool_calls_rationale, _scene_message_meta
 
 
 def test_idle_timer_meta_includes_orchestration() -> None:
@@ -23,3 +23,14 @@ def test_reactive_meta_has_trigger_only() -> None:
     meta = _scene_message_meta({"trigger": "reactive"})
     assert meta["orchestration"]["trigger"] == "reactive"
     assert "idleSource" not in meta["orchestration"]
+
+
+def test_merge_tool_calls_into_rationale() -> None:
+    merged = json.loads(
+        _merge_tool_calls_rationale(
+            json.dumps({"pick": "reactive", "characterId": "char-alice"}),
+            [{"name": "memory_search", "arguments": {"query": "keys"}, "result": "ok"}],
+        )
+    )
+    assert merged["pick"] == "reactive"
+    assert merged["toolCalls"][0]["name"] == "memory_search"
