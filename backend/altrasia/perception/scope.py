@@ -24,7 +24,7 @@ def can_perceive(
         return True
     comm = parse_comm(message.get("metaJson", "{}"))
     scope = comm.get("scope", "public")
-    if scope == "public" or scope == "narrator":
+    if scope in ("public", "narrator", "presence"):
         return True
     if scope == "whisper":
         participants = comm.get("participants") or []

@@ -124,6 +124,8 @@ async def apply_narrative_presence(
     *,
     world_id: str,
     detection: dict[str, Any],
+    speaker_id: str | None = None,
+    source_scene_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Apply detected presence actions (auto mode)."""
     if detection.get("mode") != "auto":
@@ -137,6 +139,10 @@ async def apply_narrative_presence(
                     world_id=world_id,
                     target_scene_id=act["targetSceneId"],
                     character_ids=act["characterIds"],
+                    summoner_id=speaker_id,
+                    source_scene_id=source_scene_id,
+                    source="narrative",
+                    announce=False,
                 )
             )
         elif act["kind"] == "join":

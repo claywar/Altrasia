@@ -966,15 +966,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def presence_summon(
         world_id: str, body: SummonBody, svc: AppServices = Depends(get_services)
     ) -> dict:
-        for cid in body.characterIds:
-            svc.presence.join(body.targetSceneId, cid)
-            _emit(
-                svc,
-                world_id,
-                "presence.changed",
-                {"sceneId": body.targetSceneId, "characterId": cid, "action": "summon"},
-            )
-        await refresh_commissions(svc, world_id)
+        from altrasia.domain.presence_ops import presence_summon_batch
+
+        await presence_summon_batch(
+            svc,
+            world_id=world_id,
+            target_scene_id=body.targetSceneId,
+            character_ids=body.characterIds,
+            source="operator",
+            announce=True,
+        )
         return {"ok": True, "targetSceneId": body.targetSceneId}
 
     @app.post(

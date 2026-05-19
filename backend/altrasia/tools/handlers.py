@@ -264,6 +264,11 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             world_id=ctx.world_id,
             target_scene_id=target,
             character_ids=ids,
+            summoner_id=ctx.character_id,
+            source_scene_id=ctx.scene_id,
+            source="tool",
+            related_message_id=ctx.message_id,
+            announce=False,
         )
 
     async def map_layout_generate(params: dict, ctx: ToolContext) -> Any:

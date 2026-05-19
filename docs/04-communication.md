@@ -11,8 +11,9 @@ Altrasia tags messages with **communication scope** so prompts, UI, and tools kn
 | **Phone** | `phone` | Participants: both sides; bystanders: one side or both if speakerphone at their scene | §3.3 |
 | **DM** | `dm` | Explicit `participants` | Listed participants only |
 | **Narrator** | `narrator` | All **present** at scene | Present cast (Observer narrator) |
+| **Presence** | `presence` | All **present** at scene | Excluded from cast LLM history (`orchestration.kind: presence_announce`) |
 
-**v1 play:** public, whisper, DM, narrator. **v1.1:** phone ([21-cross-scene-awareness.md](21-cross-scene-awareness.md)).
+**v1 play:** public, whisper, DM, narrator, presence (summon announcements). **v1.1:** phone ([21-cross-scene-awareness.md](21-cross-scene-awareness.md)).
 
 Messages with `channelKind=meta` ([11-data-model.md](11-data-model.md)) are excluded from cast perception entirely.
 

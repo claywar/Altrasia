@@ -1158,6 +1158,7 @@ class Orchestrator:
             character_id=job["characterId"],
             services=self.svc,
             commission_id=com_id,
+            message_id=msg_id,
         )
         depth = 0
         is_commission = str(job.get("trigger", "")).startswith("commission")
@@ -1341,7 +1342,11 @@ class Orchestrator:
             )
             if detection:
                 await apply_narrative_presence(
-                    self.svc, world_id=job["worldId"], detection=detection
+                    self.svc,
+                    world_id=job["worldId"],
+                    detection=detection,
+                    speaker_id=job["characterId"],
+                    source_scene_id=job["sceneId"],
                 )
                 for act in detection.get("actions") or []:
                     if act.get("kind") == "summon":
@@ -1355,6 +1360,13 @@ class Orchestrator:
                                 "result": "narrative_presence",
                             }
                         )
+
+        if any(e.get("name") == "scene_summon" for e in tool_log):
+            from altrasia.domain.presence_announce import maybe_announce_summons_from_tool_log
+
+            await maybe_announce_summons_from_tool_log(
+                self.svc, job, tool_log, related_message_id=msg_id
+            )
 
         scene = self.svc.store.get_scene(job["sceneId"])
         present = [c for c in json.loads(scene["presentJson"]) if c != PERSONA_ID]

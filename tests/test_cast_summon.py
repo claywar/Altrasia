@@ -77,3 +77,16 @@ def test_cto_briefing_summons_directors_to_conference(client: tuple[TestClient, 
     )
     rationales = [j["selectionRationaleJson"] for j in jobs if j["selectionRationaleJson"]]
     assert any("scene_summon" in r for r in rationales)
+
+    import json
+
+    announce = [
+        m
+        for m in msgs
+        if json.loads(m["metaJson"]).get("orchestration", {}).get("kind")
+        == "presence_announce"
+    ]
+    assert announce
+    joined = " ".join(m["outputText"] for m in announce).lower()
+    assert "sofia" in joined or "mendez" in joined
+    assert "assistance" in joined or "join" in joined

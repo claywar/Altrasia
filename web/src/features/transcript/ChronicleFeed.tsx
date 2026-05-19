@@ -9,6 +9,7 @@ type Props = {
 
 function speakerLabel(m: Message): string {
   if (m.role === "user") return "You";
+  if (m.role === "system") return "Scene";
   const id = m.characterId ?? "";
   return id.replace(/^.*-char-/, "").replace(/^char-/, "") || "NPC";
 }

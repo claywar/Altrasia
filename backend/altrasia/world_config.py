@@ -33,6 +33,7 @@ POLICY_KEYS = (
     "summonRoles",
     "narrativePresenceMode",
     "briefingMaxReplies",
+    "presenceAnnounce",
 )
 
 

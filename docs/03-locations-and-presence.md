@@ -28,7 +28,7 @@ If `present` is empty, `getPresentCharacters` MAY default to all world members (
 | **summon** | Batch join to target scene |
 | **switch scene** | Operator focuses another scene; hydrate its metadata |
 
-Optional system transcript lines (e.g. `[Name joined Kitchen]`) MAY be appended when `presence_announce` is enabled.
+When `presenceAnnounce` is true (default), batch **summon** appends scene chronicle lines with `communication.scope: presence` so operators see who requested assistance and who was called. NPC tool/narrative summons post after the summoner’s line completes; operator REST/UI summons post immediately at the target scene.
 
 ### 2.2 Presence buckets
 

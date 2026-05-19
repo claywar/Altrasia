@@ -455,6 +455,10 @@ body {
   border-left-color: var(--scope-narrator-border);
 }
 
+.chronicle-entry--presence {
+  border-left-color: var(--scope-narrator-border);
+}
+
 .chronicle-entry--phone {
   border-left-color: var(--scope-phone-border);
 }
@@ -503,6 +507,11 @@ body {
 
 .chronicle-entry--narrator .chronicle-entry__body {
   font-style: italic;
+}
+
+.chronicle-entry--presence .chronicle-entry__body {
+  font-style: italic;
+  opacity: 0.92;
 }
 
 .chronicle-entry__stream {

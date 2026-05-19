@@ -51,6 +51,7 @@ erDiagram
 | `maxContinueDepth` | integer | 2 |
 | `personaArrivalMaxReplies` | integer | 1 |
 | `idleRoundRobinWeights` | object | optional `characterId` → weight for AO-4 |
+| `presenceAnnounce` | boolean | true — append summon assistance lines to scene chronicle ([03-locations-and-presence.md](03-locations-and-presence.md) §2.1) |
 
 ### 3.2 Structure (v1.1+)
 
@@ -191,7 +192,26 @@ Omission of layout fields MUST NOT break CC-1 round-trip ([17-acceptance-criteri
 }
 ```
 
-Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`.
+Scopes: `public`, `whisper`, `dm`, `phone`, `narrator`, `presence`.
+
+**Presence metadata** (summon announcements, `orchestration.kind: presence_announce`):
+
+```json
+{
+  "communication": { "scope": "presence" },
+  "presence": {
+    "action": "summon",
+    "summonerId": "char-jordan-reyes",
+    "summonedIds": ["char-sofia-mendez"],
+    "targetSceneId": "scene-conference-room",
+    "source": "tool"
+  },
+  "orchestration": {
+    "kind": "presence_announce",
+    "relatedMessageId": "msg-uuid"
+  }
+}
+```
 
 **Phone channel** (`comm_channels.endpointsJson`): array of `{ sceneId, participantIds[], speakerphone: boolean }` — speakerphone is **per endpoint**, default `false` ([04-communication.md](04-communication.md) §3.1).
 

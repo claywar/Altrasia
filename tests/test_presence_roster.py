@@ -44,6 +44,18 @@ def _run_presence_roster(client: TestClient) -> None:
     assert any(p["characterId"] == char_id for p in roster2["atLocation"])
     assert not any(u["characterId"] == char_id for u in roster2["unplaced"])
 
+    import json
+
+    msgs = client.get(f"/api/v1/worlds/{world_id}/scenes/{hall}/messages").json()
+    announce = [
+        m
+        for m in msgs
+        if json.loads(m["metaJson"]).get("orchestration", {}).get("kind")
+        == "presence_announce"
+    ]
+    assert len(announce) == 1
+    assert "Herbalist" in announce[0]["outputText"]
+
     kitchen = "scene-conference-room"
     client.post(
         f"/api/v1/worlds/{world_id}/scenes/{kitchen}/presence/join",

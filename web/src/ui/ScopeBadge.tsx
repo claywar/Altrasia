@@ -6,6 +6,7 @@ const SCOPE_LABELS: Record<string, string> = {
   dm: "DM",
   narrator: "Narrator",
   phone: "Phone",
+  presence: "Summon",
 };
 
 type Props = {

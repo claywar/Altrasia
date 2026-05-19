@@ -30,6 +30,11 @@ async def presence_summon_batch(
     world_id: str,
     target_scene_id: str,
     character_ids: list[str],
+    summoner_id: str | None = None,
+    source_scene_id: str | None = None,
+    source: str = "tool",
+    related_message_id: str | None = None,
+    announce: bool = True,
 ) -> dict[str, Any]:
     """Batch summon to target scene."""
     for cid in character_ids:
@@ -39,5 +44,18 @@ async def presence_summon_batch(
             scene_id=target_scene_id,
             character_id=cid,
             action="summon",
+        )
+    if announce:
+        from altrasia.domain.presence_announce import announce_summon
+
+        await announce_summon(
+            services,
+            world_id=world_id,
+            target_scene_id=target_scene_id,
+            summoned_ids=character_ids,
+            summoner_id=summoner_id,
+            source_scene_id=source_scene_id,
+            source=source,  # type: ignore[arg-type]
+            related_message_id=related_message_id,
         )
     return {"ok": True, "targetSceneId": target_scene_id, "characterIds": character_ids}

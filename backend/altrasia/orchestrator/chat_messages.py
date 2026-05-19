@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from altrasia.perception.scope import can_perceive
 
 
 _SCENE_PREFIX = "[Scene] "
+
+
+def _is_presence_announce(message: dict[str, Any]) -> bool:
+    try:
+        meta = json.loads(message.get("metaJson") or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return False
+    return (meta.get("orchestration") or {}).get("kind") == "presence_announce"
 
 
 def thinking_safe_chat_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -50,6 +59,8 @@ def scene_messages_for_llm(
     turns: list[dict[str, str]] = []
     present_list = present or []
     for m in rows[-limit:]:
+        if _is_presence_announce(m):
+            continue
         if viewer_id and present is not None:
             if not can_perceive(
                 viewer_id=viewer_id,
