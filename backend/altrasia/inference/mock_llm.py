@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 _MAP_FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "map-layouts"
+_JUDGE_MARKER = "discussion sufficiency judge"
 
 _tool_snapshots: list[list[str]] = []
 
@@ -93,6 +94,21 @@ async def mock_chat_completion(
                         "content": json.dumps(payload),
                     }
                 }
+            ]
+        }
+    if _JUDGE_MARKER in system_text.lower():
+        insufficient = "not sufficient" in last_user.lower() or "gaps" in last_user.lower()
+        if "tbd" in last_user.lower() or "tension" in last_user.lower():
+            insufficient = True
+        payload = {
+            "sufficient": not insufficient,
+            "reason": "mock_judgement_insufficient" if insufficient else "mock_judgement_sufficient",
+            "outstandingGaps": ["dependencies", "owners"] if insufficient else [],
+            "influencedByCharacters": "discussion_signal" in last_user.lower(),
+        }
+        return {
+            "choices": [
+                {"message": {"role": "assistant", "content": json.dumps(payload)}}
             ]
         }
     if tools and "commission errand" in system_text.lower():

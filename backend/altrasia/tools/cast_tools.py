@@ -29,6 +29,8 @@ def cast_allowed_tool_names(
         allowed |= {"character_list", "scene_location_list", "scene_join"}
         if can_summon_others(cfg, scene_role):
             allowed.add("scene_summon")
+    if cfg.get("discussionSignalsEnabled", True):
+        allowed.add("discussion_signal")
     if not allowed:
         return None
     return allowed

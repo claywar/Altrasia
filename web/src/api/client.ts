@@ -30,6 +30,15 @@ export type WorldPolicy = {
   pauseCommissionsDuringPersonaDialogue?: boolean;
   mandatoryRecallBlocking?: boolean;
   maxContinueDepth?: number;
+  generationMaxRetries?: number;
+  generationRetryBackoffSeconds?: number;
+  inferenceTimeoutSeconds?: number;
+  generationRecoveryEnabled?: boolean;
+  continueUntilResolved?: boolean;
+  maxContinueDepthExtended?: number;
+  maxContinueDepthCap?: number;
+  conversationJudgementEnabled?: boolean;
+  discussionSignalsEnabled?: boolean;
   citeProvenanceInPrompt?: boolean;
   commonsAccessIds?: string[];
   speakIntentOnTie?: boolean;

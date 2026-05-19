@@ -519,6 +519,53 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             handler=scene_join,
         )
     )
+    async def discussion_signal(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.orchestrator.discussion_judgement import record_character_signal
+
+        gaps = params.get("gaps")
+        if gaps is not None and not isinstance(gaps, list):
+            gaps = [str(gaps)]
+        signal = record_character_signal(
+            services.store,
+            ctx.scene_id,
+            ctx.character_id,
+            sufficient=bool(params.get("sufficient")),
+            gaps=gaps or [],
+            note=str(params.get("note") or ""),
+        )
+        return {"ok": True, "signal": signal}
+
+    registry.register(
+        ToolDef(
+            name="discussion_signal",
+            description=(
+                "File whether the current group discussion has surfaced enough "
+                "information for the operator's request. Call when you believe key "
+                "topics are still missing (sufficient=false, gaps listed) or when "
+                "your perspective is fully on the table (sufficient=true)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "sufficient": {
+                        "type": "boolean",
+                        "description": "True if your view is fully represented.",
+                    },
+                    "gaps": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Topics or concerns not yet adequately covered.",
+                    },
+                    "note": {
+                        "type": "string",
+                        "description": "Brief rationale for the operator/orchestrator.",
+                    },
+                },
+                "required": ["sufficient"],
+            },
+            handler=discussion_signal,
+        )
+    )
     registry.register(
         ToolDef(
             name="scene_summon",

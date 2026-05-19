@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import uuid
+from concurrent.futures import CancelledError as FuturesCancelledError
 from datetime import datetime, timezone
 from typing import Any
 
@@ -57,9 +58,16 @@ _GENERATION_FAILED_TEXT = (
 _AGENT_CONTINUE_TRIGGERS = frozenset({"persona_message", "agent_continue"})
 
 
-def _message_meta_with_generation_error(job: dict[str, Any], exc: Exception) -> str:
+def _generation_error_text(exc: BaseException) -> str:
+    text = str(exc).strip()
+    if text:
+        return text[:200]
+    return f"{type(exc).__name__} (no message)"
+
+
+def _message_meta_with_generation_error(job: dict[str, Any], exc: BaseException) -> str:
     meta = _scene_message_meta(job)
-    meta["generationError"] = str(exc)[:200]
+    meta["generationError"] = _generation_error_text(exc)
     return json.dumps(meta)
 
 
@@ -119,10 +127,119 @@ class Orchestrator:
         return json.loads(world.get("configJson") or "{}")
 
     def _max_continue_depth(self, world_id: str) -> int:
-        return int(self._world_config(world_id).get("maxContinueDepth", 2))
+        from altrasia.orchestrator.generation_policy import world_generation_policy
+
+        return world_generation_policy(self._world_config(world_id))["max_continue_depth"]
+
+    def _generation_policy(self, world_id: str) -> dict[str, Any]:
+        from altrasia.orchestrator.generation_policy import world_generation_policy
+
+        return world_generation_policy(self._world_config(world_id))
 
     def _agent_continue_enabled(self, world_id: str) -> bool:
         return bool(self._world_config(world_id).get("agentContinueEnabled", True))
+
+    def _is_retryable_generation(self, exc: BaseException) -> bool:
+        from altrasia.orchestrator.generation_policy import is_retryable_generation_error
+
+        return is_retryable_generation_error(exc)
+
+    async def _maybe_recover_generation(self, job: dict[str, Any], exc: BaseException) -> None:
+        """One deferred re-run after retries are exhausted (timeouts / transport blips)."""
+        cfg = self._world_config(job["worldId"])
+        if not cfg.get("generationRecoveryEnabled", True):
+            return
+        if not self._is_retryable_generation(exc):
+            return
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+        except json.JSONDecodeError:
+            rationale = {}
+        if rationale.get("generation_recovery"):
+            return
+        trigger = str(job.get("trigger") or "")
+        if trigger == "debate_turn":
+            from altrasia.debate_runner import enqueue_debate_turn
+
+            log.info(
+                "scheduling debate turn recovery scene=%s character=%s",
+                job["sceneId"],
+                job.get("characterId"),
+            )
+            await enqueue_debate_turn(self.svc, job["sceneId"])
+            return
+        if trigger not in _AGENT_CONTINUE_TRIGGERS:
+            return
+        depth = int(job.get("continueDepth") or 0)
+        log.info(
+            "scheduling agent_continue recovery scene=%s character=%s depth=%s",
+            job["sceneId"],
+            job.get("characterId"),
+            depth,
+        )
+        recovery_rationale = json.dumps(
+            {
+                **rationale,
+                "pick": trigger,
+                "characterId": job["characterId"],
+                "generation_recovery": True,
+            }
+        )
+        job_id = str(uuid.uuid4())
+        self.svc.store.insert_job(
+            {
+                "jobId": job_id,
+                "worldId": job["worldId"],
+                "characterId": job["characterId"],
+                "sceneId": job["sceneId"],
+                "trigger": trigger,
+                "priority": 10 - depth,
+                "observerMode": job.get("observerMode"),
+                "status": "queued",
+                "continueDepth": depth,
+                "triggerMessageId": job.get("triggerMessageId"),
+                "selectionRationaleJson": recovery_rationale,
+                "createdAt": ISO(),
+            }
+        )
+        self._scene_chain_active.add(job["sceneId"])
+        stream = TokenStream()
+        self.svc.streams[job_id] = stream
+        task = asyncio.create_task(self._run_job(job_id, stream))
+        self._workers[job_id] = task
+        self._emit_queue(job["worldId"])
+
+    async def _continue_depth_limit(
+        self, job: dict[str, Any]
+    ) -> tuple[int, str | None, dict[str, Any]]:
+        """Max continueDepth for the *next* step; optional stop reason and assessment detail."""
+        cfg = self._world_config(job["worldId"])
+        depth = int(job.get("continueDepth") or 0)
+        from altrasia.orchestrator.conversation_resolution import effective_continue_depth_limit
+        from altrasia.orchestrator.discussion_judgement import assess_discussion_continuation
+
+        unresolved, resolution_reason, detail = await assess_discussion_continuation(
+            self.svc,
+            world_id=job["worldId"],
+            scene_id=job["sceneId"],
+            cfg=cfg,
+            current_depth=depth,
+        )
+        limit = effective_continue_depth_limit(cfg, depth, unresolved=unresolved)
+        stop_reason: str | None = None
+        if depth + 1 > limit:
+            if cfg.get("continueUntilResolved", True) and depth >= int(
+                cfg.get("maxContinueDepth", 2)
+            ):
+                if unresolved:
+                    stop_reason = "depth_cap_unresolved"
+                else:
+                    stop_reason = "conversation_resolved"
+            else:
+                stop_reason = "max_continue_depth"
+        detail["depthLimit"] = limit
+        detail["stopReason"] = stop_reason
+        return limit, stop_reason if depth + 1 > limit else None, detail
 
     def _should_enqueue_agent_continue(
         self,
@@ -130,14 +247,14 @@ class Orchestrator:
         *,
         debate_active: bool,
         tool_log: list[dict[str, Any]],
-        max_depth: int,
+        depth_limit: int,
     ) -> bool:
         if not self._agent_continue_enabled(job["worldId"]):
             return False
         if str(job.get("trigger") or "") not in _AGENT_CONTINUE_TRIGGERS:
             return False
         depth = int(job.get("continueDepth") or 0)
-        if depth + 1 > max_depth:
+        if depth + 1 > depth_limit:
             return False
         if debate_active:
             return False
@@ -419,42 +536,73 @@ class Orchestrator:
         )
 
         tool_log: list[dict[str, Any]] = []
+        policy = self._generation_policy(job["worldId"])
+        max_attempts = policy["max_retries"] + 1
+        last_exc: BaseException | None = None
+        failed_exc: BaseException | None = None
 
         async def work() -> str:
             return await self._generate_text(job, msg_id, tool_log)
 
         try:
-            text = await self.svc.gpu_queue.run(job_id, "chat", work)
-            cleaned = strip_from_message_payload({"content": text})
-            if tool_log:
-                self.svc.store.update_job(
-                    job_id,
-                    selectionRationaleJson=_merge_tool_calls_rationale(
-                        job.get("selectionRationaleJson"), tool_log
-                    ),
-                )
-            self.svc.store.update_message(
-                msg_id,
-                outputText=cleaned,
-                streamStatus="final",
-            )
-            await stream.push("generation.token", {"jobId": job_id, "messageId": msg_id, "delta": cleaned})
-            self._emit(
-                job["worldId"],
-                "generation.token",
-                {"jobId": job_id, "messageId": msg_id, "delta": cleaned},
-            )
-            await stream.push("generation.done", {"jobId": job_id, "messageId": msg_id})
-            self._emit(
-                job["worldId"],
-                "generation.done",
-                {"jobId": job_id, "messageId": msg_id},
-            )
-            self.svc.store.update_job(job_id, status="done")
-            if not (cleaned or "").strip():
-                raise ValueError("Model returned empty content")
-            await self._after_reply(job, msg_id, cleaned, tool_log=tool_log)
-        except asyncio.CancelledError:
+            for attempt in range(max_attempts):
+                try:
+                    text = await self.svc.gpu_queue.run(job_id, "chat", work)
+                    cleaned = strip_from_message_payload({"content": text})
+                    if tool_log:
+                        self.svc.store.update_job(
+                            job_id,
+                            selectionRationaleJson=_merge_tool_calls_rationale(
+                                job.get("selectionRationaleJson"), tool_log
+                            ),
+                        )
+                    self.svc.store.update_message(
+                        msg_id,
+                        outputText=cleaned,
+                        streamStatus="final",
+                    )
+                    await stream.push(
+                        "generation.token",
+                        {"jobId": job_id, "messageId": msg_id, "delta": cleaned},
+                    )
+                    self._emit(
+                        job["worldId"],
+                        "generation.token",
+                        {"jobId": job_id, "messageId": msg_id, "delta": cleaned},
+                    )
+                    await stream.push("generation.done", {"jobId": job_id, "messageId": msg_id})
+                    self._emit(
+                        job["worldId"],
+                        "generation.done",
+                        {"jobId": job_id, "messageId": msg_id},
+                    )
+                    self.svc.store.update_job(job_id, status="done")
+                    if not (cleaned or "").strip():
+                        raise ValueError("Model returned empty content")
+                    await self._after_reply(job, msg_id, cleaned, tool_log=tool_log)
+                    last_exc = None
+                    break
+                except (asyncio.CancelledError, FuturesCancelledError):
+                    raise
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt + 1 < max_attempts and self._is_retryable_generation(exc):
+                        wait = policy["backoff_seconds"] * (attempt + 1)
+                        log.warning(
+                            "generation retry job=%s character=%s attempt=%s/%s after %s; wait %.1fs",
+                            job_id,
+                            job.get("characterId"),
+                            attempt + 2,
+                            max_attempts,
+                            _generation_error_text(exc),
+                            wait,
+                        )
+                        await asyncio.sleep(wait)
+                        continue
+                    raise
+            if last_exc is not None:
+                raise last_exc
+        except (asyncio.CancelledError, FuturesCancelledError):
             self.svc.store.update_message(
                 msg_id,
                 streamStatus="interrupted",
@@ -466,7 +614,14 @@ class Orchestrator:
             self.svc.store.update_job(job_id, status="cancelled")
             raise
         except Exception as exc:
-            log.warning("generation failed job=%s character=%s: %s", job_id, job.get("characterId"), exc)
+            failed_exc = exc
+            err_text = _generation_error_text(exc)
+            log.warning(
+                "generation failed job=%s character=%s: %s",
+                job_id,
+                job.get("characterId"),
+                err_text,
+            )
             self.svc.store.update_message(
                 msg_id,
                 streamStatus="interrupted",
@@ -474,17 +629,19 @@ class Orchestrator:
                 metaJson=_message_meta_with_generation_error(job, exc),
             )
             self.svc.store.update_job(job_id, status="cancelled")
-            await stream.push("generation.error", {"jobId": job_id, "error": str(exc)})
+            await stream.push("generation.error", {"jobId": job_id, "error": err_text})
             self._emit(
                 job["worldId"],
                 "generation.error",
-                {"jobId": job_id, "message": str(exc)},
+                {"jobId": job_id, "message": err_text},
             )
         finally:
             if not self._scene_has_pending_jobs(job["worldId"], job["sceneId"]):
                 self._scene_chain_active.discard(job["sceneId"])
             self._emit_queue(job["worldId"])
             await stream.close()
+            if failed_exc is not None:
+                await self._maybe_recover_generation(job, failed_exc)
 
     def _scene_has_pending_jobs(self, world_id: str, scene_id: str) -> bool:
         for j in self.svc.store.list_queued_jobs(world_id):
@@ -502,6 +659,7 @@ class Orchestrator:
     ) -> str:
         ch = self.svc.store.get_character(job["characterId"])
         cfg = self._world_config(job["worldId"])
+        inference_timeout = self._generation_policy(job["worldId"])["inference_timeout_seconds"]
         max_recall = int(cfg.get("mandatoryRecallMaxChars", 12000))
         recall = self.svc.memory.build_mandatory_recall(
             character_id=job["characterId"],
@@ -567,11 +725,19 @@ class Orchestrator:
 
         history_rows = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
         op_trigger = operator_trigger_text(history_rows)
+        ensemble_invited = trigger_invites_ensemble(op_trigger)
         system += f"\n\n{single_speaker_system_addendum(
             ch['displayName'],
             other_names=other_names,
-            ensemble_invited=trigger_invites_ensemble(op_trigger),
+            ensemble_invited=ensemble_invited,
         )}"
+        if ensemble_invited and cfg.get("discussionSignalsEnabled", True):
+            system += (
+                "\n\nIf important aspects of the operator's question are still missing "
+                "from the discussion, call discussion_signal with sufficient=false and "
+                "list gaps. If your perspective is fully on the table, you may call "
+                "discussion_signal with sufficient=true."
+            )
         if cfg.get("citeProvenanceInPrompt"):
             prov = self.svc.store.fetchall(
                 """SELECT locusKey, sourceKind, sourceRef FROM EvidenceRecord
@@ -645,7 +811,9 @@ class Orchestrator:
                 tools_payload = self._filter_tools(job_tools, memory_only)
             else:
                 tools_payload = job_tools
-            resp = await self.svc.llm.chat(messages, tools_payload)
+            resp = await self.svc.llm.chat(
+                messages, tools_payload, timeout=inference_timeout
+            )
             msg = normalize_assistant_message(resp["choices"][0]["message"])
             tool_calls = msg.get("tool_calls")
             if tool_calls:
@@ -692,6 +860,23 @@ class Orchestrator:
             detect_narrative_presence,
         )
         from altrasia.orchestrator.briefing_chain import movement_tools_ran
+        from altrasia.orchestrator.discussion_judgement import (
+            apply_tool_log_signals,
+            clear_ensemble_discussion,
+            ensure_ensemble_discussion,
+        )
+        from altrasia.orchestrator.single_speaker import (
+            operator_trigger_text,
+            trigger_invites_ensemble,
+        )
+
+        apply_tool_log_signals(
+            self.svc.store,
+            job["sceneId"],
+            job["characterId"],
+            tool_log,
+            message_id=msg_id,
+        )
 
         if not movement_tools_ran(tool_log):
             detection = detect_narrative_presence(
@@ -807,8 +992,18 @@ class Orchestrator:
                         {"sceneId": job["sceneId"], "debate": "turn_done"},
                     )
 
+        if movement_tools_ran(tool_log):
+            clear_ensemble_discussion(self.svc.store, job["sceneId"])
+        elif str(job.get("trigger") or "") == "persona_message":
+            history = self.svc.store.list_messages(job["worldId"], scene_id=job["sceneId"])
+            if trigger_invites_ensemble(operator_trigger_text(history)):
+                trigger_mid = job.get("triggerMessageId")
+                ensure_ensemble_discussion(
+                    self.svc.store, job["sceneId"], operator_message_id=trigger_mid
+                )
+
         depth = int(job.get("continueDepth") or 0)
-        max_depth = self._max_continue_depth(job["worldId"])
+        limit, stop_reason, judgement_detail = await self._continue_depth_limit(job)
         scene_for_continue = self.svc.store.get_scene(job["sceneId"])
         from altrasia.debate_activity import parse_activity as _parse_act
 
@@ -824,7 +1019,7 @@ class Orchestrator:
             job,
             debate_active=debate_active,
             tool_log=tool_log,
-            max_depth=max_depth,
+            depth_limit=limit,
         ):
             nxt = self._pick_continue_character(
                 job["worldId"],
@@ -842,6 +1037,35 @@ class Orchestrator:
                     continue_depth=depth + 1,
                     trigger_message_id=msg_id,
                 )
+        elif stop_reason:
+            log.info(
+                "agent_continue stopped scene=%s depth=%s reason=%s limit=%s",
+                job["sceneId"],
+                depth,
+                stop_reason,
+                limit,
+            )
+            if stop_reason == "conversation_resolved":
+                clear_ensemble_discussion(self.svc.store, job["sceneId"])
+            self._emit(
+                job["worldId"],
+                "conversation.chain_stopped",
+                {
+                    "sceneId": job["sceneId"],
+                    "continueDepth": depth,
+                    "reason": stop_reason,
+                    "depthLimit": limit,
+                    "judgement": judgement_detail,
+                },
+            )
+            self._emit(
+                job["worldId"],
+                "conversation.judgement",
+                {
+                    "sceneId": job["sceneId"],
+                    **judgement_detail,
+                },
+            )
 
     async def on_phone_persona_message(
         self, world_id: str, channel_id: str, speaker_scene_id: str, message_id: str

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, AsyncIterator
 
 import httpx
@@ -12,6 +13,8 @@ from altrasia.orchestrator.chat_messages import thinking_safe_chat_messages
 
 _THINKING_PREFILL_MARKERS = ("enable_thinking", "assistant response prefill")
 
+log = logging.getLogger(__name__)
+
 
 class LlmClient:
     def __init__(
@@ -20,15 +23,44 @@ class LlmClient:
         base_url: str | None,
         model: str,
         mock: bool = True,
+        default_timeout: float = 120.0,
     ) -> None:
         self.base_url = base_url.rstrip("/") if base_url else None
         self.model = model
         self.mock = mock or not self.base_url
+        self.default_timeout = default_timeout
+
+    async def _post_chat(
+        self,
+        client: httpx.AsyncClient,
+        payload: dict[str, Any],
+        *,
+        attempts: int = 2,
+    ) -> httpx.Response:
+        last_exc: BaseException | None = None
+        for attempt in range(attempts):
+            try:
+                r = await client.post(chat_completions_url(self.base_url or ""), json=payload)
+                if r.status_code in (408, 429, 500, 502, 503, 504) and attempt + 1 < attempts:
+                    log.warning("chat completion HTTP %s, retrying", r.status_code)
+                    continue
+                return r
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as exc:
+                last_exc = exc
+                if attempt + 1 < attempts:
+                    log.warning("chat completion transport error, retrying: %s", exc)
+                    continue
+                raise
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("chat completion failed without response")
 
     async def chat(
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
+        *,
+        timeout: float | None = None,
     ) -> dict[str, Any]:
         if self.mock:
             data = await mock_chat_completion(messages, tools)
@@ -39,13 +71,14 @@ class LlmClient:
             if tools:
                 payload["tools"] = tools
                 payload["tool_choice"] = "auto"
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                r = await client.post(chat_completions_url(self.base_url), json=payload)
+            req_timeout = timeout if timeout is not None else self.default_timeout
+            async with httpx.AsyncClient(timeout=req_timeout) as client:
+                r = await self._post_chat(client, payload)
                 if r.status_code == 400 and any(
                     m in (r.text or "").lower() for m in _THINKING_PREFILL_MARKERS
                 ):
                     payload["messages"] = thinking_safe_chat_messages(messages)
-                    r = await client.post(chat_completions_url(self.base_url), json=payload)
+                    r = await self._post_chat(client, payload)
                 r.raise_for_status()
                 data = r.json()
         choice = data["choices"][0]
@@ -55,6 +88,8 @@ class LlmClient:
     async def stream_chat(
         self,
         messages: list[dict[str, Any]],
+        *,
+        timeout: float | None = None,
     ) -> AsyncIterator[str]:
         if self.mock:
             result = await mock_chat_completion(messages, None)
@@ -64,7 +99,8 @@ class LlmClient:
             return
         assert self.base_url
         payload = {"model": self.model, "messages": messages, "stream": True}
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        req_timeout = timeout if timeout is not None else self.default_timeout
+        async with httpx.AsyncClient(timeout=req_timeout) as client:
             async with client.stream(
                 "POST", chat_completions_url(self.base_url), json=payload
             ) as resp:

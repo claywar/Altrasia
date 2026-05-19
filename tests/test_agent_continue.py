@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from pathlib import Path
@@ -68,35 +69,41 @@ def test_should_enqueue_agent_continue_gates(orch_client: tuple) -> None:
     _client, orch, world_id = orch_client
     base_job = {
         "worldId": world_id,
+        "sceneId": PROGRAM_OFFICE,
         "trigger": "persona_message",
         "continueDepth": 0,
     }
+    limit, _, _ = asyncio.run(orch._continue_depth_limit(base_job))
     assert orch._should_enqueue_agent_continue(
-        base_job, debate_active=False, tool_log=[], max_depth=2
+        base_job, debate_active=False, tool_log=[], depth_limit=limit
+    )
+    # At demo maxContinueDepth (8), next step is blocked unless discussion still open.
+    limit8, _, _ = asyncio.run(
+        orch._continue_depth_limit({**base_job, "continueDepth": 8})
     )
     assert not orch._should_enqueue_agent_continue(
-        {**base_job, "continueDepth": 2},
+        {**base_job, "continueDepth": 8},
         debate_active=False,
         tool_log=[],
-        max_depth=2,
+        depth_limit=limit8,
     )
     assert not orch._should_enqueue_agent_continue(
         {**base_job, "trigger": "idle_timer"},
         debate_active=False,
         tool_log=[],
-        max_depth=2,
+        depth_limit=99,
     )
     assert not orch._should_enqueue_agent_continue(
         base_job,
         debate_active=True,
         tool_log=[],
-        max_depth=2,
+        depth_limit=99,
     )
     assert not orch._should_enqueue_agent_continue(
         base_job,
         debate_active=False,
         tool_log=[{"name": "scene_summon", "arguments": {}, "result": "ok"}],
-        max_depth=2,
+        depth_limit=99,
     )
 
     store = orch.svc.store
@@ -105,7 +112,7 @@ def test_should_enqueue_agent_continue_gates(orch_client: tuple) -> None:
     cfg["agentContinueEnabled"] = False
     store.update_world(world_id, configJson=json.dumps(cfg))
     assert not orch._should_enqueue_agent_continue(
-        base_job, debate_active=False, tool_log=[], max_depth=2
+        base_job, debate_active=False, tool_log=[], depth_limit=99
     )
 
 
