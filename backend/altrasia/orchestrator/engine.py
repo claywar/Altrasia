@@ -1001,11 +1001,17 @@ class Orchestrator:
                     "yourself only if you commit to travel. Do not summon others."
                 )
         elif cast_scene_tools:
-            system += (
-                "\n\nWhen you commit to gathering people or moving to a meeting, "
-                "you MUST call scene_summon or scene_join with real characterIds from "
-                "character_list. Do not claim people are coming without those tool calls."
-            )
+            if "scene_summon" in cast_scene_tools:
+                system += (
+                    "\n\nWhen you order the team or directors to assemble, you MUST call "
+                    "scene_summon with real characterIds from character_list and a "
+                    "targetSceneId. Do not claim people are coming without that tool call."
+                )
+            else:
+                system += (
+                    "\n\nWhen you commit to moving to a meeting, call scene_join for "
+                    "yourself with a real sceneId from scene_location_list."
+                )
         if addendum:
             system += f"\n\n{addendum}"
         present_ids = [

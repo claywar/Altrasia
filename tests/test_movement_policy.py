@@ -65,7 +65,7 @@ def test_reactive_leadership_still_has_scene_summon(svc) -> None:
     assert "scene_summon" in allowed
 
 
-def test_narrative_no_bulk_team_summon(svc) -> None:
+def test_narrative_casual_team_mention_does_not_summon(svc) -> None:
     from altrasia.fixtures.loader import load_fixture_by_id
 
     loaded = load_fixture_by_id(svc.store, svc.settings.fixtures_dir, "demo-spatial-v1")
@@ -80,10 +80,37 @@ def test_narrative_no_bulk_team_summon(svc) -> None:
         world_id=world_id,
         speaker_id="char-jordan-reyes",
         scene_id="scene-lobby",
-        output_text="I'll gather the team and directors here in the lobby.",
+        output_text="The team has been doing solid work here in the lobby.",
         cfg=cfg,
     )
     assert detection is None
+
+
+def test_authority_gather_team_with_destination(svc) -> None:
+    from altrasia.fixtures.loader import load_fixture_by_id
+
+    loaded = load_fixture_by_id(svc.store, svc.settings.fixtures_dir, "demo-spatial-v1")
+    world_id = loaded["worldId"]
+    cfg = {
+        "narrativePresenceMode": "auto",
+        "castSummonEnabled": True,
+        "summonRoles": ["cto", "director"],
+    }
+    detection = detect_narrative_presence(
+        svc,
+        world_id=world_id,
+        speaker_id="char-jordan-reyes",
+        scene_id="scene-lobby",
+        output_text=(
+            "I'll gather the directors and meet everyone in the Conference Room shortly."
+        ),
+        cfg=cfg,
+    )
+    assert detection is not None
+    summon = next(a for a in detection["actions"] if a["kind"] == "summon")
+    assert summon["targetSceneId"] == "scene-conference-room"
+    assert "char-sofia-mendez" in summon["characterIds"]
+    assert "char-jordan-reyes" not in summon["characterIds"]
 
 
 def test_narrative_named_summon_requires_destination(svc) -> None:
