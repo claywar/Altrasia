@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from altrasia.fixtures.loader import load_fixture_by_id
+from altrasia.fixtures.loader import load_fixture_by_id, reset_fixture_world
+from altrasia.memory.service import MemoryService
 from altrasia.persistence.sqlite_store import SqlitePersistence
 
 
@@ -45,3 +46,54 @@ def test_load_demo_fixture_twice_on_same_db(store: SqlitePersistence) -> None:
     assert len(store.list_worlds()) == 1
     assert store.get_world(second["worldId"])["name"] == "Vertex Labs HQ — Demo"
     assert len(store.list_scenes(second["worldId"])) == 20
+
+
+def test_reset_demo_clears_chat_and_runtime_memory(store: SqlitePersistence) -> None:
+    """In-world reset drops transcript, diary, and loci added after fixture load."""
+    fixtures = Path(__file__).resolve().parent / "fixtures"
+    meta = load_fixture_by_id(store, fixtures, "demo-spatial-v1")
+    wid = meta["worldId"]
+    mem = MemoryService(store)
+    mem.capture_diary_fanout(
+        scene_id="scene-lobby",
+        present_ids=["char-jordan-reyes"],
+        snippet="Operator: test line",
+        message_ids=["m-test"],
+    )
+    mem.memory_store(
+        pool="mind",
+        owner_id="char-jordan-reyes",
+        locus_key="test_extra",
+        value="should vanish on reset",
+    )
+    now = "2026-01-01T00:00:00+00:00"
+    store.insert_message(
+        {
+            "messageId": "msg-reset-test",
+            "worldId": wid,
+            "channelKind": "scene",
+            "sceneId": "scene-lobby",
+            "role": "user",
+            "characterId": None,
+            "outputText": "hello from test",
+            "reasoning": None,
+            "streamStatus": "final",
+            "generationJobId": None,
+            "metaJson": "{}",
+            "createdAt": now,
+        }
+    )
+    assert store.list_messages(wid, scene_id="scene-lobby")
+    assert store.list_diary("char-jordan-reyes")
+
+    reset_fixture_world(store, fixtures, wid)
+
+    assert store.list_messages(wid, scene_id="scene-lobby") == []
+    assert store.list_diary("char-jordan-reyes") == []
+    cur = store.conn.execute(
+        "SELECT locusKey, value FROM Locus WHERE pool = 'mind' AND ownerId = ?",
+        ("char-jordan-reyes",),
+    )
+    loci = {dict(r)["locusKey"]: dict(r)["value"] for r in cur.fetchall()}
+    assert "test_extra" not in loci
+    assert loci.get("role", "").startswith("Chief Technology Officer")

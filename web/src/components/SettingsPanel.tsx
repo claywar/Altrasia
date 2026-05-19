@@ -10,6 +10,7 @@ import { SettingsShell } from "./settings/SettingsShell";
 import { SettingsCategoryPane } from "./settings/SettingsCategoryPane";
 import type { SettingsCategoryId } from "./settings/settingsNav";
 import { WorldPackageSection } from "./settings/WorldPackageSection";
+import { DemoResetSection } from "./settings/DemoResetSection";
 import { WorldStatusSection } from "./settings/WorldStatusSection";
 import { AmbientDisplaySection } from "./settings/AmbientDisplaySection";
 import { ServerPluginsSection } from "./settings/ServerPluginsSection";
@@ -23,8 +24,10 @@ type Props = {
   worldId: string;
   worldName: string;
   worldPaused: boolean;
+  isDemoWorld?: boolean;
   onClose: () => void;
   onWorldImported: (world: { worldId: string; name: string; activeSceneId: string }) => void;
+  onDemoReset?: () => void | Promise<void>;
   onCastChanged?: () => void;
   scenes?: Scene[];
   onScenesChanged?: () => void;
@@ -36,8 +39,10 @@ export function SettingsPanel({
   worldId,
   worldName,
   worldPaused,
+  isDemoWorld = false,
   onClose,
   onWorldImported,
+  onDemoReset,
   onCastChanged,
   scenes = [],
   onScenesChanged,
@@ -59,6 +64,9 @@ export function SettingsPanel({
           <SettingsCategoryPane categoryId="world">
             <SettingsGroup>
               <WorldStatusSection worldPaused={worldPaused} />
+              {isDemoWorld && onDemoReset && (
+                <DemoResetSection worldId={worldId} onReset={onDemoReset} />
+              )}
               <AmbientDisplaySection onChanged={onAmbientTranscriptChange} />
               <WorldPolicyPanel worldId={worldId} embedded />
               <WorldPackageSection

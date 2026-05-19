@@ -148,6 +148,22 @@ export default function App() {
     }
   };
 
+  const resetDemo = async () => {
+    if (!world) return;
+    setLoading(true);
+    try {
+      const w = await api.resetDemoFixture(world.worldId);
+      setWorld(w);
+      setWorldPaused(false);
+      setMetaMessages([]);
+      setObserverDigest(null);
+      setText("");
+      await refresh(w);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const createArchitectWorld = async () => {
     setLoading(true);
     try {
@@ -492,6 +508,10 @@ export default function App() {
           worldId={world.worldId}
           worldName={world.name}
           worldPaused={worldPaused}
+          isDemoWorld={
+            world.worldId === "demo-spatial-v1" || !!world.policy?.demoMapShowcase
+          }
+          onDemoReset={resetDemo}
           onAmbientTranscriptChange={() => refresh(world)}
           onClose={() => setSettingsOpen(false)}
           onWorldImported={async (w) => {

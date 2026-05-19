@@ -33,6 +33,8 @@ export type WorldPolicy = {
   citeProvenanceInPrompt?: boolean;
   commonsAccessIds?: string[];
   speakIntentOnTie?: boolean;
+  demoMapShowcase?: boolean;
+  loadedFixtureId?: string;
 };
 
 export type EvidenceRecord = {
@@ -360,6 +362,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ fixtureId: "demo-spatial-v1" }),
     }),
+  resetDemoFixture: (worldId: string) =>
+    request<World>(`/worlds/${worldId}/reset-fixture`, { method: "POST" }),
   createBlankWorld: (name: string) =>
     request<World>("/worlds", {
       method: "POST",

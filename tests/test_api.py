@@ -67,3 +67,20 @@ def test_knock_no_generation(client: TestClient) -> None:
     )
     q = client.get(f"/api/v1/worlds/{world_id}/queue").json()
     assert q["depth"] == 0 or not q.get("currentJob")
+
+
+def test_reset_demo_fixture_api(client: TestClient) -> None:
+    r = client.post("/api/v1/worlds", json={"fixtureId": "demo-spatial-v1"})
+    world_id = r.json()["worldId"]
+    hall = "scene-lobby"
+    client.post(
+        f"/api/v1/worlds/{world_id}/scenes/{hall}/messages",
+        json={"text": "Leave a trace", "scope": "public"},
+    )
+    assert client.get(f"/api/v1/worlds/{world_id}/scenes/{hall}/messages").json()
+
+    reset = client.post(f"/api/v1/worlds/{world_id}/reset-fixture")
+    assert reset.status_code == 200
+    assert reset.json()["worldId"] == world_id
+    assert reset.json()["policy"].get("demoMapShowcase") is True
+    assert client.get(f"/api/v1/worlds/{world_id}/scenes/{hall}/messages").json() == []

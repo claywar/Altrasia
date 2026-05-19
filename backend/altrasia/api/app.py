@@ -25,7 +25,7 @@ from altrasia.domain.navigation import (
 )
 from altrasia.domain.spatial_graph import build_spatial_graph
 from altrasia.perception.scope import can_perceive
-from altrasia.fixtures.loader import load_fixture_by_id
+from altrasia.fixtures.loader import load_fixture_by_id, reset_fixture_world
 from altrasia.services import AppServices
 from altrasia.commission_notify import refresh_commissions
 from altrasia.commission_runner import start_commission as run_start_commission
@@ -329,7 +329,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         body: CreateWorldBody, svc: AppServices = Depends(get_services)
     ) -> dict:
         if body.fixtureId:
-            return load_fixture_by_id(svc.store, svc.settings.fixtures_dir, body.fixtureId)
+            result = load_fixture_by_id(
+                svc.store, svc.settings.fixtures_dir, body.fixtureId
+            )
+            svc.paused_worlds.discard(result["worldId"])
+            return result
         world_id = str(uuid.uuid4())
         now = ISO()
         scene_id = str(uuid.uuid4())
@@ -368,6 +372,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         svc.presence.join(scene_id, PERSONA_ID)
         return {"worldId": world_id, "activeSceneId": scene_id}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/reset-fixture",
+        dependencies=[Depends(verify_auth)],
+    )
+    def reset_world_fixture(
+        world_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        try:
+            result = reset_fixture_world(
+                svc.store, svc.settings.fixtures_dir, world_id
+            )
+        except ValueError as exc:
+            msg = str(exc)
+            if msg == "world not found":
+                raise HTTPException(404, msg) from exc
+            raise HTTPException(400, msg) from exc
+        wid = result["worldId"]
+        svc.paused_worlds.discard(wid)
+        w = svc.store.get_world(wid)
+        if not w:
+            raise HTTPException(500, "fixture reset failed")
+        out = dict(w)
+        out["paused"] = False
+        try:
+            out["policy"] = json.loads(w.get("configJson") or "{}")
+        except json.JSONDecodeError:
+            out["policy"] = {}
+        _emit(svc, wid, "world.updated", {"reset": True})
+        _emit(svc, wid, "scene.changed", {"sceneId": result["activeSceneId"]})
+        return out
 
     @app.get("/api/v1/worlds/{world_id}", dependencies=[Depends(verify_auth)])
     def get_world(world_id: str, svc: AppServices = Depends(get_services)) -> dict:

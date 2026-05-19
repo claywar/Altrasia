@@ -29,14 +29,29 @@ def _delete_world(store: SqlitePersistence, world_id: str) -> None:
 
 def _purge_fixture_entity_loci(store: SqlitePersistence, data: dict[str, Any]) -> None:
     for sc in data.get("scenes", []):
+        sid = sc["sceneId"]
         store.conn.execute(
             "DELETE FROM Locus WHERE pool = 'world' AND ownerId = ?",
-            (sc["sceneId"],),
+            (sid,),
+        )
+        store.conn.execute(
+            "DELETE FROM EvidenceRecord WHERE pool = 'world' AND ownerId = ?",
+            (sid,),
         )
     for ch in data.get("characters", []):
+        cid = ch["characterId"]
         store.conn.execute(
             "DELETE FROM Locus WHERE pool = 'mind' AND ownerId = ?",
-            (ch["characterId"],),
+            (cid,),
+        )
+        store.conn.execute("DELETE FROM DiarySegment WHERE characterId = ?", (cid,))
+        store.conn.execute(
+            "DELETE FROM EvidenceRecord WHERE pool = 'mind' AND ownerId = ?",
+            (cid,),
+        )
+        store.conn.execute(
+            "DELETE FROM EmbeddingRecord WHERE ownerScope = 'mind' AND sourceId LIKE ?",
+            (f"{cid}:%",),
         )
     store.conn.commit()
 
@@ -200,3 +215,17 @@ def load_fixture_by_id(store: SqlitePersistence, fixtures_dir: Path, fixture_id:
     if not path.exists():
         raise FileNotFoundError(f"fixture not found: {fixture_id}")
     return load_fixture(store, path)
+
+
+def reset_fixture_world(
+    store: SqlitePersistence, fixtures_dir: Path, world_id: str
+) -> dict[str, Any]:
+    """Reload the fixture backing this world (chat, runtime memory, diary cleared)."""
+    world = store.get_world(world_id)
+    if not world:
+        raise ValueError("world not found")
+    cfg = dict(json.loads(world.get("configJson") or "{}"))
+    fixture_id = cfg.get("loadedFixtureId")
+    if not fixture_id and not cfg.get("demoMapShowcase"):
+        raise ValueError("world is not loaded from a resettable fixture")
+    return load_fixture_by_id(store, fixtures_dir, fixture_id or "demo-spatial-v1")
