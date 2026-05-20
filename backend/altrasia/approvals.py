@@ -78,13 +78,57 @@ def mark_approval_applied(store: SqlitePersistence, approval_id: str) -> None:
     store.update_approval(approval_id, state="applied")
 
 
+def effective_web_allowlist(services: Any, world_id: str) -> set[str]:
+    from altrasia.world_config import get_world_config
+
+    hosts = set(services.settings.web_allowlist_set())
+    cfg = get_world_config(services.store, world_id)
+    extra = cfg.get("webAllowlistHosts") or cfg.get("webAllowlist")
+    if isinstance(extra, str):
+        hosts |= {h.strip().lower() for h in extra.split(",") if h.strip()}
+    elif isinstance(extra, list):
+        hosts |= {str(h).strip().lower() for h in extra if str(h).strip()}
+    return hosts
+
+
+def resolve_fetch_url(params: dict[str, Any]) -> str | None:
+    """Build https URL from tool params; never silently substitute example.com."""
+    url = str(params.get("url") or "").strip()
+    query = str(params.get("query") or "").strip()
+    if url:
+        if "://" not in url:
+            return f"https://{url.lstrip('/')}"
+        return url
+    if query and " " not in query and "." in query.split("/")[0]:
+        q = query if query.startswith("http") else f"https://{query.lstrip('/')}"
+        return q
+    return None
+
+
+def web_approval_summary_for_prompt(result: dict[str, Any]) -> str:
+    """Text injected into the post-approval generation system prompt."""
+    if result.get("mock"):
+        return (
+            "[Development stub — not a live page fetch.]\n"
+            f"{result.get('summary', '')}\n"
+            "Tell the operator clearly that this is a dev placeholder, not real site content."
+        )
+    if not result.get("ok"):
+        err = result.get("error") or "fetch failed"
+        return (
+            f"Web fetch failed: {err}\n"
+            "Report this failure to the operator. Do not invent headlines or claim the fetch succeeded."
+        )
+    return str(result.get("summary") or result.get("text") or "")[:4000]
+
+
 async def execute_web_fetch(services: Any, world_id: str, params: dict[str, Any]) -> dict[str, Any]:
     from altrasia.tools.web_fetch import safe_fetch
     from altrasia.world_config import get_world_config
 
     query = (params.get("query") or params.get("url") or "").strip()
     wcfg = get_world_config(services.store, world_id)
-    use_mock = services.settings.web_tools_mock or wcfg.get("webToolsMock", True)
+    use_mock = services.settings.web_tools_mock or bool(wcfg.get("webToolsMock"))
     if use_mock:
         summary = (
             f"[mock web] No live fetch in dev. Treat as placeholder fact for: {query[:200]}"
@@ -92,8 +136,13 @@ async def execute_web_fetch(services: Any, world_id: str, params: dict[str, Any]
             else "[mock web] supply query or url"
         )
         return {"ok": True, "query": query, "summary": summary, "mock": True}
-    url = params.get("url") or (f"https://www.example.org/?q={query}" if query else "")
-    return await safe_fetch(url, allowlist=services.settings.web_allowlist_set())
+    url = resolve_fetch_url(params)
+    if not url:
+        return {
+            "ok": False,
+            "error": "live fetch requires a url (or a single hostname); query-only search is not supported",
+        }
+    return await safe_fetch(url, allowlist=effective_web_allowlist(services, world_id))
 
 
 async def apply_web_approval(

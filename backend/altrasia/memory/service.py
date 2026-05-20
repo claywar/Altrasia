@@ -175,12 +175,16 @@ class MemoryService:
         snippet: str,
         message_ids: list[str],
         kind: str = "witnessed",
+        reply_message_id: str | None = None,
     ) -> None:
         """MP-20: same segment for every present cast member."""
         cleaned = strip_reasoning(snippet)
         if not is_durable_value_ok(cleaned):
             return
-        dedupe_src = "|".join(sorted(message_ids))
+        dedupe_ids = list(message_ids)
+        if reply_message_id:
+            dedupe_ids.append(reply_message_id)
+        dedupe_src = "|".join(sorted(dedupe_ids))
         dedupe_key = hashlib.sha256(dedupe_src.encode()).hexdigest()[:32]
         now = ISO()
         segment_kind = kind if kind in ("witnessed", "banter") else "witnessed"

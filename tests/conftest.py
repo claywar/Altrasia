@@ -20,6 +20,7 @@ def make_test_settings(tmp_path: Path, db_name: str = "test.db", **extra: object
         data_dir=tmp_path,
         db_path=tmp_path / db_name,
         mock_llm=True,
+        web_tools_mock=True,
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
         **extra,  # type: ignore[arg-type]
     )
@@ -53,6 +54,7 @@ def app_client(tmp_path: Path) -> Iterator[tuple[TestClient, AppServices]]:
         data_dir=tmp_path,
         db_path=tmp_path / "test.db",
         mock_llm=True,
+        web_tools_mock=True,
         fixtures_dir=Path(__file__).resolve().parent / "fixtures",
     )
     app = create_app(settings)

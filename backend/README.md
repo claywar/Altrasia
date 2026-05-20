@@ -19,8 +19,10 @@ Environment:
 
 | Variable | Default |
 |----------|---------|
-| `ALTRASIA_MOCK_LLM` | `true` |
-| `ALTRASIA_LLM_BASE_URL` | unset (use mock) |
+| `ALTRASIA_MOCK_LLM` | `false` (tests set `true`) |
+| `ALTRASIA_WEB_TOOLS_MOCK` | `false` (tests set `true`) |
+| `ALTRASIA_WEB_ALLOWLIST` | `example.com,www.example.org` (add hosts for live fetch, e.g. `soylentnews.org`) |
+| `ALTRASIA_LLM_BASE_URL` | unset (configure for live inference) |
 | `ALTRASIA_DATA_DIR` | `~/.altrasia` |
 | `ALTRASIA_API_TOKEN` | unset (no auth) |
 

@@ -403,7 +403,11 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
     registry.register(
         ToolDef(
             name="webtools_invoke",
-            description="Search or fetch external facts (approval-gated in production).",
+            description=(
+                "Search the web or fetch a URL for external facts. Use when the operator "
+                "asks about live sites, news, or information not in memory. Pass query "
+                "and/or url."
+            ),
             parameters={
                 "type": "object",
                 "properties": {

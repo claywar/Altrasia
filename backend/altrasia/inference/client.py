@@ -22,12 +22,12 @@ class LlmClient:
         *,
         base_url: str | None,
         model: str,
-        mock: bool = True,
+        mock: bool = False,
         default_timeout: float = 120.0,
     ) -> None:
         self.base_url = base_url.rstrip("/") if base_url else None
         self.model = model
-        self.mock = mock or not self.base_url
+        self.mock = bool(mock)
         self.default_timeout = default_timeout
 
     async def _post_chat(

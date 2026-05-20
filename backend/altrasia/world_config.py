@@ -9,6 +9,7 @@ POLICY_KEYS = (
     "requireWebToolApproval",
     "auditWebTools",
     "webToolsMock",
+    "webAllowlistHosts",
     "pauseCommissionsDuringPersonaDialogue",
     "mandatoryRecallBlocking",
     "maxContinueDepth",

@@ -819,24 +819,45 @@ class Orchestrator:
                 scene_id = world.get("activeSceneId")
         if not scene_id:
             return None
-        summary = (
-            result.get("summary")
-            or result.get("text")
-            or json.dumps(result, ensure_ascii=False)[:4000]
-        )
+        from altrasia.approvals import web_approval_summary_for_prompt
+
+        summary = web_approval_summary_for_prompt(result)
         rationale = {
             "pick": "web_approval_resume",
             "characterId": character_id,
             "webApprovalId": approval_row["approvalId"],
-            "webApprovalSummary": str(summary)[:4000],
+            "webApprovalSummary": summary[:4000],
         }
-        return await self.enqueue_generation(
+        follow = await self.enqueue_generation(
             world_id=world_id,
             scene_id=scene_id,
             character_id=character_id,
             trigger="agent_tool",
             selection_rationale_json=json.dumps(rationale),
         )
+        if follow:
+            log.info(
+                "web approval follow-up queued job=%s character=%s scene=%s",
+                follow.get("jobId"),
+                character_id,
+                scene_id,
+            )
+        else:
+            log.warning(
+                "web approval follow-up not queued character=%s world=%s",
+                character_id,
+                world_id,
+            )
+        return follow
+
+    def _is_web_approval_resume_job(self, job: dict[str, Any]) -> bool:
+        if str(job.get("trigger") or "") == "agent_tool":
+            return True
+        try:
+            rationale = json.loads(job.get("selectionRationaleJson") or "{}")
+        except json.JSONDecodeError:
+            return False
+        return rationale.get("pick") == "web_approval_resume"
 
     async def _run_job(self, job_id: str, stream: TokenStream) -> None:
         job = self.svc.store.get_job(job_id)
@@ -845,7 +866,10 @@ class Orchestrator:
         cfg = self._world_config(job["worldId"])
         from altrasia.orchestrator.addressing_policy import may_character_generate
 
-        allowed, suppress_reason = may_character_generate(self.svc, job, cfg)
+        if self._is_web_approval_resume_job(job):
+            allowed, suppress_reason = True, "web_approval_resume"
+        else:
+            allowed, suppress_reason = may_character_generate(self.svc, job, cfg)
         if not allowed:
             log.info(
                 "generation suppressed job=%s character=%s trigger=%s reason=%s",
@@ -1195,11 +1219,22 @@ class Orchestrator:
                 )
         web_summary = rationale.get("webApprovalSummary")
         if web_summary:
-            system += (
-                "\n\nOperator approved a web lookup. Use this factual result in your "
-                "reply; do not claim you lack web access:\n"
-                f"{web_summary}"
-            )
+            if str(web_summary).startswith("Web fetch failed:"):
+                system += (
+                    "\n\nOperator approved a web lookup, but the fetch failed:\n"
+                    f"{web_summary}"
+                )
+            elif "[Development stub" in str(web_summary) or "[mock web]" in str(web_summary):
+                system += (
+                    "\n\nOperator approved a web lookup (development stub only):\n"
+                    f"{web_summary}"
+                )
+            else:
+                system += (
+                    "\n\nOperator approved a web lookup. Use this fetched content in your "
+                    "reply; do not claim you lack web access:\n"
+                    f"{web_summary}"
+                )
         if str(job.get("trigger", "")) == "discussion_deliverable":
             from altrasia.orchestrator.discussion_judgement import _transcript_excerpt
 
@@ -1329,10 +1364,17 @@ class Orchestrator:
         ):
             system += f"\n\n{floor_focus_addendum(hold_reactive, members, job['characterId'])}"
         from altrasia.orchestrator.chat_messages import scene_messages_for_llm
+        from altrasia.prompt.tool_context import format_available_tools_addendum
 
-        messages = [{"role": "system", "content": system}]
+        base_system = system
         history = history_rows
         present = present_ids
+        all_tools = self.svc.tools.list_openai_tools()
+        memory_only = self._memory_tool_names()
+        job_tools = self._tools_for_job(job, all_tools, memory_only)
+        blocking = self._mandatory_recall_blocking(job["worldId"])
+        memory_gate_open = False
+        messages: list[dict[str, Any]] = [{"role": "system", "content": base_system}]
         messages.extend(
             scene_messages_for_llm(
                 history,
@@ -1341,11 +1383,6 @@ class Orchestrator:
                 viewer_scene_id=job["sceneId"],
             )
         )
-        all_tools = self.svc.tools.list_openai_tools()
-        memory_only = self._memory_tool_names()
-        job_tools = self._tools_for_job(job, all_tools, memory_only)
-        blocking = self._mandatory_recall_blocking(job["worldId"])
-        memory_gate_open = False
         ctx = ToolContext(
             world_id=job["worldId"],
             scene_id=job["sceneId"],
@@ -1365,6 +1402,19 @@ class Orchestrator:
                 tools_payload = self._filter_tools(job_tools, memory_only)
             else:
                 tools_payload = job_tools
+            current_names = {t["function"]["name"] for t in tools_payload}
+            deferred_tools = [
+                t
+                for t in job_tools
+                if t["function"]["name"] not in current_names
+            ]
+            tools_addendum = format_available_tools_addendum(
+                tools_payload,
+                deferred_tools=deferred_tools if deferred_tools else None,
+            )
+            messages[0]["content"] = (
+                f"{base_system}\n\n{tools_addendum}" if tools_addendum else base_system
+            )
             resp = await self.svc.llm.chat(
                 messages, tools_payload, timeout=inference_timeout
             )
@@ -1391,6 +1441,16 @@ class Orchestrator:
                             "content": result,
                         }
                     )
+                depth += 1
+                continue
+            if (
+                blocking
+                and not memory_gate_open
+                and not is_commission
+                and depth == 0
+                and deferred_tools
+            ):
+                memory_gate_open = True
                 depth += 1
                 continue
             from altrasia.orchestrator.single_speaker import enforce_single_speaker_output
@@ -1800,6 +1860,7 @@ class Orchestrator:
             snippet=snippet,
             message_ids=diary_msg_ids,
             kind=diary_kind,
+            reply_message_id=msg_id,
         )
 
         await self._handle_cast_social_after_reply(job, msg_id, text, cfg=cfg)

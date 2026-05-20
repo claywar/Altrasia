@@ -13,7 +13,13 @@ from altrasia.orchestrator.speaker_selection import (
 )
 
 _EXPLICIT_TARGET_TRIGGERS = frozenset(
-    {"whisper_target", "knock_answered", "phone_target", "discussion_deliverable"}
+    {
+        "whisper_target",
+        "knock_answered",
+        "phone_target",
+        "discussion_deliverable",
+        "agent_tool",
+    }
 )
 
 

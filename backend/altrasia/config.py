@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     api_token: str | None = None
     llm_base_url: str | None = None
     llm_model: str = "Qwen3.6-35B-A3B"
-    mock_llm: bool = True
-    web_tools_mock: bool = True
+    mock_llm: bool = False
+    web_tools_mock: bool = False
     web_allowlist: str = "example.com,www.example.org"
     embed_base_url: str | None = None
     embed_model: str = "text-embedding-3-small"

@@ -5,7 +5,7 @@ import { SettingsBlock } from "./settings/SettingsBlock";
 const policyDefaults = {
   requireWebToolApproval: false,
   auditWebTools: true,
-  webToolsMock: true,
+  webToolsMock: false,
   pauseCommissionsDuringPersonaDialogue: true,
   citeProvenanceInPrompt: false,
 };
@@ -47,7 +47,7 @@ export function WorldPolicyPanel({ worldId, embedded }: Props) {
       setPolicy({
         requireWebToolApproval: !!p.requireWebToolApproval,
         auditWebTools: p.auditWebTools !== false,
-        webToolsMock: p.webToolsMock !== false,
+        webToolsMock: p.webToolsMock === true,
         pauseCommissionsDuringPersonaDialogue: p.pauseCommissionsDuringPersonaDialogue !== false,
         citeProvenanceInPrompt: !!p.citeProvenanceInPrompt,
       })
@@ -61,7 +61,7 @@ export function WorldPolicyPanel({ worldId, embedded }: Props) {
       setPolicy({
         requireWebToolApproval: !!next.requireWebToolApproval,
         auditWebTools: next.auditWebTools !== false,
-        webToolsMock: next.webToolsMock !== false,
+        webToolsMock: next.webToolsMock === true,
         pauseCommissionsDuringPersonaDialogue: next.pauseCommissionsDuringPersonaDialogue !== false,
         citeProvenanceInPrompt: !!next.citeProvenanceInPrompt,
       });
