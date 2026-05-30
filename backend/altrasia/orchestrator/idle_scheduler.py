@@ -24,6 +24,7 @@ class IdleScheduler:
         self._hb_world_index = 0
         self._last_tab_tick = 0.0
         self._last_hb_tick = 0.0
+        self._last_reflection_date: str | None = None
 
     def mark_world_active(self, world_id: str) -> None:
         self._active_worlds.add(world_id)
@@ -73,6 +74,11 @@ class IdleScheduler:
                 except Exception as exc:
                     log.warning("heartbeat tick failed: %s", exc)
 
+            try:
+                await self._reflection_tick()
+            except Exception as exc:
+                log.warning("reflection tick failed: %s", exc)
+
     async def _heartbeat_tick(self) -> None:
         """HB-1: one eligible world per heartbeat interval when no tab connected."""
         worlds = self.svc.store.list_worlds()
@@ -89,6 +95,38 @@ class IdleScheduler:
         world_id = eligible[self._hb_world_index]["worldId"]
         self._hb_world_index += 1
         await self._tick_world(world_id, idle_source="server_heartbeat")
+
+    async def _reflection_tick(self) -> None:
+        from datetime import datetime, timezone
+
+        from altrasia.reflection.runner import enqueue_reflection_for_world, reflection_config
+
+        if self.svc.gpu_queue.busy:
+            return
+        now = datetime.now(timezone.utc)
+        today = now.date().isoformat()
+        if self._last_reflection_date == today:
+            return
+        hour = now.hour
+        worlds = self.svc.store.list_worlds()
+        for world in worlds:
+            world_id = world["worldId"]
+            if world_id in self.svc.paused_worlds:
+                continue
+            cfg = reflection_config(self.svc.store, world_id)
+            if not cfg.get("reflectionEnabled"):
+                continue
+            if hour != int(cfg.get("reflectionNightlyHourUtc", 3)):
+                continue
+            results = await enqueue_reflection_for_world(
+                self.svc, world_id, trigger="nightly"
+            )
+            if results and any(r.get("status") == "completed" for r in results):
+                self._last_reflection_date = today
+                return
+        # Mark date after nightly hour passes even if nothing ran (avoid retry spam)
+        if worlds and hour > int(reflection_config(self.svc.store, worlds[0]["worldId"]).get("reflectionNightlyHourUtc", 3)):
+            self._last_reflection_date = today
 
     def _world_has_idle_npc(self, world_id: str) -> bool:
         for scene in self.svc.store.list_scenes(world_id):

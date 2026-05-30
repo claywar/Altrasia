@@ -1490,6 +1490,7 @@ class Orchestrator:
                     owner_id=job["characterId"],
                     locus_key=locus,
                     value=cleaned[:4000],
+                    overwrite=True,
                 )
                 self.svc.embeddings.schedule_embed(
                     owner_scope="mind",

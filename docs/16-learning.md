@@ -74,13 +74,26 @@ Semantic search **assists** `memory_search` / `diary_search` (hybrid with FTS); 
 
 ## 6. Reflection (AO-8, optional)
 
-Optional post-generation job:
+Reflection consolidates episodic diary and existing mind loci into **abstracted durable knowledge** during off-peak windows (nightly batch or on-demand). It uses GpuResourceQueue like any chat call.
 
-1. Summarize turn in output-only prose
-2. Propose `memory_store` mind loci
-3. Operator auto-approve or size-capped silent append
+### 6.1 Scheduling
 
-Reflection uses GpuResourceQueue like any chat call.
+| Mode | Trigger | Notes |
+|------|---------|-------|
+| Nightly | `reflection` idle tick at `reflectionNightlyHourUtc` (default 03:00 UTC) | One eligible character per tick when GPU idle; requires `reflectionEnabled` |
+| On-demand | `POST /api/v1/worlds/{worldId}/reflect` or `POST /api/v1/characters/{characterId}/reflect` | Operator-initiated; bypasses nightly enable gate |
+
+### 6.2 Outputs
+
+1. **Mind loci** — appended with dated prefix (`reflection:self`, `reflection:belief:{slug}`, `reflection:goals`, `reflection:lessons`, `relationship:{id}`)
+2. **MemoryLink graph** — character-scoped edges (`witnessed_in`, `learned_from`, `relates_to`, etc.) for recall enrichment
+3. **PersonaProposal** — optional operator-approved updates to `definitionJson` persona/instructions/focusTags
+
+Loci writes auto-approve when `reflectionAutoApproveLoci` is true (default). Persona proposals always require operator approval.
+
+### 6.3 Recall integration
+
+Mandatory recall prioritizes `reflection:*` and `relationship:*` loci and injects a char-budgeted **Associated memories** block from 1-hop MemoryLink neighbors. Graph enrichment is additive — it does not replace diary tail or FTS search.
 
 ## 7. Requirements summary
 

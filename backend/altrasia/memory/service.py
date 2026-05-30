@@ -42,12 +42,27 @@ class MemoryService:
         self.hybrid_search_enabled = hybrid_search_enabled
 
     def memory_store(
-        self, *, pool: str, owner_id: str, locus_key: str, value: str
+        self,
+        *,
+        pool: str,
+        owner_id: str,
+        locus_key: str,
+        value: str,
+        overwrite: bool = False,
     ) -> dict[str, str]:
         cleaned = strip_reasoning(value)
         if not is_durable_value_ok(cleaned):
             raise ValueError("memory_store rejected empty or reasoning-only value (MP-16)")
-        self.store.upsert_locus(pool, owner_id, locus_key, cleaned, ISO())
+        final = cleaned
+        if not overwrite:
+            existing = self.store.get_locus(pool, owner_id, locus_key)
+            if existing and (existing.get("value") or "").strip():
+                prior = (existing["value"] or "").strip()
+                if cleaned.strip() not in prior:
+                    final = f"{prior}\n{cleaned.strip()}"
+                else:
+                    final = prior
+        self.store.upsert_locus(pool, owner_id, locus_key, final, ISO())
         return {"locusKey": locus_key, "pool": pool, "ownerId": owner_id}
 
     def memory_search(self, *, pool: str, owner_id: str, query: str, limit: int = 10) -> list[dict]:
@@ -123,13 +138,46 @@ class MemoryService:
                 )
             )
         mind = self.store.fetchall(
-            "SELECT locusKey, value FROM Locus WHERE pool = 'mind' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 20",
+            """SELECT locusKey, value FROM Locus WHERE pool = 'mind' AND ownerId = ?
+               ORDER BY updatedAt DESC LIMIT 40""",
             (character_id,),
         )
         if mind:
+            def _locus_sort_key(row: dict[str, Any]) -> tuple[int, str]:
+                key = row.get("locusKey") or ""
+                if key.startswith("reflection:"):
+                    return (0, key)
+                if key.startswith("relationship:"):
+                    return (1, key)
+                return (2, key)
+
+            mind_sorted = sorted(mind, key=_locus_sort_key)[:20]
             parts.append("## Mind loci")
-            for row in mind:
+            for row in mind_sorted:
                 parts.append(f"- {row['locusKey']}: {row['value']}")
+            seed_refs: list[tuple[str, str]] = [
+                ("locus", row["locusKey"])
+                for row in mind_sorted
+                if (row.get("locusKey") or "").startswith("reflection:")
+            ][:5]
+            if diary:
+                for seg in diary[-3:]:
+                    sid = seg.get("segmentId")
+                    if sid:
+                        seed_refs.append(("diary", sid))
+            if seed_refs:
+                from altrasia.reflection.graph import neighbors_for_recall
+
+                graph_lines = neighbors_for_recall(
+                    self.store,
+                    character_id=character_id,
+                    seed_refs=seed_refs,
+                    limit=8,
+                )
+                if graph_lines:
+                    budget = max(200, int(max_chars * 0.1))
+                    block = "## Associated memories\n" + "\n".join(graph_lines)
+                    parts.append(block[:budget])
         world = self.store.fetchall(
             "SELECT locusKey, value FROM Locus WHERE pool = 'world' AND ownerId = ? ORDER BY updatedAt DESC LIMIT 10",
             (scene_id,),

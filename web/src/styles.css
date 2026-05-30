@@ -605,6 +605,57 @@
   font-size: 12px;
 }
 
+.memory-inspector-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.memory-tab {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.memory-tab.active {
+  background: var(--accent-dim, var(--surface-1));
+  border-color: var(--accent);
+}
+
+.memory-reflect-btn {
+  margin-bottom: 8px;
+}
+
+.memory-proposal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.memory-proposal-actions button {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.memory-error {
+  color: #e57373;
+  font-size: 12px;
+}
+
+.memory-graph-relation {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.memory-graph-edge {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+}
+
 .mermaid-block {
   margin: 8px 0;
   overflow-x: auto;

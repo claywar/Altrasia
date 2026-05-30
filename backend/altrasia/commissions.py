@@ -201,6 +201,7 @@ def complete_commission_with_output(
         owner_id=row["assigneeCharacterId"],
         locus_key=key,
         value=cleaned[:8000],
+        overwrite=True,
     )
     keys.append(key)
     from altrasia.evidence import record_evidence
@@ -221,6 +222,7 @@ def complete_commission_with_output(
             owner_id=row["targetSceneId"],
             locus_key=world_key,
             value=cleaned[:8000],
+            overwrite=True,
         )
         keys.append(world_key)
     return patch_commission(

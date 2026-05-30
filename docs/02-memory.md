@@ -319,7 +319,7 @@ Altrasia MUST NOT depend at runtime on:
 - [MemPalace/mempalace](https://github.com/mempalace/mempalace) (GitHub)
 - Mem0, Zep, Letta, or similar agent-memory SaaS as the primary memory backend
 
-Optional post-v1 **reflection** jobs MAY propose `memory_store` mind loci with operator approval ([16-learning.md](16-learning.md) §6).
+**Reflection** (implemented) consolidates diary into abstracted mind loci, builds a character-scoped **MemoryLink** graph for recall enrichment, and may propose operator-approved persona updates. See [16-learning.md](16-learning.md) §6.
 
 ## 9. Requirements summary
 

@@ -733,6 +733,104 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return rows
 
     @app.post(
+        "/api/v1/worlds/{world_id}/reflect",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def reflect_world(
+        world_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        world = svc.store.get_world(world_id)
+        if not world:
+            raise HTTPException(404, "world not found")
+        from altrasia.reflection.runner import enqueue_reflection_for_world
+
+        results = await enqueue_reflection_for_world(svc, world_id, trigger="on_demand")
+        return {"worldId": world_id, "results": results}
+
+    @app.post(
+        "/api/v1/characters/{character_id}/reflect",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def reflect_character(
+        character_id: str,
+        worldId: str | None = None,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        ch = svc.store.get_character(character_id)
+        if not ch:
+            raise HTTPException(404, "character not found")
+        from altrasia.reflection.runner import run_reflection
+
+        result = await run_reflection(
+            svc,
+            character_id=character_id,
+            world_id=worldId,
+            trigger="manual" if not worldId else "on_demand",
+        )
+        return {"characterId": character_id, **result}
+
+    @app.get(
+        "/api/v1/characters/{character_id}/reflection-runs",
+        dependencies=[Depends(verify_auth)],
+    )
+    def list_reflection_runs(
+        character_id: str, svc: AppServices = Depends(get_services)
+    ) -> list[dict]:
+        ch = svc.store.get_character(character_id)
+        if not ch:
+            raise HTTPException(404, "character not found")
+        return svc.store.list_reflection_runs(character_id, limit=20)
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/memory-links",
+        dependencies=[Depends(verify_auth)],
+    )
+    def character_memory_links(
+        world_id: str, character_id: str, svc: AppServices = Depends(get_services)
+    ) -> list[dict]:
+        return svc.store.list_memory_links(character_id, limit=50)
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/persona-proposals",
+        dependencies=[Depends(verify_auth)],
+    )
+    def character_persona_proposals(
+        world_id: str,
+        character_id: str,
+        status: str | None = None,
+        svc: AppServices = Depends(get_services),
+    ) -> list[dict]:
+        return svc.store.list_persona_proposals(character_id, status=status, limit=20)
+
+    @app.post(
+        "/api/v1/persona-proposals/{proposal_id}/approve",
+        dependencies=[Depends(verify_auth)],
+    )
+    def approve_persona_proposal_endpoint(
+        proposal_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        from altrasia.reflection.persona_proposals import approve_persona_proposal
+
+        try:
+            return approve_persona_proposal(svc, proposal_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post(
+        "/api/v1/persona-proposals/{proposal_id}/reject",
+        dependencies=[Depends(verify_auth)],
+    )
+    def reject_persona_proposal_endpoint(
+        proposal_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        from altrasia.reflection.persona_proposals import reject_persona_proposal
+
+        try:
+            return reject_persona_proposal(svc, proposal_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/briefing",
         dependencies=[Depends(verify_auth)],
     )

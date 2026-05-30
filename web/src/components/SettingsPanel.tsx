@@ -14,6 +14,7 @@ import { DemoResetSection } from "./settings/DemoResetSection";
 import { WorldStatusSection } from "./settings/WorldStatusSection";
 import { AmbientDisplaySection } from "./settings/AmbientDisplaySection";
 import { IdleSocialPolicySection } from "./settings/IdleSocialPolicySection";
+import { ReflectionPolicySection } from "./settings/ReflectionPolicySection";
 import { ServerPluginsSection } from "./settings/ServerPluginsSection";
 import { ServerInferenceSection } from "./settings/ServerInferenceSection";
 import { ServerHeartbeatSection } from "./settings/ServerHeartbeatSection";
@@ -70,6 +71,7 @@ export function SettingsPanel({
               )}
               <AmbientDisplaySection onChanged={onAmbientTranscriptChange} />
               <IdleSocialPolicySection worldId={worldId} />
+              <ReflectionPolicySection worldId={worldId} />
               <WorldPolicyPanel worldId={worldId} embedded />
               <WorldPackageSection
                 worldId={worldId}

@@ -49,6 +49,12 @@ export type WorldPolicy = {
   defaultWebToolsAccessBySceneRole?: Partial<Record<string, WebToolsAccess>>;
   idleBanterEnabled?: boolean;
   operatorInteractionCooldownSeconds?: number;
+  reflectionEnabled?: boolean;
+  reflectionNightlyHourUtc?: number;
+  reflectionMaxCharsPerRun?: number;
+  reflectionAutoApproveLoci?: boolean;
+  reflectionLocusMaxChars?: number;
+  reflectionPersonaProposalsEnabled?: boolean;
 };
 
 export type CastCharacter = {
@@ -71,6 +77,43 @@ export type EvidenceRecord = {
   sourceRef: string;
   retrievedAt: string;
   commissionId?: string | null;
+};
+
+export type ReflectionRun = {
+  runId: string;
+  characterId: string;
+  worldId?: string | null;
+  trigger: string;
+  status: string;
+  outputLinkCount?: number;
+  outputLociJson?: string | null;
+  errorText?: string | null;
+  startedAt: string;
+  completedAt?: string | null;
+};
+
+export type MemoryLink = {
+  linkId: string;
+  characterId: string;
+  fromKind: string;
+  fromRef: string;
+  relation: string;
+  toKind: string;
+  toRef: string;
+  summary?: string | null;
+  createdAt: string;
+};
+
+export type PersonaProposal = {
+  proposalId: string;
+  characterId: string;
+  reflectionRunId?: string | null;
+  field: string;
+  proposedValue: string;
+  rationale?: string | null;
+  status: string;
+  createdAt: string;
+  resolvedAt?: string | null;
 };
 
 export type Scene = {
@@ -671,6 +714,23 @@ export const api = {
     request<Array<{ text: string; createdAt: string; segmentId?: string }>>(
       `/worlds/${worldId}/characters/${characterId}/diary`
     ),
+  characterMemoryLinks: (worldId: string, characterId: string) =>
+    request<MemoryLink[]>(`/worlds/${worldId}/characters/${characterId}/memory-links`),
+  characterPersonaProposals: (worldId: string, characterId: string, status?: string) =>
+    request<PersonaProposal[]>(
+      `/worlds/${worldId}/characters/${characterId}/persona-proposals${status ? `?status=${status}` : ""}`
+    ),
+  characterReflectionRuns: (characterId: string) =>
+    request<ReflectionRun[]>(`/characters/${characterId}/reflection-runs`),
+  reflectCharacter: (characterId: string, worldId?: string) =>
+    request<{ characterId: string; status: string; runId?: string; error?: string }>(
+      `/characters/${characterId}/reflect${worldId ? `?worldId=${worldId}` : ""}`,
+      { method: "POST" }
+    ),
+  approvePersonaProposal: (proposalId: string) =>
+    request(`/persona-proposals/${proposalId}/approve`, { method: "POST" }),
+  rejectPersonaProposal: (proposalId: string) =>
+    request(`/persona-proposals/${proposalId}/reject`, { method: "POST" }),
   dismissSignal: (worldId: string, signalId: string) =>
     request(`/worlds/${worldId}/signals/${signalId}`, {
       method: "PATCH",

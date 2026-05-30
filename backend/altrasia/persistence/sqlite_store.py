@@ -333,6 +333,15 @@ class SqlitePersistence:
         self.conn.commit()
 
     @_uses_db_lock
+    def get_locus(self, pool: str, owner_id: str, locus_key: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """SELECT locusKey, pool, ownerId, value, updatedAt FROM Locus
+               WHERE pool = ? AND ownerId = ? AND locusKey = ?""",
+            (pool, owner_id, locus_key),
+        )
+        return self._row(cur.fetchone())
+
+    @_uses_db_lock
     def upsert_locus(self, pool: str, owner_id: str, locus_key: str, value: str, updated_at: str) -> None:
         self.conn.execute(
             """INSERT INTO Locus (locusKey, pool, ownerId, value, updatedAt)
@@ -631,6 +640,168 @@ class SqlitePersistence:
                ORDER BY retrievedAt DESC""",
             (pool, owner_id, locus_key),
         )
+        return self._rows(cur.fetchall())
+
+    @_uses_db_lock
+    def insert_reflection_run(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO ReflectionRun (runId, characterId, worldId, trigger,
+               inputSegmentIdsJson, inputMessageCount, outputLociJson, outputLinkCount,
+               status, errorText, startedAt, completedAt)
+               VALUES (:runId, :characterId, :worldId, :trigger,
+               :inputSegmentIdsJson, :inputMessageCount, :outputLociJson, :outputLinkCount,
+               :status, :errorText, :startedAt, :completedAt)""",
+            row,
+        )
+        self.conn.commit()
+
+    @_uses_db_lock
+    def update_reflection_run(self, run_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [run_id]
+        self.conn.execute(f"UPDATE ReflectionRun SET {cols} WHERE runId = ?", vals)
+        self.conn.commit()
+
+    @_uses_db_lock
+    def get_reflection_run(self, run_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute("SELECT * FROM ReflectionRun WHERE runId = ?", (run_id,))
+        return self._row(cur.fetchone())
+
+    @_uses_db_lock
+    def list_reflection_runs(
+        self, character_id: str, *, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """SELECT * FROM ReflectionRun WHERE characterId = ?
+               ORDER BY startedAt DESC LIMIT ?""",
+            (character_id, limit),
+        )
+        return self._rows(cur.fetchall())
+
+    @_uses_db_lock
+    def get_last_reflection_at(self, character_id: str) -> str | None:
+        cur = self.conn.execute(
+            """SELECT completedAt FROM ReflectionRun
+               WHERE characterId = ? AND status = 'completed'
+               ORDER BY completedAt DESC LIMIT 1""",
+            (character_id,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+    @_uses_db_lock
+    def insert_memory_link(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO MemoryLink (linkId, characterId, fromKind, fromRef, relation,
+               toKind, toRef, weight, summary, sourceReflectionId, createdAt)
+               VALUES (:linkId, :characterId, :fromKind, :fromRef, :relation,
+               :toKind, :toRef, :weight, :summary, :sourceReflectionId, :createdAt)""",
+            row,
+        )
+        self.conn.commit()
+
+    @_uses_db_lock
+    def list_memory_links(
+        self, character_id: str, *, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """SELECT * FROM MemoryLink WHERE characterId = ?
+               ORDER BY createdAt DESC LIMIT ?""",
+            (character_id, limit),
+        )
+        return self._rows(cur.fetchall())
+
+    @_uses_db_lock
+    def neighbors_for_refs(
+        self,
+        character_id: str,
+        refs: list[tuple[str, str]],
+        *,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        if not refs:
+            return []
+        clauses: list[str] = []
+        params: list[Any] = [character_id]
+        for kind, ref in refs:
+            clauses.append("(fromKind = ? AND fromRef = ?) OR (toKind = ? AND toRef = ?)")
+            params.extend([kind, ref, kind, ref])
+        where = " OR ".join(clauses)
+        params.append(limit)
+        cur = self.conn.execute(
+            f"""SELECT * FROM MemoryLink WHERE characterId = ? AND ({where})
+                ORDER BY createdAt DESC LIMIT ?""",
+            tuple(params),
+        )
+        return self._rows(cur.fetchall())
+
+    @_uses_db_lock
+    def insert_persona_proposal(self, row: dict[str, Any]) -> None:
+        self.conn.execute(
+            """INSERT INTO PersonaProposal (proposalId, characterId, reflectionRunId,
+               field, proposedValue, rationale, status, createdAt, resolvedAt)
+               VALUES (:proposalId, :characterId, :reflectionRunId,
+               :field, :proposedValue, :rationale, :status, :createdAt, :resolvedAt)""",
+            row,
+        )
+        self.conn.commit()
+
+    @_uses_db_lock
+    def update_persona_proposal(self, proposal_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [proposal_id]
+        self.conn.execute(f"UPDATE PersonaProposal SET {cols} WHERE proposalId = ?", vals)
+        self.conn.commit()
+
+    @_uses_db_lock
+    def get_persona_proposal(self, proposal_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            "SELECT * FROM PersonaProposal WHERE proposalId = ?", (proposal_id,)
+        )
+        return self._row(cur.fetchone())
+
+    @_uses_db_lock
+    def list_persona_proposals(
+        self,
+        character_id: str,
+        *,
+        status: str | None = None,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        if status:
+            cur = self.conn.execute(
+                """SELECT * FROM PersonaProposal WHERE characterId = ? AND status = ?
+                   ORDER BY createdAt DESC LIMIT ?""",
+                (character_id, status, limit),
+            )
+        else:
+            cur = self.conn.execute(
+                """SELECT * FROM PersonaProposal WHERE characterId = ?
+                   ORDER BY createdAt DESC LIMIT ?""",
+                (character_id, limit),
+            )
+        return self._rows(cur.fetchall())
+
+    @_uses_db_lock
+    def list_diary_since(
+        self, character_id: str, since: str | None, *, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        if since:
+            cur = self.conn.execute(
+                """SELECT * FROM DiarySegment WHERE characterId = ? AND createdAt > ?
+                   ORDER BY createdAt ASC LIMIT ?""",
+                (character_id, since, limit),
+            )
+        else:
+            cur = self.conn.execute(
+                """SELECT * FROM DiarySegment WHERE characterId = ?
+                   ORDER BY createdAt ASC LIMIT ?""",
+                (character_id, limit),
+            )
         return self._rows(cur.fetchall())
 
     @staticmethod

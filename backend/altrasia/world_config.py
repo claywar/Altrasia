@@ -65,6 +65,12 @@ POLICY_KEYS = (
     "addressingFuzzyEnabled",
     "addressingFuzzyMaxDistance",
     "defaultWebToolsAccessBySceneRole",
+    "reflectionEnabled",
+    "reflectionNightlyHourUtc",
+    "reflectionMaxCharsPerRun",
+    "reflectionAutoApproveLoci",
+    "reflectionLocusMaxChars",
+    "reflectionPersonaProposalsEnabled",
 )
 
 IDLE_SOCIAL_DEFAULTS: dict[str, Any] = {
@@ -120,6 +126,20 @@ def get_world_config(store: SqlitePersistence, world_id: str) -> dict[str, Any]:
 def get_idle_social_config(store: SqlitePersistence, world_id: str) -> dict[str, Any]:
     cfg = {**IDLE_SOCIAL_DEFAULTS, **get_world_config(store, world_id)}
     return cfg
+
+
+REFLECTION_DEFAULTS: dict[str, Any] = {
+    "reflectionEnabled": False,
+    "reflectionNightlyHourUtc": 3,
+    "reflectionMaxCharsPerRun": 6000,
+    "reflectionAutoApproveLoci": True,
+    "reflectionLocusMaxChars": 2000,
+    "reflectionPersonaProposalsEnabled": True,
+}
+
+
+def get_reflection_config(store: SqlitePersistence, world_id: str) -> dict[str, Any]:
+    return {**REFLECTION_DEFAULTS, **get_world_config(store, world_id)}
 
 
 def merge_world_policy(store: SqlitePersistence, world_id: str, policy: dict[str, Any]) -> dict[str, Any]:
