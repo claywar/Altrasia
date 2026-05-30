@@ -9,6 +9,29 @@ from altrasia.tools.registry import ToolContext, ToolDef, ToolRegistry
 def register_core_tools(registry: ToolRegistry, services: Any) -> None:
     mem = services.memory
 
+    def _sync_fixtures(scene_id: str) -> None:
+        from altrasia.memory.fixture_sync import sync_scene_fixtures_to_loci
+
+        sync_scene_fixtures_to_loci(services.store, scene_id=scene_id)
+
+    def _emit_inventory(world_id: str, character_id: str) -> None:
+        if hasattr(services, "event_bus") and services.event_bus:
+            services.event_bus.emit(
+                services.store,
+                world_id,
+                "inventory.changed",
+                {"characterId": character_id},
+            )
+
+    def _character_at_scene(world_id: str, scene_id: str, character_id: str) -> bool:
+        scene = services.store.get_scene(scene_id)
+        if not scene:
+            return False
+        from altrasia.domain.presence import PresenceService
+
+        present = PresenceService.parse_present(scene.get("presentJson", "[]"))
+        return character_id in present
+
     async def memory_search(params: dict, ctx: ToolContext) -> Any:
         return mem.memory_search(
             pool="mind",
@@ -178,7 +201,219 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
         key = params["fixtureKey"]
         fixtures[key] = params.get("fixture", fixtures.get(key, {}))
         services.store.update_scene(ctx.scene_id, fixturesJson=json.dumps(fixtures))
+        _sync_fixtures(ctx.scene_id)
         return {"ok": True, "fixtureKey": key}
+
+    async def scene_fixture_pickup(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import pickup_fixture
+
+        if not _character_at_scene(ctx.world_id, ctx.scene_id, ctx.character_id):
+            return {"ok": False, "error": "not present at scene"}
+        try:
+            out = pickup_fixture(
+                services.store,
+                world_id=ctx.world_id,
+                scene_id=ctx.scene_id,
+                character_id=ctx.character_id,
+                fixture_key=params["fixtureKey"],
+            )
+            _sync_fixtures(ctx.scene_id)
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_fixture_place(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import place_fixture
+
+        if not _character_at_scene(ctx.world_id, ctx.scene_id, ctx.character_id):
+            return {"ok": False, "error": "not present at scene"}
+        try:
+            out = place_fixture(
+                services.store,
+                world_id=ctx.world_id,
+                scene_id=ctx.scene_id,
+                character_id=ctx.character_id,
+                item_id=params["itemId"],
+                fixture_key=params.get("fixtureKey"),
+            )
+            _sync_fixtures(ctx.scene_id)
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_fixture_move(params: dict, ctx: ToolContext) -> Any:
+        scene = services.store.get_scene(ctx.scene_id)
+        fixtures = json.loads(scene.get("fixturesJson") or "{}")
+        old_key = params["fixtureKey"]
+        new_key = params.get("newFixtureKey") or params.get("targetFixtureKey")
+        if not new_key or old_key not in fixtures:
+            return {"ok": False, "error": "fixture not found"}
+        if new_key in fixtures and new_key != old_key:
+            return {"ok": False, "error": "target key taken"}
+        fixtures[new_key] = fixtures.pop(old_key)
+        services.store.update_scene(ctx.scene_id, fixturesJson=json.dumps(fixtures))
+        _sync_fixtures(ctx.scene_id)
+        return {"ok": True, "fixtureKey": new_key}
+
+    async def scene_fixture_describe(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import describe_fixture
+
+        try:
+            return describe_fixture(
+                services.store,
+                scene_id=ctx.scene_id,
+                fixture_key=params["fixtureKey"],
+            )
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_fixture_harvest(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import harvest_fixture
+
+        if not _character_at_scene(ctx.world_id, ctx.scene_id, ctx.character_id):
+            return {"ok": False, "error": "not present at scene"}
+        try:
+            out = harvest_fixture(
+                services.store,
+                world_id=ctx.world_id,
+                scene_id=ctx.scene_id,
+                character_id=ctx.character_id,
+                fixture_key=params["fixtureKey"],
+            )
+            _sync_fixtures(ctx.scene_id)
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_fixture_replenish(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import replenish_fixture
+
+        picks = params.get("picksRemaining")
+        try:
+            out = replenish_fixture(
+                services.store,
+                scene_id=ctx.scene_id,
+                fixture_key=params["fixtureKey"],
+                picks_remaining=int(picks) if picks is not None else None,
+            )
+            _sync_fixtures(ctx.scene_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_stash_take(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.shared_stash import take_from_stash
+
+        if not _character_at_scene(ctx.world_id, ctx.scene_id, ctx.character_id):
+            return {"ok": False, "error": "not present at scene"}
+        try:
+            out = take_from_stash(
+                services.store,
+                world_id=ctx.world_id,
+                scene_id=ctx.scene_id,
+                character_id=ctx.character_id,
+                stash_key=params["stashKey"],
+                item_id=params.get("itemId"),
+            )
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_stash_deposit(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.shared_stash import deposit_to_stash
+
+        if not _character_at_scene(ctx.world_id, ctx.scene_id, ctx.character_id):
+            return {"ok": False, "error": "not present at scene"}
+        try:
+            out = deposit_to_stash(
+                services.store,
+                world_id=ctx.world_id,
+                scene_id=ctx.scene_id,
+                character_id=ctx.character_id,
+                stash_key=params["stashKey"],
+                item_id=params["itemId"],
+            )
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_inventory_apply_outfit(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import apply_outfit_preset
+
+        target_id = params.get("characterId") or ctx.character_id
+        try:
+            out = apply_outfit_preset(
+                services.store,
+                world_id=ctx.world_id,
+                character_id=target_id,
+                preset_id=params["presetId"],
+            )
+            _emit_inventory(ctx.world_id, target_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_inventory_give(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import give_item
+
+        to_id = params["toCharacterId"]
+        if not _character_at_scene(ctx.world_id, ctx.scene_id, ctx.character_id):
+            return {"ok": False, "error": "giver not present at scene"}
+        if not _character_at_scene(ctx.world_id, ctx.scene_id, to_id):
+            return {"ok": False, "error": "recipient not present at scene"}
+        try:
+            out = give_item(
+                services.store,
+                world_id=ctx.world_id,
+                from_character_id=ctx.character_id,
+                to_character_id=to_id,
+                item_id=params["itemId"],
+                to_slot=params.get("toSlot", "held"),
+                container_item_id=params.get("containerItemId"),
+            )
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            _emit_inventory(ctx.world_id, to_id)
+            return out
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_inventory_wear(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import move_item
+
+        try:
+            move_item(
+                services.store,
+                world_id=ctx.world_id,
+                character_id=ctx.character_id,
+                item_id=params["itemId"],
+                to_slot="worn",
+            )
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            return {"ok": True, "itemId": params["itemId"], "slot": "worn"}
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    async def scene_inventory_stow(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.domain.inventory import move_item
+
+        try:
+            move_item(
+                services.store,
+                world_id=ctx.world_id,
+                character_id=ctx.character_id,
+                item_id=params["itemId"],
+                to_slot="container",
+                container_item_id=params.get("containerItemId"),
+            )
+            _emit_inventory(ctx.world_id, ctx.character_id)
+            return {"ok": True, "itemId": params["itemId"], "slot": "container"}
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
 
     async def character_list(params: dict, ctx: ToolContext) -> Any:
         world_id = params.get("worldId") or ctx.world_id
@@ -488,6 +723,176 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["fixtureKey", "fixture"],
             },
             handler=scene_update_fixture,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_fixture_pickup",
+            description="Pick up a portable discrete fixture into inventory.",
+            parameters={
+                "type": "object",
+                "properties": {"fixtureKey": {"type": "string"}},
+                "required": ["fixtureKey"],
+            },
+            handler=scene_fixture_pickup,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_fixture_place",
+            description="Place a held item into the scene as a discrete fixture.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "itemId": {"type": "string"},
+                    "fixtureKey": {"type": "string"},
+                },
+                "required": ["itemId"],
+            },
+            handler=scene_fixture_place,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_fixture_move",
+            description="Rename or move a fixture key within the scene (Observer).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "fixtureKey": {"type": "string"},
+                    "newFixtureKey": {"type": "string"},
+                },
+                "required": ["fixtureKey", "newFixtureKey"],
+            },
+            handler=scene_fixture_move,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_fixture_describe",
+            description="Describe a scene fixture record.",
+            parameters={
+                "type": "object",
+                "properties": {"fixtureKey": {"type": "string"}},
+                "required": ["fixtureKey"],
+            },
+            handler=scene_fixture_describe,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_fixture_harvest",
+            description="Harvest from an aggregate fixture into held inventory.",
+            parameters={
+                "type": "object",
+                "properties": {"fixtureKey": {"type": "string"}},
+                "required": ["fixtureKey"],
+            },
+            handler=scene_fixture_harvest,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_fixture_replenish",
+            description="Replenish an aggregate fixture (Observer).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "fixtureKey": {"type": "string"},
+                    "picksRemaining": {"type": "integer"},
+                },
+                "required": ["fixtureKey"],
+            },
+            handler=scene_fixture_replenish,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_stash_take",
+            description="Take an item from a scene shared stash into held inventory.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "stashKey": {"type": "string"},
+                    "itemId": {"type": "string"},
+                },
+                "required": ["stashKey"],
+            },
+            handler=scene_stash_take,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_stash_deposit",
+            description="Deposit a held or container item into a scene shared stash.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "stashKey": {"type": "string"},
+                    "itemId": {"type": "string"},
+                },
+                "required": ["stashKey", "itemId"],
+            },
+            handler=scene_stash_deposit,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_inventory_apply_outfit",
+            description="Apply a world outfit preset to a character inventory.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "presetId": {"type": "string"},
+                    "characterId": {"type": "string"},
+                },
+                "required": ["presetId"],
+            },
+            handler=scene_inventory_apply_outfit,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_inventory_give",
+            description="Give an inventory item to another present character.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "itemId": {"type": "string"},
+                    "toCharacterId": {"type": "string"},
+                    "toSlot": {"type": "string"},
+                    "containerItemId": {"type": "string"},
+                },
+                "required": ["itemId", "toCharacterId"],
+            },
+            handler=scene_inventory_give,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_inventory_wear",
+            description="Move a held item to worn slots.",
+            parameters={
+                "type": "object",
+                "properties": {"itemId": {"type": "string"}},
+                "required": ["itemId"],
+            },
+            handler=scene_inventory_wear,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="scene_inventory_stow",
+            description="Stow a held item into a container.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "itemId": {"type": "string"},
+                    "containerItemId": {"type": "string"},
+                },
+                "required": ["itemId", "containerItemId"],
+            },
+            handler=scene_inventory_stow,
         )
     )
     registry.register(

@@ -15,7 +15,7 @@ import { PhonePanel } from "./components/PhonePanel";
 import { SignalsRail } from "./components/SignalsRail";
 import { ObserverDigest } from "./components/ObserverDigest";
 import { CharacterDraftPanel } from "./components/CharacterDraftPanel";
-import { DebatePanel } from "./components/DebatePanel";
+import { ActivityPanel } from "./components/ActivityPanel";
 import { MarkdownBody } from "./components/MarkdownBody";
 import type { ObserverDigest as ObserverDigestData } from "./api/client";
 import { LauncherView } from "./layouts/LauncherView";
@@ -304,6 +304,7 @@ export default function App() {
         payload.event.startsWith("generation.") ||
         payload.event === "scene.changed" ||
         payload.event === "presence.changed" ||
+        payload.event === "inventory.changed" ||
         payload.event === "scene.created" ||
         payload.event === "commission.updated" ||
         payload.event === "signal.created" ||
@@ -486,7 +487,7 @@ export default function App() {
         }
         toolsDebate={
           world && scene && roster ? (
-            <DebatePanel
+            <ActivityPanel
               worldId={world.worldId}
               scene={scene}
               castIds={[

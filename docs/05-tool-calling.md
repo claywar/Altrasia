@@ -120,9 +120,11 @@ See [02-memory.md](02-memory.md). No approval queue.
 
 Location CRUD, join/leave, summon, fixture/inventory ops. Gated by `locationAdminIds` + primary observer for destructive ops.
 
-**Alpha wedge (in tree):** `scene_location_list`, `scene_summon`, `scene_join`, `scene_exit_set_state`, `social_signal`, `discussion_signal`.
+**Alpha wedge (in tree):** `scene_location_list`, `scene_summon`, `scene_join`, `scene_exit_set_state`, `social_signal`, `discussion_signal`, `scene_fixture_pickup`, `scene_fixture_place`, `scene_fixture_describe`, `scene_fixture_harvest`, `scene_stash_take`, `scene_stash_deposit`, `scene_inventory_give`, `scene_inventory_wear`, `scene_inventory_stow`, `scene_inventory_apply_outfit`.
 
-**Spec target (not in tree):** `scene_fixture_harvest`, `scene_inventory_give`.
+**Observer-only:** `scene_update_fixture`, `scene_fixture_move`, `scene_fixture_replenish`.
+
+**Narrative presence `llm` mode:** Model MAY emit fenced `narrativePresence` JSON; backend parses and applies stash/pickup/join/give ops ([03-locations-and-presence.md](03-locations-and-presence.md) §7; `tests/test_narrative_presence_llm.py`).
 
 Cast generation in a scene transcript MUST NOT create `Character` records; use [24-character-authoring.md](24-character-authoring.md) draft flow instead.
 

@@ -17,13 +17,13 @@ Living index of normative requirements **not yet fully accomplished** vs docs `0
 | Phase 6 maps | [18](18-location-maps.md), [25](25-map-authoring.md) | MapArtifact API, MapDraft, 3D explorer | MAP-ACC-1–6 full UI; layout-draft `sync`/`preview.svg`/etc. |
 | Reflection (AO-8) | [16-learning.md](16-learning.md) §6 | Pipeline + UI + tests; default off | Operator guide in doc 16 §6.4 |
 | Commons (MP-22) | [23-in-world-work.md](23-in-world-work.md) | GET/PUT API | Web UI panel |
-| Orchestration | [13](13-agent-orchestration.md) | speak_intent, embed rerank, banter wedge **done** | AO-22 full `scene.activity` overlays; scene harvest/inventory |
-| Scene framing / cast summon | [03](03-locations-and-presence.md), [10](10-prompt-injection.md), [05](05-tool-calling.md) | org recall, scene framing, `scene_summon`, narrative presence auto | Full scene tool suite; narrative `llm` mode |
+| Orchestration | [13](13-agent-orchestration.md) | speak_intent, embed rerank, banter wedge, AO-22-full **done** | — |
+| Scene framing / cast summon | [03](03-locations-and-presence.md), [10](10-prompt-injection.md), [05](05-tool-calling.md) | inventory, fixture/stash tools, framing summaries, narrative pickup/llm, outfit presets **done** | — |
 | Memory operator tools | [02](02-memory.md), [12-api-sketch.md](12-api-sketch.md) §9 | World-scoped mind/diary/evidence inspector | `PATCH .../loci/{key}`; `GET /scenes/{id}/loci` |
 
 ## Phases (implementation — not doc sync)
 
-See [BACKLOG.md](BACKLOG.md) for task IDs. Remaining **implementation** work: production web/FS, live ComfyUI, MAP-ACC UI gates, commons panel, full AO-22 overlays, scene tool suite.
+See [BACKLOG.md](BACKLOG.md) for task IDs. Remaining **implementation** work: production web/FS, live ComfyUI, MAP-ACC UI gates, commons panel, scene tool suite.
 
 ## Related
 

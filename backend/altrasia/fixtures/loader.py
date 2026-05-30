@@ -250,7 +250,10 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
         for ch in data.get("characters", []):
             cid = ch["characterId"]
             _upsert_fixture_character(store, ch, now)
-            store.add_world_member(world_id, cid, sceneRole=ch.get("sceneRole"))
+            member_kw: dict[str, Any] = {"sceneRole": ch.get("sceneRole")}
+            if ch.get("inventory"):
+                member_kw["inventoryJson"] = ch["inventory"]
+            store.add_world_member(world_id, cid, **member_kw)
             for loc in ch.get("mindLoci", []):
                 store.upsert_locus("mind", cid, loc["key"], loc["value"], now)
         _seed_cto_team_locus(store, world_id, data.get("characters", []), now)
@@ -285,6 +288,7 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
                     "locationDescription": sc.get("locationDescription", ""),
                     "presentJson": json.dumps(sc.get("present", [])),
                     "fixturesJson": json.dumps(sc.get("fixtures", {})),
+                    "sharedStashJson": json.dumps(sc.get("sharedStash", {})),
                     "exitsJson": json.dumps(sc.get("exits", [])),
                     "activityJson": None,
                     "roundRobinIndex": 0,
@@ -307,6 +311,10 @@ def load_fixture(store: SqlitePersistence, fixture_path: Path) -> dict[str, Any]
         presence = PresenceService(store)
         persona_scene = data.get("personaSceneId") or active_scene_id
         presence.join(persona_scene, PERSONA_ID)
+        from altrasia.memory.fixture_sync import sync_scene_fixtures_to_loci
+
+        for sc in data.get("scenes", []):
+            sync_scene_fixtures_to_loci(store, scene_id=sc["sceneId"])
     except Exception:
         _delete_world(store, world_id)
         raise

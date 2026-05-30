@@ -191,6 +191,28 @@ export function sceneStructureHints(layoutHintsJson?: string | null): {
   }
 }
 
+export function sceneFixtureChips(fixturesJson?: string | null): string[] {
+  if (!fixturesJson) return [];
+  try {
+    const fixtures = JSON.parse(fixturesJson) as Record<
+      string,
+      { label?: string; kind?: string; picksRemaining?: number; depleted?: boolean }
+    >;
+    return Object.entries(fixtures).map(([key, fix]) => {
+      const label = fix.label ?? key;
+      if (fix.kind === "aggregate") {
+        if (fix.depleted) return `${label} (depleted)`;
+        if (fix.picksRemaining != null) return `${label} (${fix.picksRemaining} picks)`;
+        return `${label} (aggregate)`;
+      }
+      if (fix.kind === "discrete") return `${label} (discrete)`;
+      return label;
+    });
+  } catch {
+    return [];
+  }
+}
+
 export function structureTint(structureId?: string | null): string {
   if (!structureId) return "220";
   let hash = 0;

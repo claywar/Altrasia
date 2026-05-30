@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState, type ReactNode } from "react";
 import type { RosterPerson } from "./rosterByScene";
+import { CharacterPossessions } from "../../components/CharacterPossessions";
 
 type SceneOption = { sceneId: string; locationName: string };
 
 type Props = {
   person: RosterPerson;
+  worldId: string;
   activeSceneId: string;
   personSceneId: string | null;
   scenes: SceneOption[];
@@ -64,6 +66,7 @@ function CastMenu({
 
 export function CastRow({
   person,
+  worldId,
   activeSceneId,
   personSceneId,
   scenes,
@@ -74,19 +77,30 @@ export function CastRow({
   onGoToScene,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [showPossessions, setShowPossessions] = useState(false);
   const initials = person.displayName.slice(0, 2).toUpperCase();
   const isHere = personSceneId === activeSceneId;
   const isUnplaced = !personSceneId;
   const placeOptions = scenes.filter((s) => s.sceneId !== personSceneId);
 
-  const close = () => setOpen(false);
+  const close = () => {
+    setOpen(false);
+    setShowPossessions(false);
+  };
 
   return (
     <li className="cast-row">
       <span className="cast-row__avatar" aria-hidden>
         {initials}
       </span>
-      <span className="cast-row__name">{person.displayName}</span>
+      <div className="cast-row__body">
+        <span className="cast-row__name">{person.displayName}</span>
+        {person.inventorySummary ? (
+          <span className="cast-row__inventory" title="Worn, held, and containers">
+            {person.inventorySummary}
+          </span>
+        ) : null}
+      </div>
       <CastMenu
         personName={person.displayName}
         open={open}
@@ -104,6 +118,23 @@ export function CastRow({
         >
           Memory
         </button>
+        <button
+          type="button"
+          className="cast-row__menu-item"
+          role="menuitem"
+          onClick={() => setShowPossessions((v) => !v)}
+        >
+          Possessions
+        </button>
+        {showPossessions && (
+          <div className="cast-row__possessions" role="region" aria-label={`${person.displayName} possessions`}>
+            <CharacterPossessions
+              worldId={worldId}
+              characterId={person.characterId}
+              summaryHint={person.inventorySummary}
+            />
+          </div>
+        )}
         {isHere && personSceneId && (
           <button
             type="button"

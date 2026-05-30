@@ -240,6 +240,8 @@ def may_character_generate(
         return True, "commission"
     if trigger == "debate_turn":
         return True, "debate"
+    if trigger == "conversation_turn":
+        return True, "conversation"
     if trigger in ("banter_turn", "idle_continue"):
         return True, "banter"
 

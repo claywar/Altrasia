@@ -1500,6 +1500,48 @@
         }
       }
     },
+    "/api/v1/worlds/{world_id}/characters/{character_id}/inventory": {
+      "get": {
+        "summary": "Character Inventory",
+        "operationId": "character_inventory_get",
+        "parameters": [
+          {"name": "world_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "character_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {"application/json": {"schema": {"type": "object", "additionalProperties": true}}}
+          }
+        }
+      },
+      "patch": {
+        "summary": "Patch Character Inventory",
+        "operationId": "character_inventory_patch",
+        "parameters": [
+          {"name": "world_id", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "character_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {"inventory": {"type": "object", "additionalProperties": true}},
+                "required": ["inventory"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {"application/json": {"schema": {"type": "object", "additionalProperties": true}}}
+          }
+        }
+      }
+    },
     "/api/v1/worlds/{world_id}/characters/{character_id}/evidence": {
       "get": {
         "summary": "Character Evidence",

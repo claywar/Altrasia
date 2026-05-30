@@ -4,6 +4,7 @@ export type RosterPerson = {
   sceneId?: string | null;
   locationName?: string | null;
   presentSceneId?: string | null;
+  inventorySummary?: string;
 };
 
 export type Roster = {

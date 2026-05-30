@@ -33,10 +33,17 @@ from altrasia.commissions import create_commission, list_commissions, patch_comm
 from altrasia.debate_activity import (
     advance_debate_phase,
     advance_debate_speaker,
+    advance_conversation_speaker,
+    clear_banter,
+    clear_conversation,
     clear_debate,
+    get_active_banter,
     parse_activity,
+    start_banter,
+    start_conversation,
     start_debate,
 )
+from altrasia.conversation_runner import enqueue_conversation_turn
 from altrasia.debate_runner import enqueue_debate_turn
 from altrasia.approvals import list_approvals, resolve_approval
 from altrasia.briefing import set_briefing_fixture
@@ -205,6 +212,10 @@ class WorldMemberBody(BaseModel):
     characterId: str
 
 
+class InventoryPatchBody(BaseModel):
+    inventory: dict[str, Any]
+
+
 class CreateSceneBody(BaseModel):
     locationName: str
     locationDescription: str = ""
@@ -216,6 +227,27 @@ class CreateSceneBody(BaseModel):
 class PatchSceneBody(BaseModel):
     locationName: str | None = None
     locationDescription: str | None = None
+    fixturesJson: str | None = None
+    sharedStashJson: str | None = None
+
+
+class OutfitPresetsPatchBody(BaseModel):
+    outfitPresets: dict[str, Any]
+
+
+class OutfitApplyBody(BaseModel):
+    presetId: str
+
+
+class ConversationStartBody(BaseModel):
+    speakingOrder: list[str]
+    topic: str | None = None
+    turnsRemaining: int | None = None
+
+
+class BanterStartBody(BaseModel):
+    speakingOrder: list[str]
+    turnsRemaining: int = 3
 
 
 class CreateCommissionBody(BaseModel):
@@ -480,8 +512,60 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 entry["definition"] = json.loads(c.get("definitionJson") or "{}")
             except json.JSONDecodeError:
                 entry["definition"] = {}
+            try:
+                from altrasia.domain.inventory import format_inventory_summary, parse_inventory
+
+                inv = parse_inventory(c.get("inventoryJson"))
+                entry["inventory"] = inv
+                entry["inventorySummary"] = format_inventory_summary(inv)
+            except json.JSONDecodeError:
+                entry["inventory"] = {"worn": [], "held": [], "containers": []}
+                entry["inventorySummary"] = ""
             out.append(entry)
         return out
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/inventory",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_character_inventory(
+        world_id: str, character_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        from altrasia.domain.inventory import get_member_inventory
+
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        if not svc.store.get_world_member(world_id, character_id):
+            raise HTTPException(404, "character not in world")
+        return {"characterId": character_id, "inventory": get_member_inventory(
+            svc.store, world_id, character_id
+        )}
+
+    @app.patch(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/inventory",
+        dependencies=[Depends(verify_auth)],
+    )
+    def patch_character_inventory(
+        world_id: str,
+        character_id: str,
+        body: InventoryPatchBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.domain.inventory import parse_inventory, set_member_inventory
+
+        if not svc.store.get_world(world_id):
+            raise HTTPException(404, "world not found")
+        if not svc.store.get_world_member(world_id, character_id):
+            raise HTTPException(404, "character not in world")
+        inventory = parse_inventory(body.inventory)
+        set_member_inventory(svc.store, world_id, character_id, inventory)
+        _emit(
+            svc,
+            world_id,
+            "inventory.changed",
+            {"characterId": character_id},
+        )
+        return {"characterId": character_id, "inventory": inventory}
 
     @app.get(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}", dependencies=[Depends(verify_auth)]
@@ -569,7 +653,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             fields["locationName"] = body.locationName
         if body.locationDescription is not None:
             fields["locationDescription"] = body.locationDescription
+        if body.fixturesJson is not None:
+            fields["fixturesJson"] = body.fixturesJson
+        if body.sharedStashJson is not None:
+            fields["sharedStashJson"] = body.sharedStashJson
         svc.store.update_scene(scene_id, **fields)
+        if body.fixturesJson is not None:
+            from altrasia.memory.fixture_sync import sync_scene_fixtures_to_loci
+
+            sync_scene_fixtures_to_loci(svc.store, scene_id=scene_id)
         _emit(svc, world_id, "scene.changed", {"sceneId": scene_id})
         return svc.store.get_scene(scene_id)  # type: ignore[return-value]
 
@@ -657,6 +749,204 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not sc or sc["worldId"] != world_id:
             raise HTTPException(404, "scene not found")
         return {"activity": parse_activity(sc)}
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/outfit-presets",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_outfit_presets_route(
+        world_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        world = svc.store.get_world(world_id)
+        if not world:
+            raise HTTPException(404, "world not found")
+        from altrasia.domain.inventory import get_outfit_presets
+
+        return {"outfitPresets": get_outfit_presets(svc.store, world_id)}
+
+    @app.patch(
+        "/api/v1/worlds/{world_id}/outfit-presets",
+        dependencies=[Depends(verify_auth)],
+    )
+    def patch_outfit_presets_route(
+        world_id: str,
+        body: OutfitPresetsPatchBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        world = svc.store.get_world(world_id)
+        if not world:
+            raise HTTPException(404, "world not found")
+        from altrasia.domain.inventory import set_outfit_presets
+
+        presets = set_outfit_presets(svc.store, world_id, body.outfitPresets)
+        _emit(svc, world_id, "world.changed", {"outfitPresets": True})
+        return {"outfitPresets": presets}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/characters/{character_id}/outfit/apply",
+        dependencies=[Depends(verify_auth)],
+    )
+    def apply_outfit_route(
+        world_id: str,
+        character_id: str,
+        body: OutfitApplyBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        from altrasia.domain.inventory import apply_outfit_preset
+
+        member = svc.store.get_world_member(world_id, character_id)
+        if not member:
+            raise HTTPException(404, "character not in world")
+        try:
+            out = apply_outfit_preset(
+                svc.store,
+                world_id=world_id,
+                character_id=character_id,
+                preset_id=body.presetId,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(
+            svc,
+            world_id,
+            "inventory.changed",
+            {"characterId": character_id, "presetId": body.presetId},
+        )
+        return out
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/conversation",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_conversation_start(
+        world_id: str,
+        scene_id: str,
+        body: ConversationStartBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        try:
+            activity = start_conversation(
+                svc.store,
+                scene_id,
+                speaking_order=body.speakingOrder,
+                topic=body.topic,
+                turns_remaining=body.turnsRemaining,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id, "conversation": "started"})
+        job = await enqueue_conversation_turn(svc, scene_id)
+        return {"activity": activity, "generationJob": job}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/conversation/advance-speaker",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_conversation_advance_speaker(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        try:
+            activity = advance_conversation_speaker(svc.store, scene_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id})
+        job = await enqueue_conversation_turn(svc, scene_id)
+        return {"activity": activity, "generationJob": job}
+
+    @app.delete(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/conversation",
+        dependencies=[Depends(verify_auth)],
+    )
+    def delete_conversation(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        clear_conversation(svc.store, scene_id)
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id, "conversation": "cleared"})
+        return {"sceneId": scene_id, "activity": None}
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/conversation",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_conversation(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        act = parse_activity(sc)
+        if act and act.get("kind") == "conversation":
+            return {"activity": act}
+        return {"activity": None}
+
+    @app.post(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/banter",
+        dependencies=[Depends(verify_auth)],
+    )
+    async def post_banter_start(
+        world_id: str,
+        scene_id: str,
+        body: BanterStartBody,
+        svc: AppServices = Depends(get_services),
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        try:
+            activity = start_banter(
+                svc.store,
+                scene_id,
+                speaking_order=body.speakingOrder,
+                session_id=str(uuid.uuid4()),
+                turns_remaining=body.turnsRemaining,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        from altrasia.banter_runner import enqueue_banter_turn
+
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id, "banter": "started"})
+        job = await enqueue_banter_turn(
+            svc, scene_id, character_id=body.speakingOrder[0]
+        )
+        return {"activity": activity, "generationJob": job}
+
+    @app.delete(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/banter",
+        dependencies=[Depends(verify_auth)],
+    )
+    def delete_banter_route(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        from altrasia.banter_runner import clear_banter_and_cancel_jobs
+
+        clear_banter_and_cancel_jobs(svc, scene_id)
+        _emit(svc, world_id, "scene.changed", {"sceneId": scene_id, "banter": "cleared"})
+        return {"sceneId": scene_id, "activity": None}
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/scenes/{scene_id}/banter",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_banter_route(
+        world_id: str, scene_id: str, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        sc = svc.store.get_scene(scene_id)
+        if not sc or sc["worldId"] != world_id:
+            raise HTTPException(404, "scene not found")
+        act = get_active_banter(sc)
+        return {"activity": act}
 
     @app.get(
         "/api/v1/worlds/{world_id}/scenes/{scene_id}/messages",
@@ -949,17 +1239,49 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 content={"error": {"code": "not_found", "message": "World not found"}},
             )
         scenes_out: list[dict] = []
+        members = {m["characterId"]: m for m in svc.store.list_world_characters(world_id)}
+        from altrasia.domain.inventory import (
+            format_fixture_summary,
+            format_worn_container_digest,
+            get_member_inventory,
+        )
+        from altrasia.domain.shared_stash import format_stash_summary, parse_shared_stash
+
         for s in svc.store.list_scenes(world_id):
             try:
                 present = json.loads(s.get("presentJson") or "[]")
             except json.JSONDecodeError:
                 present = []
+            fixtures_raw = json.loads(s.get("fixturesJson") or "{}")
+            fixture_preview = [
+                format_fixture_summary(k, fixtures_raw[k])
+                for k in sorted(fixtures_raw.keys())[:8]
+            ]
+            stash_preview = format_stash_summary(parse_shared_stash(s.get("sharedStashJson")))
+            cast_inventory: list[dict] = []
+            for cid in present:
+                if cid == "__persona__":
+                    continue
+                ch = members.get(cid, {"displayName": cid})
+                inv = get_member_inventory(svc.store, world_id, cid)
+                digest = format_worn_container_digest(inv)
+                cast_inventory.append(
+                    {
+                        "characterId": cid,
+                        "displayName": ch.get("displayName", cid),
+                        "wornSummary": digest["worn"],
+                        "containerSummary": digest["containers"],
+                    }
+                )
             scenes_out.append(
                 {
                     "sceneId": s["sceneId"],
                     "locationName": s.get("locationName", ""),
                     "presentCharacterIds": present,
                     "presentCount": len(present),
+                    "fixturePreview": fixture_preview,
+                    "stashPreview": stash_preview,
+                    "castInventory": cast_inventory,
                 }
             )
         pending = svc.store.list_signals(world_id, status="pending")
@@ -981,7 +1303,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     {
                         "sceneId": s["sceneId"],
                         "locationName": s.get("locationName", ""),
+                        "kind": act.get("kind"),
                         "phase": act.get("phase"),
+                        "topic": act.get("topic"),
                         "speakingOrder": act.get("speakingOrder", []),
                     }
                 )

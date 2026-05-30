@@ -52,6 +52,7 @@ erDiagram
 | `personaArrivalMaxReplies` | integer | 1 |
 | `idleRoundRobinWeights` | object | optional `characterId` → weight for AO-4 |
 | `presenceAnnounce` | boolean | true — append summon assistance lines to scene chronicle ([03-locations-and-presence.md](03-locations-and-presence.md) §2.1) |
+| `outfitPresets` | object | World-scoped worn/held templates keyed by preset id (OP-1; [03](03-locations-and-presence.md) §4.2) |
 
 ### 3.2 Structure (v1.1+)
 
@@ -81,8 +82,9 @@ Optional building envelope for mini-map and navigation ([14-web-ui.md](14-web-ui
 | `locationDescription` | TEXT | |
 | `presentJson` | TEXT | Array of characterId or `__persona__` |
 | `fixturesJson` | TEXT | Map fixtureKey → fixture record |
+| `sharedStashJson` | TEXT | Map stashKey → shared pool (GS-1; default `{}`) |
 | `exitsJson` | TEXT | Array of exit records (CC-1) |
-| `activityJson` | TEXT NULL | Optional debate overlay ([23-in-world-work.md](23-in-world-work.md)) |
+| `activityJson` | TEXT NULL | Active overlay: `debate` \| `conversation` \| `banter` ([13-agent-orchestration.md](13-agent-orchestration.md) §5) |
 | `roundRobinIndex` | INTEGER | Idle-only speaker cursor (AO-4b); per scene |
 | `updatedAt` | TEXT ISO | |
 
@@ -158,6 +160,7 @@ Omission of layout fields MUST NOT break CC-1 round-trip ([17-acceptance-criteri
 | `muted` | INTEGER | 0/1 |
 | `disabled` | INTEGER | 0/1 |
 | `sceneRole` | TEXT NULL | Optional role tag for AO-18 (e.g. `teacher`, `student`) |
+| `inventoryJson` | TEXT | World-scoped possessions: `worn`, `held`, `containers` ([03](03-locations-and-presence.md) §4) |
 
 ### 3.6 Message
 

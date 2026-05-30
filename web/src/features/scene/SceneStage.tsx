@@ -6,6 +6,7 @@ import { MiniMap3D } from "../map3d/MiniMap3D";
 import { compassFromActive } from "../maps/mapNavigation";
 import {
   parsePresent,
+  sceneFixtureChips,
   sceneHasSocialIdleMessages,
   sceneStructureHints,
   structureLabel,
@@ -16,6 +17,7 @@ import { BanterTranscriptToggle } from "../transcript/BanterTranscriptToggle";
 type PresencePerson = {
   characterId: string;
   displayName: string;
+  inventorySummary?: string;
 };
 
 type Props = {
@@ -48,7 +50,11 @@ export function SceneStage({
 
   const hasBanter = useMemo(() => sceneHasSocialIdleMessages(messages), [messages]);
 
-  const { structureId, fixtures } = sceneStructureHints(scene.layoutHintsJson);
+  const { structureId, fixtures: hintFixtures } = sceneStructureHints(scene.layoutHintsJson);
+  const fixtureChips = useMemo(() => {
+    const fromJson = sceneFixtureChips(scene.fixturesJson);
+    return fromJson.length ? fromJson : hintFixtures ?? [];
+  }, [scene.fixturesJson, hintFixtures]);
   const presentIds = parsePresent(scene.presentJson);
   const tintHue = structureTint(structureId ?? undefined);
   const structure = graph?.structures?.find((s) => s.structureId === structureId);
@@ -100,9 +106,9 @@ export function SceneStage({
         {scene.locationDescription && (
           <p className="scene-stage__description">{scene.locationDescription}</p>
         )}
-        {fixtures && fixtures.length > 0 && (
+        {fixtureChips.length > 0 && (
           <div className="scene-stage__fixtures" aria-label="Fixtures">
-            {fixtures.map((f) => (
+            {fixtureChips.map((f) => (
               <span key={f} className="scene-stage__fixture">
                 {f}
               </span>
@@ -113,17 +119,23 @@ export function SceneStage({
           {presentIds.length === 0 ? (
             <span className="scene-stage__presence-empty">No one visible</span>
           ) : (
-            presentIds.map((id) => (
-              <Chip
-                key={id}
-                label={displayNameForId(id, rosterAtLocation)}
-                initials={
-                  id === "__persona__"
-                    ? "You".slice(0, 2)
-                    : displayNameForId(id, rosterAtLocation).slice(0, 2)
-                }
-              />
-            ))
+            presentIds.map((id) => {
+              const name = displayNameForId(id, rosterAtLocation);
+              const person = rosterAtLocation.find((p) => p.characterId === id);
+              const inv = person?.inventorySummary;
+              return (
+                <div key={id} className="scene-stage__presence-person">
+                  <Chip
+                    label={name}
+                    initials={id === "__persona__" ? "You".slice(0, 2) : name.slice(0, 2)}
+                    hint={inv ? `Possessions: ${inv}` : undefined}
+                  />
+                  {inv && id !== "__persona__" && (
+                    <span className="scene-stage__presence-inventory">{inv}</span>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
         {hasBanter && (

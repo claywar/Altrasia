@@ -38,7 +38,25 @@
       "director": "ask"
     },
     "narrativePresenceMode": "auto",
-    "briefingMaxReplies": 2
+    "briefingMaxReplies": 2,
+    "outfitPresets": {
+      "vertex-formal": {
+        "displayName": "Vertex formal",
+        "worn": [{"label": "navy blazer", "wearable": true}],
+        "held": [],
+        "replaceWorn": true
+      },
+      "lab-ppe": {
+        "displayName": "Lab PPE",
+        "worn": [
+          {"label": "lab coat", "wearable": true},
+          {"label": "safety glasses", "wearable": true}
+        ],
+        "held": [{"label": "clipboard"}],
+        "replaceWorn": true,
+        "sceneRole": "director"
+      }
+    }
   },
   "worldMap": {
     "schemaVersion": 1,
@@ -112,7 +130,34 @@
           "key": "personality",
           "value": "Decisive but collaborative; listens first, summarizes second"
         }
-      ]
+      ],
+      "inventory": {
+        "worn": [
+          {
+            "itemId": "item-blazer-jordan",
+            "label": "navy blazer"
+          }
+        ],
+        "held": [
+          {
+            "itemId": "item-tablet-jordan",
+            "label": "tablet"
+          }
+        ],
+        "containers": [
+          {
+            "itemId": "item-briefcase-jordan",
+            "label": "briefcase",
+            "containerCapacity": 5,
+            "contents": [
+              {
+                "itemId": "item-charging-cable",
+                "label": "charging cable"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "characterId": "char-sofia-mendez",
@@ -140,7 +185,23 @@
           "key": "personality",
           "value": "Warm, direct, data-informed"
         }
-      ]
+      ],
+      "inventory": {
+        "worn": [
+          {
+            "itemId": "item-scarf-sofia",
+            "label": "silk scarf",
+            "wearable": true
+          }
+        ],
+        "held": [
+          {
+            "itemId": "item-notebook-sofia",
+            "label": "research notebook"
+          }
+        ],
+        "containers": []
+      }
     },
     {
       "characterId": "char-liam-park",
@@ -168,7 +229,29 @@
           "key": "personality",
           "value": "Calm under pressure; precise with dates and owners"
         }
-      ]
+      ],
+      "inventory": {
+        "worn": [],
+        "held": [
+          {
+            "itemId": "item-clipboard-liam",
+            "label": "milestone clipboard"
+          }
+        ],
+        "containers": [
+          {
+            "itemId": "item-backpack-liam",
+            "label": "program backpack",
+            "containerCapacity": 4,
+            "contents": [
+              {
+                "itemId": "item-risk-log",
+                "label": "risk log printout"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "characterId": "char-amara-osei",
@@ -868,11 +951,23 @@
       "fixtures": {
         "reception": {
           "label": "Reception desk",
-          "kind": "fixture"
+          "kind": "discrete",
+          "portable": false,
+          "description": "Front desk with visitor log"
         },
         "directory": {
           "label": "Digital building directory",
-          "kind": "fixture"
+          "kind": "discrete",
+          "portable": false
+        },
+        "visitor-badge-tray": {
+          "label": "Visitor badge tray",
+          "kind": "aggregate",
+          "picksRemaining": 5,
+          "defaultPicks": 5,
+          "yield": {
+            "label": "visitor badge"
+          }
         }
       },
       "exits": [
@@ -1039,11 +1134,39 @@
       "fixtures": {
         "espresso": {
           "label": "Espresso bar",
-          "kind": "fixture"
+          "kind": "discrete",
+          "portable": false,
+          "description": "Built-in espresso station"
         },
         "fridge": {
           "label": "Snack fridge",
-          "kind": "fixture"
+          "kind": "discrete",
+          "portable": false
+        },
+        "snack-rack": {
+          "label": "Snack rack",
+          "kind": "aggregate",
+          "picksRemaining": 3,
+          "defaultPicks": 3,
+          "yield": {
+            "label": "granola bar"
+          }
+        },
+        "travel-mug": {
+          "label": "Travel mug",
+          "kind": "discrete",
+          "portable": true,
+          "description": "Insulated mug left on the counter"
+        }
+      },
+      "sharedStash": {
+        "snack-shelf": {
+          "label": "Snack shelf",
+          "items": [
+            {"itemId": "item-granola-1", "label": "granola bar"},
+            {"itemId": "item-granola-2", "label": "granola bar"}
+          ],
+          "capacity": 20
         }
       },
       "exits": [

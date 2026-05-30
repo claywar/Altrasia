@@ -167,13 +167,17 @@ class SqlitePersistence:
 
     @_uses_db_lock
     def insert_scene(self, row: dict[str, Any]) -> None:
+        row = dict(row)
+        row.setdefault("sharedStashJson", "{}")
         self.conn.execute(
             """INSERT INTO Scene (sceneId, worldId, structureId, mapLevel, levelLabel,
                planPositionJson, mapArtifactJson, locationName, locationDescription, presentJson,
-               fixturesJson, exitsJson, activityJson, roundRobinIndex, layoutHintsJson, updatedAt)
+               fixturesJson, sharedStashJson, exitsJson, activityJson, roundRobinIndex,
+               layoutHintsJson, updatedAt)
                VALUES (:sceneId, :worldId, :structureId, :mapLevel, :levelLabel,
                :planPositionJson, :mapArtifactJson, :locationName, :locationDescription, :presentJson,
-               :fixturesJson, :exitsJson, :activityJson, :roundRobinIndex, :layoutHintsJson, :updatedAt)""",
+               :fixturesJson, :sharedStashJson, :exitsJson, :activityJson, :roundRobinIndex,
+               :layoutHintsJson, :updatedAt)""",
             row,
         )
         self.conn.commit()
@@ -267,23 +271,57 @@ class SqlitePersistence:
 
     @_uses_db_lock
     def add_world_member(self, world_id: str, character_id: str, **kw: Any) -> None:
+        inv = kw.get("inventoryJson", "{}")
+        if isinstance(inv, dict):
+            inv = json.dumps(inv)
         self.conn.execute(
-            """INSERT OR IGNORE INTO WorldMember (worldId, characterId, muted, disabled, sceneRole)
-               VALUES (?, ?, ?, ?, ?)""",
+            """INSERT OR IGNORE INTO WorldMember
+               (worldId, characterId, muted, disabled, sceneRole, inventoryJson)
+               VALUES (?, ?, ?, ?, ?, ?)""",
             (
                 world_id,
                 character_id,
                 kw.get("muted", 0),
                 kw.get("disabled", 0),
                 kw.get("sceneRole"),
+                inv,
             ),
+        )
+        if kw.get("inventoryJson") is not None:
+            self.conn.execute(
+                """UPDATE WorldMember SET inventoryJson = ?
+                   WHERE worldId = ? AND characterId = ?""",
+                (inv, world_id, character_id),
+            )
+        self.conn.commit()
+
+    @_uses_db_lock
+    def get_world_member(self, world_id: str, character_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """SELECT worldId, characterId, muted, disabled, sceneRole, inventoryJson
+               FROM WorldMember WHERE worldId = ? AND characterId = ?""",
+            (world_id, character_id),
+        )
+        row = cur.fetchone()
+        return self._row(row) if row else None
+
+    @_uses_db_lock
+    def update_world_member(self, world_id: str, character_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        vals = list(fields.values()) + [world_id, character_id]
+        self.conn.execute(
+            f"UPDATE WorldMember SET {cols} WHERE worldId = ? AND characterId = ?",
+            vals,
         )
         self.conn.commit()
 
     @_uses_db_lock
     def list_world_characters(self, world_id: str) -> list[dict[str, Any]]:
         cur = self.conn.execute(
-            """SELECT c.*, wm.muted, wm.disabled, wm.sceneRole FROM Character c
+            """SELECT c.*, wm.muted, wm.disabled, wm.sceneRole, wm.inventoryJson
+               FROM Character c
                JOIN WorldMember wm ON wm.characterId = c.characterId
                WHERE wm.worldId = ?""",
             (world_id,),

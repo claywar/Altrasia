@@ -6,6 +6,9 @@ import { CastListPanel } from "./CastListPanel";
 import { CommissionsPanel } from "./CommissionsPanel";
 import { WorldPolicyPanel } from "./WorldPolicyPanel";
 import { BriefingPanel } from "./BriefingPanel";
+import { InventoryPanel } from "./InventoryPanel";
+import { SceneFixturesPanel } from "./SceneFixturesPanel";
+import { SceneSharedStashPanel } from "./SceneSharedStashPanel";
 import { SettingsShell } from "./settings/SettingsShell";
 import { SettingsCategoryPane } from "./settings/SettingsCategoryPane";
 import type { SettingsCategoryId } from "./settings/settingsNav";
@@ -97,6 +100,20 @@ export function SettingsPanel({
               <SettingsScenesEmpty />
             ) : (
               <SettingsGroup>
+                <SceneFixturesPanel
+                  worldId={worldId}
+                  scenes={scenes}
+                  activeSceneId={activeSceneId}
+                  embedded
+                  onChanged={() => onScenesChanged?.()}
+                />
+                <SceneSharedStashPanel
+                  worldId={worldId}
+                  scenes={scenes}
+                  activeSceneId={activeSceneId}
+                  embedded
+                  onChanged={() => onScenesChanged?.()}
+                />
                 <SceneGeographyPanel
                   worldId={worldId}
                   scenes={scenes}
@@ -116,6 +133,12 @@ export function SettingsPanel({
           <SettingsCategoryPane categoryId="cast">
             <SettingsGroup>
               <CastListPanel worldId={worldId} embedded />
+              <InventoryPanel
+                worldId={worldId}
+                activeSceneId={activeSceneId}
+                embedded
+                onChanged={() => onCastChanged?.()}
+              />
               <CharacterDraftPanel
                 worldId={worldId}
                 onCharacterAdded={() => onCastChanged?.()}

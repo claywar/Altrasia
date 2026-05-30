@@ -66,6 +66,24 @@ export type CastCharacter = {
   muted?: boolean;
   disabled?: boolean;
   definition?: CharacterDefinition;
+  inventory?: CharacterInventory;
+  inventorySummary?: string;
+};
+
+export type InventoryItem = {
+  itemId: string;
+  label: string;
+  description?: string;
+  wearable?: boolean;
+  containerCapacity?: number;
+  contents?: InventoryItem[];
+  sourceFixtureKey?: string;
+};
+
+export type CharacterInventory = {
+  worn: InventoryItem[];
+  held: InventoryItem[];
+  containers: InventoryItem[];
 };
 
 export type EvidenceRecord = {
@@ -122,6 +140,8 @@ export type Scene = {
   locationName: string;
   locationDescription: string;
   presentJson: string;
+  fixturesJson?: string;
+  sharedStashJson?: string;
   exitsJson: string;
   activityJson?: string | null;
   layoutHintsJson?: string | null;
@@ -132,6 +152,32 @@ export type DebateActivity = {
   phase: string;
   speakingOrder: string[];
   currentIndex: number;
+};
+
+export type ConversationActivity = {
+  kind: "conversation";
+  speakingOrder: string[];
+  currentIndex: number;
+  topic?: string;
+  turnsRemaining?: number;
+};
+
+export type BanterActivity = {
+  kind: "banter";
+  speakingOrder: string[];
+  currentIndex: number;
+  turnsRemaining?: number;
+  sessionId?: string;
+};
+
+export type SceneActivity = DebateActivity | ConversationActivity | BanterActivity;
+
+export type OutfitPreset = {
+  displayName: string;
+  worn?: Array<{ label: string; wearable?: boolean; itemId?: string }>;
+  held?: Array<{ label: string; itemId?: string }>;
+  replaceWorn?: boolean;
+  sceneRole?: string;
 };
 
 export type LayoutDraft = {
@@ -256,10 +302,18 @@ export type Commission = {
 };
 
 export function parseDebateActivity(scene: Scene | null): DebateActivity | null {
+  const a = parseSceneActivity(scene);
+  return a?.kind === "debate" ? a : null;
+}
+
+export function parseSceneActivity(scene: Scene | null): SceneActivity | null {
   if (!scene?.activityJson) return null;
   try {
-    const a = JSON.parse(scene.activityJson) as DebateActivity;
-    return a?.kind === "debate" ? a : null;
+    const a = JSON.parse(scene.activityJson) as SceneActivity;
+    if (a?.kind === "debate" || a?.kind === "conversation" || a?.kind === "banter") {
+      return a;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -561,6 +615,54 @@ export const api = {
       `/worlds/${worldId}/scenes/${sceneId}/debate`,
       { method: "DELETE" }
     ),
+  getConversation: (worldId: string, sceneId: string) =>
+    request<{ activity: ConversationActivity | null }>(
+      `/worlds/${worldId}/scenes/${sceneId}/conversation`
+    ),
+  startConversation: (
+    worldId: string,
+    sceneId: string,
+    body: { speakingOrder: string[]; topic?: string; turnsRemaining?: number }
+  ) =>
+    request<{ activity: ConversationActivity; generationJob?: { jobId: string } }>(
+      `/worlds/${worldId}/scenes/${sceneId}/conversation`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+  advanceConversationSpeaker: (worldId: string, sceneId: string) =>
+    request<{ activity: ConversationActivity; generationJob?: { jobId: string } }>(
+      `/worlds/${worldId}/scenes/${sceneId}/conversation/advance-speaker`,
+      { method: "POST" }
+    ),
+  endConversation: (worldId: string, sceneId: string) =>
+    request<{ sceneId: string; activity: null }>(
+      `/worlds/${worldId}/scenes/${sceneId}/conversation`,
+      { method: "DELETE" }
+    ),
+  getBanter: (worldId: string, sceneId: string) =>
+    request<{ activity: BanterActivity | null }>(`/worlds/${worldId}/scenes/${sceneId}/banter`),
+  startBanter: (
+    worldId: string,
+    sceneId: string,
+    body: { speakingOrder: string[]; turnsRemaining?: number }
+  ) =>
+    request<{ activity: BanterActivity; generationJob?: { jobId: string } }>(
+      `/worlds/${worldId}/scenes/${sceneId}/banter`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+  endBanter: (worldId: string, sceneId: string) =>
+    request<{ sceneId: string; activity: null }>(
+      `/worlds/${worldId}/scenes/${sceneId}/banter`,
+      { method: "DELETE" }
+    ),
+  getOutfitPresets: (worldId: string) =>
+    request<{ outfitPresets: Record<string, OutfitPreset> }>(
+      `/worlds/${worldId}/outfit-presets`
+    ),
+  applyOutfitPreset: (worldId: string, characterId: string, presetId: string) =>
+    request<{ ok: boolean; presetId: string; inventory: CharacterInventory }>(
+      `/worlds/${worldId}/characters/${characterId}/outfit/apply`,
+      { method: "POST", body: JSON.stringify({ presetId }) }
+    ),
   listApprovals: (worldId: string, state = "pending") =>
     request<Approval[]>(`/worlds/${worldId}/approvals?state=${state}`),
   approveApproval: (worldId: string, approvalId: string) =>
@@ -630,6 +732,40 @@ export const api = {
   listScenes: (worldId: string) => request<Scene[]>(`/worlds/${worldId}/scenes`),
   listCharacters: (worldId: string) =>
     request<CastCharacter[]>(`/worlds/${worldId}/characters`),
+  /** Prefer inventory embedded in listCharacters; fall back to dedicated route. */
+  fetchCharacterInventory: async (worldId: string, characterId: string) => {
+    const chars = await request<CastCharacter[]>(`/worlds/${worldId}/characters`);
+    const embedded = chars.find((c) => c.characterId === characterId)?.inventory;
+    if (embedded) {
+      return { characterId, inventory: embedded };
+    }
+    return request<{ characterId: string; inventory: CharacterInventory }>(
+      `/worlds/${worldId}/characters/${characterId}/inventory`
+    );
+  },
+  getCharacterInventory: (worldId: string, characterId: string) =>
+    request<{ characterId: string; inventory: CharacterInventory }>(
+      `/worlds/${worldId}/characters/${characterId}/inventory`
+    ),
+  patchCharacterInventory: (worldId: string, characterId: string, inventory: CharacterInventory) =>
+    request<{ characterId: string; inventory: CharacterInventory }>(
+      `/worlds/${worldId}/characters/${characterId}/inventory`,
+      { method: "PATCH", body: JSON.stringify({ inventory }) }
+    ),
+  patchScene: (
+    worldId: string,
+    sceneId: string,
+    body: {
+      locationName?: string;
+      locationDescription?: string;
+      fixturesJson?: string;
+      sharedStashJson?: string;
+    }
+  ) =>
+    request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   getScene: (worldId: string, sceneId: string) =>
     request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`),
   listMessages: (worldId: string, sceneId: string) =>
@@ -650,14 +786,16 @@ export const api = {
         displayName: string;
         sceneId: string;
         locationName?: string;
+        inventorySummary?: string;
       }>;
       elsewhere: Array<{
         characterId: string;
         displayName: string;
         locationName: string | null;
         sceneId?: string;
+        inventorySummary?: string;
       }>;
-      unplaced?: Array<{ characterId: string; displayName: string }>;
+      unplaced?: Array<{ characterId: string; displayName: string; inventorySummary?: string }>;
     }>(`/worlds/${worldId}/roster`),
   summonPresence: (
     worldId: string,

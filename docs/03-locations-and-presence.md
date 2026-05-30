@@ -94,6 +94,34 @@ Tools SHOULD include `scene_exit_set_state` (or equivalent) gated like other loc
 
 Inventory MUST be distinguished from fixtures in prompts and tools.
 
+### 4.1 Shared stashes (group inventory)
+
+**Shared stashes** are scene-scoped pooled items any **present** character may take from or deposit into (e.g. break-room snack shelf). Stored on `Scene.sharedStashJson`:
+
+```json
+{
+  "snack-shelf": {
+    "label": "Snack shelf",
+    "items": [{"itemId": "item-granola-1", "label": "granola bar"}],
+    "capacity": 20
+  }
+}
+```
+
+| ID | Rule |
+|----|------|
+| GS-1 | Stash is scene-scoped; persists when characters leave. |
+| GS-2 | Take/deposit requires character **present** at scene (same gate as fixture pickup). |
+| GS-3 | Stashes are shared consumable pools — not portable fixtures. |
+| GS-4 | Take moves item to **held**; deposit moves from held or container contents. |
+| GS-5 | Scene framing and observer digest show stash summaries alongside fixtures. |
+
+Tools: `scene_stash_take`, `scene_stash_deposit`.
+
+### 4.2 Outfit presets
+
+World-level templates in `World.configJson.outfitPresets` apply worn (and optional held) via operator API or `scene_inventory_apply_outfit`. See [11-data-model.md](11-data-model.md) §3.2.
+
 ## 5. Scene framing
 
 **Scene framing** injects per-character context when that character is drafted for generation:
@@ -151,10 +179,32 @@ Idle/reactive generations SHOULD use a compact prompt from scene name, descripti
 |------|----------|
 | `off` | No automation |
 | `detect` | Suggest actions to operator |
-| `auto` | Apply join/leave/fixture/inventory ops |
-| `llm` | Parse structured JSON block from model output |
+| `auto` | Apply join/leave/fixture/inventory/stash ops via heuristics |
+| `llm` | Parse fenced `narrativePresence` JSON block from model output; same invariants as `auto` |
 
-Auto mode MUST respect the same one-scene-per-character invariant.
+Auto/llm modes MUST respect the same one-scene-per-character invariant.
+
+**LLM block shape (optional when `narrativePresenceMode=llm`):**
+
+```json
+{
+  "narrativePresence": {
+    "actions": [
+      {"kind": "join", "sceneId": "scene-break-room"},
+      {"kind": "pickup", "fixtureKey": "travel-mug"},
+      {"kind": "stash_take", "stashKey": "snack-shelf", "itemId": "item-granola-1"},
+      {"kind": "give", "itemId": "...", "toCharacterId": "..."}
+    ]
+  }
+}
+```
+
+| ID | Rule |
+|----|------|
+| NP-LLM-1 | Parser strips block before transcript persist; invalid JSON → no-op + log (`detect` surfaces to operator). |
+| NP-LLM-2 | Same invariants as `auto` (MAP-MOVE-2, present gates). |
+| NP-LLM-3 | `detect` mode returns parsed actions without applying. |
+| NP-LLM-4 | Prompt injection documents optional instruction when mode is `llm` ([10-prompt-injection.md](10-prompt-injection.md)). |
 
 **MAP-MOVE-2:** Narrative presence MUST NOT create scenes or exits. Join/leave applies only when the target scene **already exists** on the map.
 

@@ -49,10 +49,16 @@ class PresenceService:
 
     def roster(self, world_id: str) -> dict[str, list[dict[str, Any]]]:
         """CC-3: elsewhere roster includes presentSceneId for cast not in active scene."""
+        from altrasia.domain.inventory import format_inventory_summary, get_member_inventory
+
         world = self.store.get_world(world_id)
         active_scene_id = world["activeSceneId"] if world else None
         scenes = self.store.list_scenes(world_id)
         chars = {c["characterId"]: c for c in self.store.list_world_characters(world_id)}
+
+        def _inv_summary(cid: str) -> str:
+            return format_inventory_summary(get_member_inventory(self.store, world_id, cid))
+
         at_location: list[dict] = []
         elsewhere: list[dict] = []
         placed_ids: set[str] = set()
@@ -68,6 +74,7 @@ class PresenceService:
                     "sceneId": scene["sceneId"],
                     "locationName": scene["locationName"],
                     "presentSceneId": scene["sceneId"],
+                    "inventorySummary": _inv_summary(cid),
                 }
                 if scene["sceneId"] == active_scene_id:
                     at_location.append(entry)
@@ -83,6 +90,7 @@ class PresenceService:
                         "sceneId": None,
                         "locationName": None,
                         "presentSceneId": None,
+                        "inventorySummary": _inv_summary(cid),
                     }
                 )
         return {

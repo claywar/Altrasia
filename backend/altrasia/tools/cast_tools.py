@@ -10,8 +10,27 @@ CAST_SCENE_READ_TOOLS = frozenset(
 )
 CAST_SCENE_SELF_TOOLS = frozenset({"scene_join"})
 CAST_SCENE_SUMMON_TOOLS = frozenset({"scene_summon"})
+CAST_SCENE_FIXTURE_TOOLS = frozenset(
+    {
+        "scene_fixture_pickup",
+        "scene_fixture_place",
+        "scene_fixture_describe",
+        "scene_fixture_harvest",
+        "scene_stash_take",
+        "scene_stash_deposit",
+        "scene_inventory_give",
+        "scene_inventory_wear",
+        "scene_inventory_stow",
+        "scene_inventory_apply_outfit",
+    }
+)
 OBSERVER_ONLY_SCENE_TOOLS = frozenset(
-    {"scene_exit_set_state", "scene_update_fixture"}
+    {
+        "scene_exit_set_state",
+        "scene_update_fixture",
+        "scene_fixture_move",
+        "scene_fixture_replenish",
+    }
 )
 # Ambient generations: no summoning others; self-move only via scene_join.
 AMBIENT_MOVEMENT_TRIGGERS = frozenset({"idle_timer", "banter_turn", "idle_continue"})
@@ -44,6 +63,8 @@ def cast_allowed_tool_names(
             and can_summon_others(cfg, scene_role)
         ):
             allowed.add("scene_summon")
+    if cfg.get("castFixtureInventoryEnabled", True):
+        allowed |= CAST_SCENE_FIXTURE_TOOLS
     if cfg.get("discussionSignalsEnabled", True):
         allowed.add("discussion_signal")
     if trigger in BANTER_TRIGGERS and cfg.get("socialSignalEnabled", True):

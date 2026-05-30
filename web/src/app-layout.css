@@ -411,8 +411,61 @@ body {
 .scene-stage__presence {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin-top: var(--space-4);
+}
+
+.scene-stage__presence-person {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.scene-stage__presence-inventory {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted);
+  padding-left: 4px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-possessions {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.character-possessions__list {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.character-possessions__list div {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 6px;
+}
+
+.character-possessions__list dt {
+  margin: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.character-possessions__list dd {
+  margin: 0;
+}
+
+.character-possessions--empty,
+.character-possessions--loading {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .scene-stage__presence-empty {
@@ -832,12 +885,39 @@ body {
   justify-content: center;
 }
 
-.cast-row__name {
+.cast-row__body {
   grid-column: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cast-row__name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.cast-row__inventory {
+  font-size: 0.72rem;
+  color: var(--text-muted, #888);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cast-row__inventory--empty {
+  font-style: italic;
+  opacity: 0.65;
+}
+
+.cast-row__possessions {
+  padding: 8px 10px 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
 }
 
 .cast-row__menu {

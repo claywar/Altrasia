@@ -178,6 +178,16 @@ class Orchestrator:
             )
             await enqueue_debate_turn(self.svc, job["sceneId"])
             return
+        if trigger == "conversation_turn":
+            from altrasia.conversation_runner import enqueue_conversation_turn
+
+            log.info(
+                "scheduling conversation turn recovery scene=%s character=%s",
+                job["sceneId"],
+                job.get("characterId"),
+            )
+            await enqueue_conversation_turn(self.svc, job["sceneId"])
+            return
         if trigger not in _AGENT_CONTINUE_TRIGGERS:
             return
         depth = int(job.get("continueDepth") or 0)
@@ -1270,6 +1280,17 @@ class Orchestrator:
                     system += (
                         "\nSynthesize positions for all debaters; your line is the public summary."
                     )
+        if str(job.get("trigger", "")) == "conversation_turn":
+            from altrasia.debate_activity import get_active_conversation
+
+            activity = get_active_conversation(scene)
+            if activity:
+                topic = activity.get("topic")
+                topic_part = f" Topic: {topic}." if topic else ""
+                system += (
+                    f"\n\nConversation overlay active.{topic_part} "
+                    "Give a concise in-character line; stay collegial and on-topic."
+                )
         from altrasia.orchestrator.idle_social_state import get_floor_hold
         from altrasia.orchestrator.idle_social_prompt import (
             banter_system_addendum,
@@ -1813,22 +1834,48 @@ class Orchestrator:
         if not movement_tools_ran(tool_log) and narrative_presence_eligible(
             str(job.get("trigger") or "")
         ):
-            detection = detect_narrative_presence(
-                self.svc,
-                world_id=job["worldId"],
-                speaker_id=job["characterId"],
-                scene_id=job["sceneId"],
-                output_text=text,
-                cfg=cfg,
-            )
-            if detection:
-                await apply_narrative_presence(
+            np_mode = cfg.get("narrativePresenceMode", "off")
+            detection = None
+            if np_mode in ("llm", "detect"):
+                from altrasia.domain.narrative_presence_llm import detect_narrative_presence_llm
+
+                cleaned, detection = detect_narrative_presence_llm(
+                    text,
+                    mode=np_mode,
+                    speaker_id=job["characterId"],
+                )
+                if cleaned != text:
+                    text = cleaned
+                    self.svc.store.update_message(msg_id, outputText=cleaned)
+            if detection is None and np_mode in ("auto", "detect"):
+                detection = detect_narrative_presence(
                     self.svc,
                     world_id=job["worldId"],
-                    detection=detection,
                     speaker_id=job["characterId"],
-                    source_scene_id=job["sceneId"],
+                    scene_id=job["sceneId"],
+                    output_text=text,
+                    cfg=cfg,
                 )
+            if detection:
+                if detection.get("mode") in ("auto", "llm"):
+                    await apply_narrative_presence(
+                        self.svc,
+                        world_id=job["worldId"],
+                        detection=detection,
+                        speaker_id=job["characterId"],
+                        source_scene_id=job["sceneId"],
+                    )
+                elif detection.get("mode") == "detect":
+                    self._emit(
+                        job["worldId"],
+                        "narrative.presence.detected",
+                        {
+                            "sceneId": job["sceneId"],
+                            "characterId": job["characterId"],
+                            "messageId": msg_id,
+                            "actions": detection.get("actions") or [],
+                        },
+                    )
                 for act in detection.get("actions") or []:
                     if act.get("kind") == "summon":
                         tool_log.append(
@@ -1940,6 +1987,38 @@ class Orchestrator:
                         job["worldId"],
                         "scene.changed",
                         {"sceneId": job["sceneId"], "debate": "turn_done"},
+                    )
+
+        if job.get("trigger") == "conversation_turn":
+            from altrasia.debate_activity import (
+                clear_conversation,
+                conversation_exhausted,
+                get_active_conversation,
+            )
+
+            scene_row = self.svc.store.get_scene(job["sceneId"])
+            activity = get_active_conversation(scene_row) if scene_row else None
+            if activity:
+                remaining = activity.get("turnsRemaining")
+                if remaining is not None:
+                    activity["turnsRemaining"] = max(0, int(remaining) - 1)
+                    self.svc.store.update_scene(
+                        job["sceneId"],
+                        activityJson=json.dumps(activity),
+                        updatedAt=ISO(),
+                    )
+                if conversation_exhausted(activity):
+                    clear_conversation(self.svc.store, job["sceneId"])
+                    self._emit(
+                        job["worldId"],
+                        "scene.changed",
+                        {"sceneId": job["sceneId"], "conversation": "ended"},
+                    )
+                else:
+                    self._emit(
+                        job["worldId"],
+                        "scene.changed",
+                        {"sceneId": job["sceneId"], "conversation": "turn_done"},
                     )
 
         if movement_tools_ran(tool_log):

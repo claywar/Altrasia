@@ -198,6 +198,99 @@ def topic_exhausted_recent_lines(texts: list[str]) -> bool:
     return overlap > 0.72
 
 
+def get_active_conversation(scene: dict[str, Any]) -> dict[str, Any] | None:
+    activity = parse_activity(scene)
+    if activity and activity.get("kind") == "conversation":
+        return activity
+    return None
+
+
+def start_conversation(
+    store: SqlitePersistence,
+    scene_id: str,
+    *,
+    speaking_order: list[str],
+    topic: str | None = None,
+    turns_remaining: int | None = None,
+) -> dict[str, Any]:
+    if len(speaking_order) < 1:
+        raise ValueError("speakingOrder required")
+    scene = store.get_scene(scene_id)
+    if not scene:
+        raise ValueError("scene not found")
+    present = json.loads(scene.get("presentJson") or "[]")
+    for cid in speaking_order:
+        if cid not in present:
+            raise ValueError(f"speaker {cid} not present at scene")
+    activity: dict[str, Any] = {
+        "kind": "conversation",
+        "speakingOrder": speaking_order,
+        "currentIndex": 0,
+    }
+    if topic:
+        activity["topic"] = topic
+    if turns_remaining is not None:
+        activity["turnsRemaining"] = turns_remaining
+    store.update_scene(scene_id, activityJson=json.dumps(activity), updatedAt=ISO())
+    return activity
+
+
+def clear_conversation(store: SqlitePersistence, scene_id: str) -> None:
+    scene = store.get_scene(scene_id)
+    if not scene:
+        return
+    activity = parse_activity(scene)
+    if activity and activity.get("kind") == "conversation":
+        store.update_scene(scene_id, activityJson=None, updatedAt=ISO())
+
+
+def advance_conversation_speaker(store: SqlitePersistence, scene_id: str) -> dict[str, Any]:
+    scene = store.get_scene(scene_id)
+    if not scene:
+        raise ValueError("scene not found")
+    activity = get_active_conversation(scene)
+    if not activity:
+        raise ValueError("no conversation activity on scene")
+    order = activity["speakingOrder"]
+    idx = int(activity.get("currentIndex") or 0) + 1
+    if idx >= len(order):
+        idx = 0
+    activity["currentIndex"] = idx
+    store.update_scene(scene_id, activityJson=json.dumps(activity), updatedAt=ISO())
+    return activity
+
+
+def conversation_exhausted(activity: dict[str, Any]) -> bool:
+    remaining = activity.get("turnsRemaining")
+    if remaining is None:
+        return False
+    return int(remaining) <= 0
+
+
+def format_activity_summary(scene: dict[str, Any], *, members: dict[str, Any] | None = None) -> str:
+    """AO-22-3: activity line for scene framing."""
+    activity = parse_activity(scene)
+    if not activity:
+        return ""
+    kind = activity.get("kind")
+    order = activity.get("speakingOrder") or []
+    idx = int(activity.get("currentIndex") or 0)
+    speaker_id = order[idx] if 0 <= idx < len(order) else None
+    speaker_label = speaker_id
+    if members and speaker_id:
+        speaker_label = members.get(speaker_id, {}).get("displayName", speaker_id)
+    if kind == "debate":
+        phase = activity.get("phase", "opening")
+        return f"Activity: debate — phase {phase}; speaking: {speaker_label}"
+    if kind == "conversation":
+        topic = activity.get("topic")
+        topic_part = f" — topic {topic}" if topic else ""
+        return f"Activity: conversation{topic_part}; speaking: {speaker_label}"
+    if kind == "banter":
+        return f"Activity: banter; speaking: {speaker_label}"
+    return ""
+
+
 def finalize_debate_synthesis(
     memory: Any, scene_id: str, activity: dict[str, Any], synthesis_text: str
 ) -> list[str]:

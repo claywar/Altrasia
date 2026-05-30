@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -10,6 +11,11 @@ MAX_SUMMON_PER_LINE = 8
 
 _BRIEFING_HINTS = re.compile(
     r"\b(briefing|brief|meeting|conference|assemble|gather|sync|observe)\b",
+    re.I,
+)
+
+_PICKUP_HINTS = re.compile(
+    r"\b(picks?\s+up|grabs?|takes?|lifts?|snatches?)\b",
     re.I,
 )
 
@@ -104,6 +110,16 @@ def _names_in_text(text: str, members: list[dict[str, Any]]) -> list[str]:
     return found[:MAX_SUMMON_PER_LINE]
 
 
+def _fixture_keys_in_text(text: str, fixtures: dict[str, Any]) -> list[str]:
+    lower = text.lower()
+    found: list[str] = []
+    for key, fixture in fixtures.items():
+        label = (fixture.get("label") or key).lower()
+        if label in lower or key.lower() in lower:
+            found.append(key)
+    return found[:3]
+
+
 def detect_narrative_presence(
     services: Any,
     *,
@@ -158,6 +174,22 @@ def detect_narrative_presence(
     if self_move and target_scene_id:
         actions.append({"kind": "join", "sceneId": target_scene_id, "characterId": speaker_id})
 
+    if _PICKUP_HINTS.search(text):
+        scene = services.store.get_scene(scene_id)
+        if scene:
+            fixtures = json.loads(scene.get("fixturesJson") or "{}")
+            for fk in _fixture_keys_in_text(text, fixtures):
+                fix = fixtures.get(fk, {})
+                if fix.get("kind") in ("discrete", "fixture") and fix.get("portable") is not False:
+                    actions.append(
+                        {
+                            "kind": "pickup",
+                            "fixtureKey": fk,
+                            "characterId": speaker_id,
+                        }
+                    )
+                    break
+
     if not actions:
         return None
 
@@ -172,8 +204,8 @@ async def apply_narrative_presence(
     speaker_id: str | None = None,
     source_scene_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Apply detected presence actions (auto mode)."""
-    if detection.get("mode") != "auto":
+    """Apply detected presence actions (auto or llm mode)."""
+    if detection.get("mode") not in ("auto", "llm"):
         return []
     applied: list[dict[str, Any]] = []
     for act in detection.get("actions") or []:
@@ -199,4 +231,67 @@ async def apply_narrative_presence(
                 action="join",
             )
             applied.append(act)
+        elif act["kind"] == "pickup":
+            from altrasia.domain.inventory import pickup_fixture
+            from altrasia.memory.fixture_sync import sync_scene_fixtures_to_loci
+
+            try:
+                out = pickup_fixture(
+                    services.store,
+                    world_id=world_id,
+                    scene_id=source_scene_id or "",
+                    character_id=act["characterId"],
+                    fixture_key=act["fixtureKey"],
+                )
+                if source_scene_id:
+                    sync_scene_fixtures_to_loci(services.store, scene_id=source_scene_id)
+                applied.append({"kind": "pickup", **out})
+            except ValueError:
+                pass
+        elif act["kind"] == "stash_take":
+            from altrasia.domain.shared_stash import take_from_stash
+
+            try:
+                out = take_from_stash(
+                    services.store,
+                    world_id=world_id,
+                    scene_id=source_scene_id or "",
+                    character_id=act["characterId"],
+                    stash_key=act["stashKey"],
+                    item_id=act.get("itemId"),
+                )
+                applied.append({"kind": "stash_take", **out})
+            except ValueError:
+                pass
+        elif act["kind"] == "stash_deposit":
+            from altrasia.domain.shared_stash import deposit_to_stash
+
+            try:
+                out = deposit_to_stash(
+                    services.store,
+                    world_id=world_id,
+                    scene_id=source_scene_id or "",
+                    character_id=act["characterId"],
+                    stash_key=act["stashKey"],
+                    item_id=act["itemId"],
+                )
+                applied.append({"kind": "stash_deposit", **out})
+            except ValueError:
+                pass
+        elif act["kind"] == "give":
+            from altrasia.domain.inventory import give_item
+
+            try:
+                out = give_item(
+                    services.store,
+                    world_id=world_id,
+                    from_character_id=act.get("characterId") or speaker_id or "",
+                    to_character_id=act["toCharacterId"],
+                    item_id=act["itemId"],
+                    to_slot=act.get("toSlot", "held"),
+                    container_item_id=act.get("containerItemId"),
+                )
+                applied.append({"kind": "give", **out})
+            except ValueError:
+                pass
     return applied

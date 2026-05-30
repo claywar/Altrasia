@@ -47,6 +47,12 @@ Fixtures: `tests/fixtures/output-quality/` (see §10). Integration CI MUST run O
 | W-1 | Delete last scene rejected |
 | W-3 | Character cannot be present in two scenes |
 | LP-1 | Join removes from other scene present list |
+| LP-2 | Inventory world-scoped; fixtures scene-scoped (`tests/test_inventory.py`) |
+| LP-3 | Scene framing includes present inventory summaries (`tests/test_scene_framing_inventory.py`) |
+| LP-4 | Fixture mirror to world loci on sync (`tests/test_fixture_mirror.py`) |
+| GS-1–5 | Shared stashes: scene-scoped pools, take/deposit, framing (`tests/test_shared_stash.py`) |
+| OP-1–4 | Outfit presets in configJson; apply API/tool/UI (`tests/test_outfit_presets.py`) |
+| NP-LLM-1–4 | Narrative presence llm/detect JSON parser (`tests/test_narrative_presence_llm.py`) |
 | CC-1 | exitsJson round-trip |
 | CC-3 | Elsewhere roster includes presentSceneId |
 | CC-11a | POST knock does not enqueue GenerationJob |
@@ -195,7 +201,7 @@ v1 spatial gate uses demo pre-seeded cast only ([24-character-authoring.md](24-c
 | ID | Test |
 |----|------|
 | AO-22-wedge | Idle social banter dyads + `DiarySegment.kind=banter` — Alpha wedge; covered by `tests/test_idle_social.py`; not v1 CI blocker |
-| AO-22-full | Structured `scene.activity.kind=conversation` or `banter` overlays — spec target |
+| AO-22-full | Structured `scene.activity.kind=conversation` or `banter` overlays — **done** (`tests/test_conversation_activity.py`) |
 | AO-17 | `speak_intent` tie-break on score tie — **done** (`tests/test_speak_intent.py`) |
 | MAP-7 | Map regen fixture diff surfaces conflict |
 | MAP-ACC-1–6 | Phase 6: world map, level stack, floor plan, vertical exits, mini-map level ghosts ([18-location-maps.md](18-location-maps.md) §11) |

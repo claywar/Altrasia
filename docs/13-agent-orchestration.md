@@ -62,8 +62,11 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 | `commission_started` | Post-v1 | Operator/API started commission ([23-in-world-work.md](23-in-world-work.md)) |
 | `commission_tick` | Post-v1 | Scheduler tick while commission `running` |
 | `debate_turn` | Post-v1 | Debate phase advance at scene with `activity.kind=debate` |
+| `conversation_turn` | Post-v1 | Conversation overlay turn at scene with `activity.kind=conversation` |
 
-**Banter (Alpha wedge):** Idle social uses dyad sessions via `socialStateJson` and triggers `banter_turn` / `idle_continue` — not full `scene.activity.kind=banter` overlays. See §5. **AO-22-full** (structured activity overlays) remains spec target.
+**Activity overlays (AO-22):** `Scene.activityJson` owns the active overlay (`debate` \| `conversation` \| `banter`). `Scene.socialStateJson` owns idle-social metadata (variety ledger, floor hold, digest window). Only `speakingOrder[currentIndex]` is eligible while an overlay is active (DEB-2 / AO-22-1).
+
+**Banter:** Idle tick MAY start dyad sessions (`banter_turn` + `idle_continue`). Operator MAY also start/end banter via REST (`POST/DELETE .../banter`). Active banter is stored on `activityJson` with `kind=banter`.
 
 ## 4. Eligibility (AO-3)
 
@@ -234,7 +237,7 @@ Optional: hybrid embed rerank top-1 per character when `EmbeddingRecord` exists 
 | AO-20 | One reactive NPC per operator public line completion. |
 | AO-21 | v1 MUST NOT enqueue parallel reactive generations for one stimulus. |
 | AO-22-wedge | Idle social / banter dyads + `DiarySegment.kind=banter` — **Alpha wedge**; not v1 CI blocker |
-| AO-22-full | Structured `scene.activity.kind=conversation` or `banter` overlays — **spec target** |
+| AO-22-full | Structured `scene.activity.kind=conversation` or `banter` overlays + operator REST — **done** (`tests/test_conversation_activity.py`, `ActivityPanel`) |
 
 ## 9. Tool loop integration
 

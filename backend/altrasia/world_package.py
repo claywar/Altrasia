@@ -176,6 +176,7 @@ def import_world_package(
             muted=wm.get("muted", 0),
             disabled=wm.get("disabled", 0),
             sceneRole=wm.get("sceneRole"),
+            inventoryJson=wm.get("inventoryJson", "{}"),
         )
 
     msg_ids: dict[str, str] = {}
