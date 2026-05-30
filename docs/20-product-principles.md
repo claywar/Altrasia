@@ -148,12 +148,31 @@ After geography lock, Observer/Architect MAY **add locations in-map** and charac
 - Demo world fixture `demo-spatial-v1`
 - Output quality CI (OQ-1, OQ-3)
 
-### SHOULD NOT ship (v1)
+### SHOULD NOT ship (v1 release gate)
+
+Historical v1 gate intent — these were excluded from the **v1 CI release gate**:
 
 - FS, scheduler, web-tools
 - Semantic embeddings, reflection
 - Plugins, maps, ComfyUI
 - Phone play (v1.1)
+
+### Alpha wedge (local tree)
+
+The following exist in the Alpha tree with mock, stub, or off-by-default behavior. They are **not v1 CI blockers**; production depth is tracked in [SPEC-GAPS.md](SPEC-GAPS.md).
+
+| Capability | Alpha wedge status | Caveat |
+|------------|-------------------|--------|
+| Web-tools | Wedge | Mock fetch by default (`webToolsMock`) |
+| FS agent | Wedge | Approval on write; jail path |
+| Scheduler | Stub | `schedule_create` records stub only |
+| Reflection (AO-8) | Wedge | `reflectionEnabled: false` by default |
+| Embeddings / rerank | Wedge | Hybrid search when embed URL set |
+| Plugins | Wedge | `enableServerPlugins` off by default |
+| MapDraft / map artifacts | Wedge | MAP-ACC UI depth open |
+| ComfyUI | Stub | Portrait endpoint; mock without ComfyUI URL |
+| Commissions / debate / commons API | Wedge | Commons has no Web UI panel |
+| Idle social / banter | Wedge | Policy-gated dyad sessions |
 
 ### Deferred but intentional (not dropped)
 
@@ -176,19 +195,21 @@ Operators enable global heartbeat in **server settings** when v1.1 ships (defaul
 | 1 | Inference + memory spike (CLI) |
 | 2 | Spatial wedge + Web UI streaming |
 | 2.5 | **v1.1** — phone, global heartbeat, world package, CC-11 phone/knock answer |
-| 3 | Observer polish, approvals, inspector |
-| 3.5 | In-world work spec (commissions, debate activity, commons) — schema only; no v1 ship |
-| 4+ | Embeddings, Architect tools, web-tools, commission runtime |
-| 4.5 | Debate `scene.activity` + acceptance paths |
-| 6 | Maps, ComfyUI |
+| 3 | Observer polish, approvals, inspector, character authoring |
+| 3.5 | In-world work — **runtime + UI wedge shipped**; production depth in [SPEC-GAPS.md](SPEC-GAPS.md) |
+| 4+ | Web/FS tools, commission depth, embeddings |
+| 4.5 | Debate acceptance paths — wedge shipped |
+| 6 | Maps, ComfyUI — **Alpha wedge shipped**; MAP-ACC / live ComfyUI depth open |
 
-### In-world work (post-v1, not wedge replacement)
+### In-world work (Alpha wedge vs spec depth)
 
-| Capability | Spec | Phase |
-|------------|------|-------|
-| Commissions (research errands; default deliverable → assignee mind pool) | [23-in-world-work.md](23-in-world-work.md) | 3.5 spec; Phase 4+ runtime with web/FS |
-| Debate `scene.activity` | [23-in-world-work.md](23-in-world-work.md) | 4.5 |
-| World commons, provenance on external facts | [02-memory.md](02-memory.md) MP-21–MP-22 | 3.5 spec; Phase 4+ |
+| Capability | Spec | Status |
+|------------|------|--------|
+| Commissions (research errands; default deliverable → assignee mind pool) | [23-in-world-work.md](23-in-world-work.md) | **Alpha wedge** — runtime + UI; live web/FS depth open |
+| Debate `scene.activity` | [23-in-world-work.md](23-in-world-work.md) | **Alpha wedge** — runtime + UI |
+| World commons, provenance on external facts | [02-memory.md](02-memory.md) MP-21–MP-22 | **API wedge** — no Web UI panel |
+| Reflection, MemoryLink, PersonaProposal | [16-learning.md](16-learning.md) §6 | **Alpha wedge** — default off |
+| Idle social / banter | [13-agent-orchestration.md](13-agent-orchestration.md) §5 | **Alpha wedge** |
 
 v1 golden path and MUST-ship list are **unchanged**. In-world work MUST NOT dilute spatial wedge acceptance.
 

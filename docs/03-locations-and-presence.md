@@ -127,7 +127,7 @@ Requirements:
 | Operator public message completes | **One** reactive NPC at active scene via `scoreSpeakers` (not round-robin) |
 | Cast scene line completes | Optional `agent_continue` chain (AO-19) when enabled |
 | Whisper/phone to character | Target generates |
-| Idle timer | **AO-4 only:** round-robin one NPC per eligible scene |
+| Idle timer | **AO-4 only:** weighted random one NPC per eligible scene (solo ambient or banter dyad) |
 
 Reactive and continue paths use contextual speaker selection; idle uses fair rotation when the operator is not driving the scene.
 

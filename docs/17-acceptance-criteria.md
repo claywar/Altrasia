@@ -111,7 +111,7 @@ Fixtures: `tests/fixtures/output-quality/` (see §10). Integration CI MUST run O
 | AO-19a | While continue chain active at scene, `idle_timer` does not enqueue for that scene |
 | AO-20 | Single operator public line → exactly one reactive GenerationJob |
 | AO-17 / AO-18 | Classroom: Teacher asks "capital of France"; Student A has matching mind locus, Student B does not → reactive job schedules Student A; `selectionRationaleJson` includes relevance factor |
-| AO-4 | Scene with 3+ eligible NPCs: three consecutive `idle_timer` ticks visit three distinct characters in RR order (wrap) |
+| AO-4 | Scene with 3+ eligible NPCs: consecutive `idle_timer` ticks pick among eligible cast via weighted random (not strict round-robin); `Scene.roundRobinIndex` MUST NOT drive selection |
 | AO-18a | Operator line "@Bob …" → Bob scheduled when eligible regardless of lower `speechWeight` |
 
 ### Communication (v1)
@@ -149,6 +149,16 @@ Normative UI requirements: [14-web-ui.md](14-web-ui.md). Wireframes: [guides/web
 | — | POST meta-message not returned in scene transcript GET |
 | — | Cast canPerceive false for channelKind=meta |
 
+## 2c. Reflection smoke (non-blocking)
+
+Optional Alpha wedge validation; **not** a v1 release gate. References `tests/test_reflection.py`.
+
+| Step | Expected |
+|------|----------|
+| Enable `reflectionEnabled` on demo world policy | Policy PATCH succeeds |
+| POST on-demand reflect for one character with diary input | `reflection-runs` row with `status: done` or documented skip |
+| PersonaProposal approve/reject | Character definition updates only after operator approve |
+
 ## 4. v1.1 gate (addendum)
 
 Single milestone: phone, global heartbeat, world package, full knock/phone answer ([20-product-principles.md](20-product-principles.md) Phase 2.5).
@@ -184,8 +194,9 @@ v1 spatial gate uses demo pre-seeded cast only ([24-character-authoring.md](24-c
 
 | ID | Test |
 |----|------|
-| AO-22 | `scene.activity.kind=conversation` or `banter` overlays (post-v1) |
-| AO-17 v1.1 | `speak_intent` batch model call on score tie |
+| AO-22-wedge | Idle social banter dyads + `DiarySegment.kind=banter` — Alpha wedge; covered by `tests/test_idle_social.py`; not v1 CI blocker |
+| AO-22-full | Structured `scene.activity.kind=conversation` or `banter` overlays — spec target |
+| AO-17 | `speak_intent` tie-break on score tie — **done** (`tests/test_speak_intent.py`) |
 | MAP-7 | Map regen fixture diff surfaces conflict |
 | MAP-ACC-1–6 | Phase 6: world map, level stack, floor plan, vertical exits, mini-map level ghosts ([18-location-maps.md](18-location-maps.md) §11) |
 | MAP-GEN-ACC-1–4 | LLM `map_layout_generate` valid JSON; topology matches [reference-images](guides/reference-images/README.md) (§12) |

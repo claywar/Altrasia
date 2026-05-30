@@ -1,12 +1,12 @@
 # Altrasia Roadmap
 
-Single-page view of milestones, repository status, and what ships when. Normative behavior remains in numbered specs `00`–`25`.
+Single-page view of milestones, repository status, and what ships when. Normative behavior remains in numbered specs `00`–`26`.
 
 ## Repository status
 
 | Layer | Status |
 |-------|--------|
-| **Design specifications** | Complete (docs `00`–`25`, appendices, acceptance criteria) |
+| **Design specifications** | Complete (docs `00`–`26`, appendices, acceptance criteria) |
 | **Implementation** | **Alpha** — Python backend, Web UI SPA, demo fixture; mock LLM default ([getting-started.md](guides/getting-started.md)) |
 | **Shipped product** | **Alpha (local)** — spatial golden path + v1.1 + Phase 3–6 wedge in tree; see [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md) |
 
@@ -42,19 +42,23 @@ Backlog phases T-001–T-081 are implemented; see [BACKLOG.md](BACKLOG.md). Opti
 | Architect World / scene CRUD | Done |
 | Commissions + debate | Runtime + UI |
 | MapDraft + map grow | Done |
-| Approvals, evidence, briefing, commons | Done |
+| Approvals, evidence, briefing | Done |
+| World commons (MP-22) | API only — no Web UI panel |
 | Minimal world map overlay | Done |
+| Reflection (AO-8) | Done — default off |
+| Idle social / banter | Done |
+| Discussion deliverables | Done |
 
-### Post-v1 depth (BACKLOG)
+### Post-v1 depth (open implementation)
 
 | Theme | Spec | Tracking |
 |-------|------|----------|
-| AO-17 speak-readiness, embeddings | [13](13-agent-orchestration.md), [02](02-memory.md) | T-020–T-025 |
-| Real web/FS/scheduler | [06](06-web-tools.md), [08](08-real-world-capabilities.md) | T-030–T-034 |
-| Plugin platform | [15](15-plugin-platform.md) | T-040–T-044 |
-| Full Phase 6 maps | [18](18-location-maps.md), [25](25-map-authoring.md) | T-050–T-055 |
-| ComfyUI | [19](19-comfyui-media.md) | T-060–T-063 |
-| UI E2E + polish | [14](14-web-ui.md) | T-070–T-075 |
+| Real web/FS/scheduler (production) | [06](06-web-tools.md), [08](08-real-world-capabilities.md) | [SPEC-GAPS.md](SPEC-GAPS.md) |
+| Plugin platform (full lifecycle) | [15](15-plugin-platform.md) | [SPEC-GAPS.md](SPEC-GAPS.md) |
+| Full Phase 6 maps (MAP-ACC UI) | [18](18-location-maps.md), [25](25-map-authoring.md) | [SPEC-GAPS.md](SPEC-GAPS.md) |
+| ComfyUI live integration | [19](19-comfyui-media.md) | [SPEC-GAPS.md](SPEC-GAPS.md) |
+| AO-22 full activity overlays; scene harvest/inventory | [13](13-agent-orchestration.md), [05](05-tool-calling.md) | [SPEC-GAPS.md](SPEC-GAPS.md) |
+| Commons Web UI | [23](23-in-world-work.md) | [SPEC-GAPS.md](SPEC-GAPS.md) |
 
 ## Feature matrix
 
@@ -75,7 +79,8 @@ Backlog phases T-001–T-081 are implemented; see [BACKLOG.md](BACKLOG.md). Opti
 | MapDraft / map grow | | | yes | [25](25-map-authoring.md) |
 | Mini-map structured | yes | | yes | [14](14-web-ui.md) §21.1 |
 | Mini-map shapes / envelopes | | yes | partial | [14](14-web-ui.md) §21.2–21.3 |
-| Full WorldMapCanvas + levels | | | partial | [18](18-location-maps.md) |
+| Full WorldMapCanvas + levels | | | partial (3D MapExplorer wedge) | [18](18-location-maps.md) |
+| MAP-ACC full acceptance UI | | | no | [18](18-location-maps.md) |
 | Live web/FS tools | | | partial | [06](06-web-tools.md), [08](08-real-world-capabilities.md) |
 | ComfyUI portraits | | | partial | [19](19-comfyui-media.md) |
 | Plugins | | | partial | [15](15-plugin-platform.md) |

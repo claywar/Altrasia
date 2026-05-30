@@ -2,7 +2,7 @@
 
 Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. Normative behavior remains in numbered specs; this is an implementer onboarding aid.
 
-**Status:** v1 + v1.1 **feature-complete**; Phase 3–6 wedge (commissions, debate, MapDraft, approvals, evidence, briefing, policy UI). **84 pytest** (83 default CI, 1 `slow`) + golden path 1–8 + Playwright e2e in CI.
+**Status:** v1 + v1.1 **feature-complete**; Phase 3–6 wedge (commissions, debate, MapDraft, approvals, evidence, briefing, policy UI, reflection, idle social). **224 pytest** collected (1 `slow` deselected; CI subset may exclude slow) + golden path 1–8 + Playwright e2e in CI.
 
 **Outstanding (full spec depth):** see [SPEC-GAPS.md](SPEC-GAPS.md) and [BACKLOG.md](BACKLOG.md) T-100+.
 
@@ -14,7 +14,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | MP-1 | Mind pool isolation | Done |
 | MP-9 | First call memory tools only when blocking | Done (`orchestrator/engine.py`, `test_mp9_ao4.py`) |
 | MP-20 | Group diary fan-out | Done |
-| AO-4 | Idle round-robin per scene | Done (`idle_scheduler.py`, tab-visible via WS) |
+| AO-4 | Weighted idle/banter selection (AO-4 / AO-4w) | Done (`social_selection.py`, `idle_scheduler.py`, tab-visible via WS) |
 | AO-19/19a | agent_continue + idle suppress | Done |
 | CC-11a | Knock no auto-gen | Done |
 | INF-5 | Single GPU job | Done |
@@ -42,7 +42,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | Mermaid in transcript (UI-R2/R5) | Done |
 | MP-9 blocking memory tools on first turn | Done |
 | MEM-PERF / scale fixtures | Done (`tests/test_memory_perf.py`, `memory-scale/`) |
-| Idle `roundRobin` (AO-4) | Done (tab-visible) |
+| Idle weighted selection (AO-4) | Done (tab-visible) |
 | v1.1 heartbeat | Done (settings UI + HB-1) |
 | DM-4 | World package export/import | Done (`world_package.py`, `test_world_package.py`) |
 | CC-8–CC-13 phone play | Done (`communication/phone.py`, `test_phone.py`) |
@@ -71,8 +71,22 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | COM-4 | `world_pool_at_target` / `both` deliverables | Done (`commissions.py`) |
 | COM-ACC-1/3, DEB-ACC-1 | Post-v1 acceptance paths | Done (`test_in_world_acceptance.py`) |
 | POST force-complete | API sketch §10 | Done |
-| MP-22 world commons | Gated recall + PUT/GET API | Done (`commons.py`, `test_commons.py`) |
+| MP-22 world commons | Gated recall + PUT/GET API | Done API (`commons.py`, `test_commons.py`); **Web UI panel not in tree** |
 | citeProvenanceInPrompt | World policy + prompt inject | Done (`world_config`, `engine.py`) |
+
+### Alpha wedge — additional shipped features
+
+| Spec ID | Requirement | Status |
+|---------|-------------|--------|
+| AO-8 | Reflection nightly + on-demand | Done (`reflection/`, migration 007, `test_reflection.py`) — `reflectionEnabled` off by default |
+| AO-4c / AO-22 wedge | Idle social / banter dyads | Done (`banter_runner.py`, `banter_gates.py`, `test_idle_social.py`) |
+| — | Discussion deliverables | Done (`discussion_deliverables.py`, `test_discussion_deliverables.py`) |
+| AO-17 | speak_intent tie-break | Done (`engine.py`, `test_speak_intent.py`) |
+| — | Embedding rerank in recall | Done (`memory/service.py`) |
+
+### Spec target — not in tree
+
+Operator loci PATCH, `map_generate` / `map_set_hotspot`, live ComfyUI pipeline, commons Web UI, real scheduler beyond stub — see [SPEC-GAPS.md](SPEC-GAPS.md).
 
 ## Sprint 1 — inference + memory spike
 

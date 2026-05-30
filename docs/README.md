@@ -14,7 +14,7 @@ In practice:
 
 This specification describes *what* the system MUST do. Normative specs are `00`–`25`. **Implementation stack:** Python-first extensible backend + professional Web UI frontend — [26-system-architecture.md](26-system-architecture.md). Persistence: SQLite ([11-data-model.md](11-data-model.md)). Operator console: [14-web-ui.md](14-web-ui.md).
 
-**Repository status:** design specifications complete; **implementation Alpha** (v1 + v1.1 + Phase 3–6 wedge in tree). Milestones: [ROADMAP.md](ROADMAP.md). Traceability: [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md). Remaining normative depth: [SPEC-GAPS.md](SPEC-GAPS.md). Personas: [personas.md](personas.md). Target first session: [guides/first-run-experience.md](guides/first-run-experience.md).
+**Repository status:** design specifications complete (`00`–`26`); **implementation Alpha** (v1 + v1.1 + Phase 3–6 wedge in tree, including reflection AO-8 and idle social/banter). Milestones: [ROADMAP.md](ROADMAP.md). Traceability: [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md). Remaining normative depth: [SPEC-GAPS.md](SPEC-GAPS.md). Personas: [personas.md](personas.md). Target first session: [guides/first-run-experience.md](guides/first-run-experience.md).
 
 ## Reading order
 
@@ -115,13 +115,13 @@ Stack detail: [26-system-architecture.md](26-system-architecture.md).
 
 ### Map terminology (avoid mis-scoping)
 
-| Term | v1 | Later |
-|------|----|-------|
-| **Structured mini-map** | Yes — schematic graph from exits; no LLM layout | [14-web-ui.md](14-web-ui.md) §21.1 |
-| **Location maps** (Phase 6) | No — `WorldMapCanvas`, floor plans, MapDraft UI | [18-location-maps.md](18-location-maps.md), [25-map-authoring.md](25-map-authoring.md) |
-| **MapDraft** | No — LLM layout + operator ack | Phase 6 ([25-map-authoring.md](25-map-authoring.md)) |
+| Term | Release gate | Alpha wedge |
+|------|--------------|-------------|
+| **Structured mini-map** | Yes — schematic graph from exits; no LLM layout | Done — [14-web-ui.md](14-web-ui.md) §21.1 |
+| **MapDraft / layout drafts** | No (Phase 6 normative target) | **Yes** — API + `MapDraftPanel`; full MAP-ACC UI depth open ([SPEC-GAPS.md](SPEC-GAPS.md)) |
+| **Location maps** (WorldMapCanvas, levels) | No | **Partial** — `map-artifacts`, 3D explorer, LevelStack/FloorPlan components; MAP-ACC-1–6 not fully gated ([18-location-maps.md](18-location-maps.md)) |
 
-v1.1 adds footprint shapes and building envelopes on the same mini-map ([14-web-ui.md](14-web-ui.md) §21.2–§21.3); that is still not Phase 6 site/stack authoring.
+v1.1 adds footprint shapes and building envelopes on the same mini-map ([14-web-ui.md](14-web-ui.md) §21.2–§21.3); Phase 6 site/stack authoring extends beyond that wedge.
 
 ### v1.1 (Phase 2.5)
 
@@ -130,17 +130,24 @@ v1.1 adds footprint shapes and building envelopes on the same mini-map ([14-web-
 - World package export + import ([11-data-model.md](11-data-model.md) DM-4)
 - Explicit knock/phone answer flows (CC-11, CC-12)
 
-### Out of scope (v1)
+### Deferred for release gate; Alpha wedge status
 
-- SillyTavern-compatible UI, preset matrix, or character card PNG format
-- Phone play and global heartbeat (**v1.1** — above)
-- World package import/export (**v1.1**)
-- Image generation; **Phase 6 location maps** and MapDraft (**not** the v1 structured mini-map — see table above) ([18](18-location-maps.md), [25](25-map-authoring.md), [19](19-comfyui-media.md))
-- Vector RAG as primary episodic memory (diary is canonical)
-- Multi-tenant accounts
-- Required plugins ([15-plugin-platform.md](15-plugin-platform.md))
-- FS / scheduler / web-tools (Phase 4+)
-- Commissions, debate `scene.activity`, world commons (**post-v1** — [23-in-world-work.md](23-in-world-work.md); schema in v1.5 spec)
+Capabilities below were **out of scope for the v1 release gate** but may exist as **Alpha wedge** (mock-default, partial UI, or off-by-default). Normative depth gaps: [SPEC-GAPS.md](SPEC-GAPS.md). Checklist: [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md).
+
+| Capability | Release gate | Alpha wedge |
+|------------|--------------|-------------|
+| Phone play, global heartbeat, world package | **v1.1 done** | Done |
+| Commissions, debate, briefing | Post-v1 gate | Runtime + UI wedge |
+| MapDraft, map artifacts, geography lock | Post-v1 gate | API + UI wedge |
+| FS / web-tools / scheduler | Post-v1 gate | Wedge (mock/stub defaults) |
+| Reflection (AO-8), idle social/banter | Post-v1 gate | Wedge (`reflectionEnabled` off by default) |
+| World commons (MP-22) | Post-v1 gate | API only; no Web UI panel |
+| ComfyUI portraits | Post-v1 gate | Stub + portrait endpoint |
+| Plugins | Post-v1 gate | Loader + reference plugin; off by default |
+| Vector RAG as primary episodic memory | Not planned | Diary + mandatory recall canonical |
+| Multi-tenant accounts | Not planned | — |
+| SillyTavern-compatible UI / character card PNG | Not planned | — |
+| Required plugins | Not planned | Optional ([15-plugin-platform.md](15-plugin-platform.md)) |
 
 ## Normative language
 

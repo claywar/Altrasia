@@ -94,7 +94,7 @@ activity:
 | ID | Requirement |
 |----|-------------|
 | **DEB-1** | At `synthesis` phase, MUST `memory_store` to **each** `speakingOrder` participant mind pool under `debate:{sceneId}:` unless `debateDeliverablePolicy: world_pool_at_scene`. |
-| **DEB-2** | Only `speakingOrder[currentIndex]` MAY be scheduled for debate turns (overrides idle round-robin, `agent_continue`, and AO-18 scoring at that scene). |
+| **DEB-2** | Only `speakingOrder[currentIndex]` MAY be scheduled for debate turns (overrides AO-4 weighted idle, `agent_continue`, and AO-18 scoring at that scene). |
 | **DEB-3** | Speech uses `channelKind=scene`, scope `public` (or whisper per [04-communication.md](04-communication.md)). MP-20 fan-out applies. |
 | **DEB-4** | Moderator: Observer **Narrate** or designated cast character—no new meta product. |
 

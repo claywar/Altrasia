@@ -24,9 +24,9 @@ Scene illustrations, portraits, fixture icons—not a bolt-on gallery.
 
 Store **caption + assetId** in world locus (`scene:{id}:image` or fixture key)—not pixels in loci.
 
-## 4. v1
+## 4. v1 and Alpha wedge
 
-ComfyUI is **not implemented** in v1. GpuResourceQueue schema reserves `kind: image`.
+ComfyUI is **not in the v1 release gate**. **Alpha wedge:** portrait endpoint + stub when ComfyUI URL unset; gray placeholders (UI-IMG-1). GpuResourceQueue schema reserves `kind: image`. Live integration depth: [SPEC-GAPS.md](SPEC-GAPS.md).
 
 ## 5. Web UI (post-v1)
 

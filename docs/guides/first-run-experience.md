@@ -169,6 +169,16 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 
 Output quality gates OQ-1 and OQ-3 apply at implementation ([22-output-quality.md](../22-output-quality.md)).
 
+## After golden path (Alpha features)
+
+**Non-normative.** Optional exploration after steps 1–8; not part of the release gate.
+
+1. **Reflection (AO-8):** Settings → World → enable **Character reflection** → open a cast member in **Memory inspector** → **Reflection** tab → **Run reflection now**. Review run history; approve or reject persona proposals when offered.
+2. **Idle social / banter:** Settings → **Idle social** policy → tune banter gates and tone → use **Show ambient/banter in transcript** if you want dyad lines in the main chronicle.
+3. **Maps:** Settings → **Scenes & layout** → MapDraft / geography; Top bar **Map** for the tactical map console and world overlay.
+
+See [IMPLEMENTATION-CHECKLIST.md](../IMPLEMENTATION-CHECKLIST.md) and [SPEC-GAPS.md](../SPEC-GAPS.md) for wedge vs spec-target depth.
+
 ## Related documents
 
 - [ROADMAP.md](../ROADMAP.md) — v1 milestone and deferred artifacts

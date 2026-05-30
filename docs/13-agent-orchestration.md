@@ -22,7 +22,7 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 
 | Path | Who speaks next | Mechanism |
 |------|-----------------|-----------|
-| `idle_timer` | One NPC per eligible scene | **AO-4** scene-scoped round-robin (fair background rotation) |
+| `idle_timer` | One NPC per eligible scene | **AO-4** weighted random among scored candidates (solo ambient) |
 | `operator_message` (reactive) | One NPC after persona/operator public line | **AO-18** `scoreSpeakers` (not round-robin) |
 | `agent_continue` | Up to `maxContinueDepth` NPCs after a cast line | **AO-18** `scoreSpeakers` per step |
 | `whisper_target` / operator direct | Named character | Targeted; no scoring |
@@ -52,7 +52,7 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 |---------|-----|-------------|
 | `operator_message` | Yes | Persona or operator sent a line; on completion enqueue **one** reactive NPC job (AO-18) |
 | `persona_arrival` | Yes | Persona joined scene with NPCs; queue up to `personaArrivalMaxReplies` reactive jobs (default 1) |
-| `idle_timer` | Yes | World activity tick; **one** NPC via AO-4 round-robin per eligible scene |
+| `idle_timer` | Yes | World activity tick; **one** NPC via AO-4 weighted selection per eligible scene |
 | `whisper_target` | Yes | Character targeted by whisper |
 | `agent_tool` | Yes | Scene/comm tool initiated follow-up |
 | `agent_continue` | Yes | After cast scene line completes; optional NPC chain (AO-19) when enabled |
@@ -63,7 +63,7 @@ The **orchestrator** decides *which* `GenerationJob` runs next. The **GpuResourc
 | `commission_tick` | Post-v1 | Scheduler tick while commission `running` |
 | `debate_turn` | Post-v1 | Debate phase advance at scene with `activity.kind=debate` |
 
-**Post-v1 (not v1):** `scene.activity.kind` values `conversation` and `banter` are reserved for optional structured overlays; v1 uses `agent_continue` + `scoreSpeakers` only (AO-22).
+**Banter (Alpha wedge):** Idle social uses dyad sessions via `socialStateJson` and triggers `banter_turn` / `idle_continue` — not full `scene.activity.kind=banter` overlays. See §5. **AO-22-full** (structured activity overlays) remains spec target.
 
 ## 4. Eligibility (AO-3)
 
@@ -78,7 +78,7 @@ A character MAY be scheduled when:
 
 **Commission (COM-6, post-v1):** Assignee MUST be present at commission `targetSceneId` for `commission_started` / `commission_tick` jobs. Status `queued` or `blocked` until presence matches.
 
-**Debate (DEB-2, post-v1):** When `scene.activity.kind=debate`, only `speakingOrder[currentIndex]` is eligible for `debate_turn` jobs at that scene (overrides AO-4 round-robin and `agent_continue` until phase advances).
+**Debate (DEB-2, post-v1):** When `scene.activity.kind=debate`, only `speakingOrder[currentIndex]` is eligible for `debate_turn` jobs at that scene (overrides AO-4 weighted idle and `agent_continue` until phase advances).
 
 ## 5. Weighted idle selection (AO-4 / AO-4w)
 
@@ -233,7 +233,8 @@ Optional: hybrid embed rerank top-1 per character when `EmbeddingRecord` exists 
 | AO-19 | `agent_continue` chain depth, idle suppression during chain (see §6.2). |
 | AO-20 | One reactive NPC per operator public line completion. |
 | AO-21 | v1 MUST NOT enqueue parallel reactive generations for one stimulus. |
-| AO-22 | `conversation` / `banter` scene activities are post-v1; not required for v1 ensemble dialogue. |
+| AO-22-wedge | Idle social / banter dyads + `DiarySegment.kind=banter` — **Alpha wedge**; not v1 CI blocker |
+| AO-22-full | Structured `scene.activity.kind=conversation` or `banter` overlays — **spec target** |
 
 ## 9. Tool loop integration
 
@@ -252,9 +253,9 @@ Meta channel (`channelKind=meta`) excluded from AO-9 scene transcript rules.
 
 `scene_join`, `scene_leave`, and narrative presence ([03-locations-and-presence.md](03-locations-and-presence.md) §7) MUST emit `presence.changed`. One scene per character per world (W-3).
 
-## 11. Learning pass (AO-8, optional Phase 4)
+## 11. Learning pass (AO-8)
 
-Post-generation **reflection** job MAY propose `memory_store` mind loci from output-only summary. Reflection uses GPU queue like any chat call. MP-14 applies.
+**Alpha wedge (default off):** Nightly and on-demand reflection consolidate diary into mind loci, MemoryLink edges, and optional PersonaProposal rows. See [16-learning.md](16-learning.md) §6.
 
 ## 12. Requirements summary
 

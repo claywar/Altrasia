@@ -23,7 +23,8 @@ Reverse lookup for normative requirement IDs (`00`–`26`). **Authoritative defi
 | `PI-*` | [10-prompt-injection.md](10-prompt-injection.md) | Prompt layers |
 | `DM-*` | [11-data-model.md](11-data-model.md) | SQLite entities, migration |
 | `API-*` | [12-api-sketch.md](12-api-sketch.md) | REST/WS surfaces |
-| `AO-*` | [13-agent-orchestration.md](13-agent-orchestration.md) | Scheduler, jobs |
+| `AO-*` | [13-agent-orchestration.md](13-agent-orchestration.md) | Scheduler, jobs, banter, discussion deliverables |
+| AO-8 (reflection) | [16-learning.md](16-learning.md) §6 | Reflection, MemoryLink, PersonaProposal |
 | `UI-*`, `UI-MAP-*`, `UI-A11Y-*` | [14-web-ui.md](14-web-ui.md) | Operator console (**v1 subset:** §0) |
 | `PL-*` | [15-plugin-platform.md](15-plugin-platform.md) | Plugins (post-v1) |
 | `SYS-*` | [26-system-architecture.md](26-system-architecture.md) | Python backend, Web UI stack, extensibility |
@@ -37,6 +38,8 @@ Reverse lookup for normative requirement IDs (`00`–`26`). **Authoritative defi
 
 **Non-normative wireframe IDs:** `WF-*` in [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) — see mapping in [14-web-ui.md](14-web-ui.md) §0.
 
+**Trigger cross-refs (Alpha wedge):** `banter_turn`, `idle_continue` → [13-agent-orchestration.md](13-agent-orchestration.md) §3, §5; `discussion_deliverable` → §6.3.
+
 ## v1 release gate IDs (blocking)
 
 From [17-acceptance-criteria.md](17-acceptance-criteria.md) §2, §2b, §3 (subset):
@@ -49,6 +52,8 @@ From [17-acceptance-criteria.md](17-acceptance-criteria.md) §2, §2b, §3 (subs
 | Inference | INF-5*, STR-*, router `Qwen3.6-35B-A3B` |
 | Orchestration | AO-4*, AO-11–12, AO-19–20 |
 | Web UI (when built) | UI-LAY-6, UI-R*, UI-TRN-1, UI-REG-1, UI-2, UI-SET-*, UI-WLD-1, UI-S4, UI-MAP-ACC1–4, UI-M4–M6, UI-W6–W7, UI-R8 |
+
+**Alpha wedge, not v1 CI blockers:** AO-8 (reflection), idle social/banter (AO-4c / AO-22 wedge), discussion deliverables, speak_intent (AO-17), embedding rerank.
 
 ## OQ-2 and OQ-4 (not v1 CI blockers)
 

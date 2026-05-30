@@ -16,16 +16,17 @@ All notable changes to Altrasia are documented here.
 - Playwright smoke tests (`web/e2e/smoke.spec.ts`).
 - Nightly workflow, OpenAPI export (`packages/openapi/altrasia-v1.json`), `SECURITY.md`, `CONTRIBUTING.md`.
 
+### Changed
+
+- **Documentation:** Alpha wedge doc sync (T-200–T-204) — scope/terminology in docs/README, 20-product-principles, 18-location-maps; tracking indexes (IMPLEMENTATION-CHECKLIST, REQUIREMENTS-INDEX, ROADMAP, SPEC-GAPS); API sketch + tool registry aligned with `app.py`; AO-4/AO-8/AO-22 reconciliation in orchestration, learning, acceptance, Web UI guides.
+- Demo world `demo-spatial-v1` reimagined as **Vertex Labs HQ** — 27-character software company cast, lobby/studios/garage/lab, and twelve engineer offices.
+- Fixture reload deletes `MapArtifact` rows before world purge (fixes reload when demo map artifacts are present).
+- Documentation aligned with shipped Alpha (ROADMAP, IMPLEMENTATION-CHECKLIST, BACKLOG).
+
 ### Note
 
 - Swipe/regenerate on committed messages remains deferred per UI-REG (streaming cancel only).
 - Git release tag: create on operator request (`T-082`).
-
-### Changed
-
-- Demo world `demo-spatial-v1` reimagined as **Vertex Labs HQ** — 27-character software company cast, lobby/studios/garage/lab, and twelve engineer offices.
-- Fixture reload deletes `MapArtifact` rows before world purge (fixes reload when demo map artifacts are present).
-- Documentation aligned with shipped Alpha (ROADMAP, IMPLEMENTATION-CHECKLIST, BACKLOG).
 
 ## [0.1.0-alpha] — 2026-05-18
 

@@ -120,7 +120,9 @@ See [02-memory.md](02-memory.md). No approval queue.
 
 Location CRUD, join/leave, summon, fixture/inventory ops. Gated by `locationAdminIds` + primary observer for destructive ops.
 
-Examples: `scene_location_list`, `scene_fixture_harvest`, `scene_inventory_give`, `scene_exit_set_state` (door state on exits — [03-locations-and-presence.md](03-locations-and-presence.md) §3.3).
+**Alpha wedge (in tree):** `scene_location_list`, `scene_summon`, `scene_join`, `scene_exit_set_state`, `social_signal`, `discussion_signal`.
+
+**Spec target (not in tree):** `scene_fixture_harvest`, `scene_inventory_give`.
 
 Cast generation in a scene transcript MUST NOT create `Character` records; use [24-character-authoring.md](24-character-authoring.md) draft flow instead.
 
@@ -140,13 +142,14 @@ Filesystem and scheduled tasks. Writes require approval (see [07-approvals.md](0
 
 See [18-location-maps.md](18-location-maps.md) §12. JSON output only; MP-14 applies.
 
-| Tool | Scope / target | Persists |
-|------|----------------|----------|
-| `map_layout_generate` | `mini` \| `site` \| `stack` \| `floor` | Scene layout fields, `structures`, `worldMapJson`, exit hints |
-| `map_layout_patch` | Partial layout merge | Same, incremental |
-| `map_generate` | One `sceneId` floor plan | `mapArtifactJson` |
-| `map_update_region` | Region of `mapArtifact` | Patched artifact |
-| `map_set_hotspot` | Hotspot on floor plan | MAP-4 binding |
+| Tool | Scope / target | Status | Persists |
+|------|----------------|--------|----------|
+| `map_layout_generate` | `mini` \| `site` \| `stack` \| `floor` | Alpha wedge | Scene layout fields, `structures`, `worldMapJson`, exit hints |
+| `map_layout_patch` | Partial layout merge | Alpha wedge | Same, incremental |
+| `map_world_bootstrap` | Bootstrap from world state | Alpha wedge | Layout seed |
+| `map_generate` | One `sceneId` floor plan | Spec target | `mapArtifactJson` |
+| `map_update_region` | Region of `mapArtifact` | Spec target | Patched artifact |
+| `map_set_hotspot` | Hotspot on floor plan | Spec target | MAP-4 binding |
 
 **Requirements:**
 
@@ -183,6 +186,8 @@ Some providers support forwarding **reasoning** tokens with tool calls. Implemen
 | TC-5 | Loop guard prevents identical batch storms. |
 | TC-6 | Stealth tools skip transcript and recurse. |
 | TC-7 | Registration filters can restrict tool set per generation. |
+
+The registered tool surface exceeds the v1 release gate. Full matrix: [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md), open depth: [SPEC-GAPS.md](SPEC-GAPS.md).
 
 ## Related documents
 

@@ -63,7 +63,15 @@ At full maturity the operator can:
 
 ## 5. Relationship to mini-map (v1–v1.1)
 
-Maps are **not implemented** in v1. `exits[]` and spatial-graph API (CC-1) prepare data for MAP-2.
+**Phased status:**
+
+| Phase | Maps capability |
+|-------|-----------------|
+| **v1 release gate** | Structured mini-map only — `exits[]` and `GET spatial-graph` (CC-1) prepare data for MAP-2 |
+| **Alpha wedge** | MapDraft, map artifacts (`GET .../map-artifacts/site`), geography lock, 3D MapExplorer, LevelStack/FloorPlan UI components |
+| **Spec target (open)** | MAP-3/4 hotspot tools, fog of war (MAP-8), MAP-ACC full UI acceptance, layout-draft routes `sync` / `preview.svg` / `resolve-conflict` / DELETE |
+
+Traceability: [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md) map rows. Depth gaps: [SPEC-GAPS.md](SPEC-GAPS.md).
 
 **v1 Web UI bridge:** read-only `SpatialGraphMiniMap` — §21.1–§21.3 in [14-web-ui.md](14-web-ui.md) (structured layout, shapes, building envelopes).
 

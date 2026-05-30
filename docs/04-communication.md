@@ -181,7 +181,7 @@ Legacy fallback: callback `shouldIncludeMessageForViewer` if no listeners regist
 | 1 | Apply eligibility filter (above). |
 | 2 | If trigger line addresses a character, that character wins if eligible. |
 | 3 | Else `scoreSpeakers`: `speechWeight`, AO-17 relevance probe, `sceneRole` fit, recency, starvation guard. |
-| 4 | Idle `idle_timer` uses AO-4 round-robin only — not this table. |
+| 4 | Idle `idle_timer` uses AO-4 weighted selection only — not this table. |
 
 MUST NOT enqueue multiple reactive NPCs for one operator public line (AO-20).
 

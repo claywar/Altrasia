@@ -6,6 +6,18 @@ REST and realtime surfaces for Altrasia v1 (single-operator). This is a sketch, 
 
 **Single domain path:** Web UI actions, agent tools, narrative presence ([03-locations-and-presence.md](03-locations-and-presence.md) §7), and future scheduled jobs MUST call the same core services (presence, comms, memory, scene CRUD)—not parallel state machines with divergent rules.
 
+## 0. Implementation status legend
+
+Routes in this sketch use one of three labels when implementation differs from the normative target:
+
+| Label | Meaning |
+|-------|---------|
+| **Release gate** | Required for v1/v1.1 CI; implemented as described |
+| **Alpha wedge** | Implemented in tree; may differ from sketch path or be mock/off-by-default |
+| **Spec target** | Normatively defined; **not yet in tree** ([SPEC-GAPS.md](SPEC-GAPS.md)) |
+
+When **Implemented as** is noted, clients SHOULD use the implemented path until the spec target ships.
+
 ## 1. Transport
 
 | Mechanism | Use |
@@ -28,17 +40,27 @@ All world-scoped routes assume one operator; no multi-tenant headers.
 
 ## 3. Worlds and scenes
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/worlds` | List worlds |
-| POST | `/worlds` | Create world (wizard payload or `{ "fixtureId": "demo-spatial-v1" }`) |
-| GET | `/worlds/{worldId}` | World detail + active scene |
-| PATCH | `/worlds/{worldId}` | Update name, activeSceneId, config |
-| GET | `/worlds/{worldId}/scenes` | List scenes |
-| POST | `/worlds/{worldId}/scenes` | Create scene |
-| GET | `/worlds/{worldId}/scenes/{sceneId}` | Scene header + presence |
-| PATCH | `/worlds/{worldId}/scenes/{sceneId}` | Rename, description, exits |
-| DELETE | `/worlds/{worldId}/scenes/{sceneId}` | Reject if last scene (W-1) |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/worlds` | Release gate | List worlds |
+| POST | `/worlds` | Release gate | Create world (wizard payload or `{ "fixtureId": "demo-spatial-v1" }`) |
+| GET | `/worlds/{worldId}` | Release gate | World detail + active scene |
+| PATCH | `/worlds/{worldId}` | Release gate | Update name, activeSceneId, config |
+| GET | `/worlds/{worldId}/policy` | Alpha wedge | World policy toggles (reflection, idle social, citeProvenance, …) |
+| PATCH | `/worlds/{worldId}/policy` | Alpha wedge | Partial policy update |
+| POST | `/worlds/{worldId}/reset-fixture` | Alpha wedge | Reset demo world to fixture seed |
+| GET | `/worlds/{worldId}/characters` | Alpha wedge | World cast list |
+| POST | `/worlds/{worldId}/members` | Alpha wedge | Add character to world cast |
+| GET | `/worlds/{worldId}/commons` | Alpha wedge | World commons loci (MP-22) |
+| PUT | `/worlds/{worldId}/commons` | Alpha wedge | Replace world commons content |
+| GET | `/worlds/{worldId}/scenes` | Release gate | List scenes |
+| POST | `/worlds/{worldId}/scenes` | Release gate | Create scene |
+| GET | `/worlds/{worldId}/scenes/{sceneId}` | Release gate | Scene header + presence |
+| PATCH | `/worlds/{worldId}/scenes/{sceneId}` | Release gate | Rename, description, exits, `activityJson` |
+| DELETE | `/worlds/{worldId}/scenes/{sceneId}` | Release gate | Reject if last scene (W-1) |
+| GET | `/worlds/{worldId}/geography` | Alpha wedge | Geography + layout design mode |
+| PATCH | `/worlds/{worldId}/geography` | Alpha wedge | Update geography fields |
+| POST | `/worlds/{worldId}/geography/lock` | Alpha wedge | Lock geography for play |
 
 ## 4. Messages and compose
 
@@ -84,6 +106,10 @@ Scopes v1: `public`, `whisper`, `dm`. v1.1 adds `phone` ([21-cross-scene-awarene
 | POST | `/worlds/{worldId}/signals` | Create knock/ring/buzz |
 | PATCH | `/worlds/{worldId}/signals/{signalId}` | Body `{ "status": "acknowledged" \| "expired" }` — does not enqueue generation (CC-11b) |
 | POST | `/worlds/{worldId}/signals/{signalId}/answer` | **v1.1** — explicit answer; MAY enqueue generation or join (CC-11) |
+| GET | `/worlds/{worldId}/navigation/summary` | Alpha wedge | Route graph summary for active scene |
+| GET | `/worlds/{worldId}/navigation/route` | Alpha wedge | Query planned route between scenes |
+| POST | `/worlds/{worldId}/navigation/travel` | Alpha wedge | Execute travel along route |
+| POST | `/worlds/{worldId}/scenes/{sceneId}/exits/{exitId}/state` | Alpha wedge | Set exit door state (CC-11c) |
 
 v1.1: `/worlds/{worldId}/channels`, phone send; `PATCH .../channels/{id}/endpoints/{sceneId}` body `{ "speakerphone": true }` ([04-communication.md](04-communication.md) §3.4).
 
@@ -200,11 +226,13 @@ v1.1+: `nodes[].mapShape`, `structureId`; `structures[].boundary`; `edges[].exit
 
 ### 6.1 World map and levels (Phase 6)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/worlds/{worldId}/world-map` | `worldMapArtifact`, site bounds, structure placements ([18-location-maps.md](18-location-maps.md) §7) |
-| GET | `/worlds/{worldId}/structures/{structureId}/levels` | Scenes by `mapLevel`, `verticalEdges`, stack layout hints (§8) |
-| GET | `/worlds/{worldId}/scenes/{sceneId}/map` | Per-scene `mapArtifact` floor plan (MAP-1) |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/worlds/{worldId}/world-map` | Spec target | `worldMapArtifact`, site bounds ([18-location-maps.md](18-location-maps.md) §7) |
+| GET | `/worlds/{worldId}/map-artifacts/site` | Alpha wedge | **Implemented as** site map artifact |
+| GET | `/worlds/{worldId}/structures/{structureId}/levels` | Spec target | Scenes by `mapLevel`, vertical edges |
+| GET | `/worlds/{worldId}/scenes/{sceneId}/map` | Spec target | Per-scene floor plan (MAP-1) |
+| GET | `/worlds/{worldId}/scenes/{sceneId}/map-artifact` | Alpha wedge | **Implemented as** per-scene map artifact |
 
 `spatial-graph` nodes (v1.1+): add `mapLevel`, `levelLabel`, `planPosition`; response MAY include `verticalEdges[]` where `exit.vertical === true`.
 
@@ -212,17 +240,20 @@ v1.1+: `nodes[].mapShape`, `structureId`; `structures[].boundary`; `edges[].exit
 
 See [25-map-authoring.md](25-map-authoring.md). Schema: [`packages/schemas/map-layout-v1.schema.json`](../packages/schemas/map-layout-v1.schema.json).
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/worlds/{worldId}/layout-drafts` | Body `{ "brief", "scope", "parentDraftId?", "intent?" }` → starts generation |
-| GET | `/worlds/{worldId}/layout-drafts/{draftId}` | `status`, `proposedJson`, `revision`, `changeList[]`, `conflicts[]`, `previewSvgUrl` |
-| GET | `/worlds/{worldId}/layout-drafts/{draftId}/preview.svg` | SVG render of proposed layout |
-| PATCH | `/worlds/{worldId}/layout-drafts/{draftId}` | Operator JSON/visual edits → re-validate |
-| POST | `/worlds/{worldId}/layout-drafts/{draftId}/repair` | `{ "mode": "fix-validation" \| "describe-change", "feedback?", "validationErrors?" }` |
-| POST | `/worlds/{worldId}/layout-drafts/{draftId}/sync` | `{ "source": "json" \| "visual" }` |
-| POST | `/worlds/{worldId}/layout-drafts/{draftId}/resolve-conflict` | `{ "conflictId", "action": "accept" \| "revert" \| "skip" }` |
-| POST | `/worlds/{worldId}/layout-drafts/{draftId}/commit` | Partial apply → `{ "applied", "conflicts" }` |
-| DELETE | `/worlds/{worldId}/layout-drafts/{draftId}` | Discard |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| POST | `/worlds/{worldId}/layout-drafts` | Alpha wedge | Body `{ "brief", "scope", … }` → starts generation |
+| POST | `/worlds/{worldId}/layout-bootstrap-drafts` | Alpha wedge | Bootstrap draft from existing world |
+| POST | `/worlds/{worldId}/layout-drafts/unified` | Alpha wedge | Unified multi-surface draft |
+| POST | `/worlds/{worldId}/layout-patch` | Alpha wedge | Apply layout patch without full draft |
+| GET | `/worlds/{worldId}/layout-drafts/{draftId}` | Alpha wedge | `status`, `proposedJson`, `revision`, … |
+| PATCH | `/worlds/{worldId}/layout-drafts/{draftId}` | Alpha wedge | Operator JSON edits → re-validate |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/repair` | Alpha wedge | Fix validation or describe change |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/commit` | Alpha wedge | Partial apply |
+| GET | `/worlds/{worldId}/layout-drafts/{draftId}/preview.svg` | Spec target | SVG render of proposed layout |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/sync` | Spec target | `{ "source": "json" \| "visual" }` |
+| POST | `/worlds/{worldId}/layout-drafts/{draftId}/resolve-conflict` | Spec target | Conflict resolution |
+| DELETE | `/worlds/{worldId}/layout-drafts/{draftId}` | Spec target | Discard |
 
 **POST layout-drafts body (illustrative):**
 
@@ -315,32 +346,52 @@ See [25-map-authoring.md](25-map-authoring.md). Schema: [`packages/schemas/map-l
 
 ## 8. Observer
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/worlds/{worldId}/observer/digest` | Multi-scene digest (OBS-6) |
-| POST | `/worlds/{worldId}/observer/generate` | Observer generation with `observerMode` |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/worlds/{worldId}/observer/digest` | Release gate | Multi-scene digest (OBS-6) |
+| POST | `/worlds/{worldId}/observer/generate` | Spec target | Observer generation with `observerMode` |
+
+Use `POST /worlds/{worldId}/generate` with `characterId: observer` for Observer jobs in the Alpha tree.
 
 ## 9. Memory (operator)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/characters/{characterId}/loci` | Mind pool (operator) |
-| GET | `/scenes/{sceneId}/loci` | World pool |
-| GET | `/characters/{characterId}/diary` | Diary segments |
-| PATCH | `/characters/{characterId}/loci/{key}` | Operator overwrite (optional) |
+**Alpha wedge:** Memory inspector routes are world-scoped under `/worlds/{worldId}/characters/{characterId}/…`.
+
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/worlds/{worldId}/characters/{characterId}/mind` | Alpha wedge | Mind pool loci |
+| GET | `/worlds/{worldId}/characters/{characterId}/diary` | Alpha wedge | Diary segments |
+| GET | `/worlds/{worldId}/characters/{characterId}/evidence` | Alpha wedge | Evidence records (MP-21) |
+| GET | `/worlds/{worldId}/characters/{characterId}/memory-links` | Alpha wedge | MemoryLink graph edges |
+| GET | `/worlds/{worldId}/characters/{characterId}/persona-proposals` | Alpha wedge | Pending PersonaProposal rows |
+| POST | `/persona-proposals/{proposalId}/approve` | Alpha wedge | Approve persona update |
+| POST | `/persona-proposals/{proposalId}/reject` | Alpha wedge | Reject persona update |
+| GET | `/characters/{characterId}/loci` | Spec target | Legacy sketch path for mind pool |
+| GET | `/scenes/{sceneId}/loci` | Spec target | World pool at scene |
+| PATCH | `/characters/{characterId}/loci/{key}` | Spec target | Operator overwrite (MP-3) |
 
 Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-memory.md](02-memory.md)).
 
-## 10. Commissions (post-v1)
+## 9b. Reflection (AO-8)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/worlds/{worldId}/commissions` | List commissions |
-| POST | `/worlds/{worldId}/commissions` | Create; default `deliverablePolicy: mind` (COM-1) |
-| GET | `/worlds/{worldId}/commissions/{commissionId}` | Detail + `deliverableLocusKeys` |
-| PATCH | `/worlds/{worldId}/commissions/{commissionId}` | Update status; `done` requires COM-2 |
-| POST | `/worlds/{worldId}/commissions/{commissionId}/start` | Enqueue if assignee present at `targetSceneId` (COM-6) |
-| POST | `/worlds/{worldId}/commissions/{commissionId}/force-complete` | Body `{ "reason": "..." }` |
+World policy keys: `reflectionEnabled`, `reflectionNightlyHourUtc`, `reflectionMaxCharsPerRun`, `reflectionAutoApproveLoci`, `reflectionLocusMaxChars`, `reflectionPersonaProposalsEnabled` ([16-learning.md](16-learning.md) §6).
+
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| POST | `/worlds/{worldId}/reflect` | Alpha wedge | On-demand reflect all eligible cast |
+| POST | `/characters/{characterId}/reflect` | Alpha wedge | On-demand reflect one character |
+| GET | `/characters/{characterId}/reflection-runs` | Alpha wedge | Run history for Memory inspector |
+
+## 10. Commissions and in-world work (Alpha wedge)
+
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/worlds/{worldId}/commissions` | Alpha wedge | List commissions |
+| POST | `/worlds/{worldId}/commissions` | Alpha wedge | Create; default `deliverablePolicy: mind` (COM-1) |
+| GET | `/worlds/{worldId}/commissions/{commissionId}` | Spec target | Detail + `deliverableLocusKeys` |
+| PATCH | `/worlds/{worldId}/commissions/{commissionId}` | Alpha wedge | Update status; `done` requires COM-2 |
+| POST | `/worlds/{worldId}/commissions/{commissionId}/start` | Alpha wedge | Enqueue if assignee present (COM-6) |
+| POST | `/worlds/{worldId}/commissions/{commissionId}/force-complete` | Alpha wedge | Body `{ "reason": "..." }` |
 
 **POST create body (illustrative):**
 
@@ -353,23 +404,42 @@ Agent tools (`memory_*`, `diary_*`) use internal paths during generation ([02-me
 }
 ```
 
-Debate activity: `PATCH .../scenes/{sceneId}` with `activityJson` ([23-in-world-work.md](23-in-world-work.md)).
+Debate and briefing ([23-in-world-work.md](23-in-world-work.md)):
+
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/worlds/{worldId}/scenes/{sceneId}/debate` | Alpha wedge | Debate activity state |
+| POST | `/worlds/{worldId}/scenes/{sceneId}/debate` | Alpha wedge | Start debate |
+| PATCH | `/worlds/{worldId}/scenes/{sceneId}/debate` | Alpha wedge | Update debate activity |
+| DELETE | `/worlds/{worldId}/scenes/{sceneId}/debate` | Alpha wedge | End debate |
+| POST | `/worlds/{worldId}/scenes/{sceneId}/debate/advance-speaker` | Alpha wedge | DEB-2 speaker advance |
+| POST | `/worlds/{worldId}/scenes/{sceneId}/debate/advance-phase` | Alpha wedge | Phase advance |
+| POST | `/worlds/{worldId}/scenes/{sceneId}/briefing` | Alpha wedge | Apply briefing fixture to scene |
 
 ## 11. Approvals
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/approvals` | Pending list |
-| POST | `/approvals/{approvalId}/approve` | |
-| POST | `/approvals/{approvalId}/deny` | |
+**Alpha wedge:** Approvals are world-scoped.
+
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/worlds/{worldId}/approvals` | Alpha wedge | Pending list |
+| POST | `/worlds/{worldId}/approvals/{approvalId}/approve` | Alpha wedge | Approve pending action |
+| POST | `/worlds/{worldId}/approvals/{approvalId}/deny` | Alpha wedge | Deny pending action |
+| GET | `/approvals` | Spec target | Global pending list (deprecated sketch) |
+| POST | `/approvals/{approvalId}/approve` | Spec target | Global approve |
+| POST | `/approvals/{approvalId}/deny` | Spec target | Global deny |
 
 ## 12. Inference health
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health/llm` | Primary up |
-| GET | `/health/embeddings` | Embed up |
-| GET | `/inference/queue` | INF-5f global queue |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/health` | Release gate | Service up |
+| GET | `/health/llm` | Release gate | Primary LLM up |
+| GET | `/health/embeddings` | Spec target | Embed service up |
+| GET | `/worlds/{worldId}/queue` | Release gate | Per-world agent + GPU queue (INF-5f) |
+| DELETE | `/inference/queue/{jobId}` | Release gate | Cancel GPU job (INF-5g) |
+| GET | `/inference/queue` | Spec target | Global queue snapshot |
+| GET | `/operator/inference/models` | Alpha wedge | Model catalog for operator settings |
 
 ## 13. WebSocket events
 
@@ -390,21 +460,24 @@ Subscribe: `WS /api/v1/worlds/{worldId}/events`
 
 Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then apply events where `eventSeq > lastSeen`.
 
-## 14. Character authoring (v1 API sketch, Phase 3 UI)
+## 14. Character authoring (Alpha wedge)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/characters/draft` | `{ "brief": "..." }` — LLM draft ([24-character-authoring.md](24-character-authoring.md)) |
-| GET | `/characters/draft/{draftId}` | Draft status + proposed `definitionJson` |
-| POST | `/characters` | `{ "draftId", "definitionJson?" }` — approve and create |
-| DELETE | `/characters/draft/{draftId}` | Discard draft |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| POST | `/characters/draft` | Alpha wedge | `{ "brief": "..." }` — LLM draft ([24-character-authoring.md](24-character-authoring.md)) |
+| GET | `/characters/draft/{draftId}` | Alpha wedge | Draft status + proposed `definitionJson` |
+| POST | `/characters` | Alpha wedge | `{ "draftId", "definitionJson?" }` — approve and create |
+| PATCH | `/characters/{characterId}` | Alpha wedge | Update character definition |
+| DELETE | `/characters/draft/{draftId}` | Alpha wedge | Discard draft |
 
-## 15. Operator settings (v1.1 heartbeat)
+## 15. Operator settings (v1.1+)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/operator/settings` | Includes `heartbeat.enabled`, `heartbeat.intervalSeconds`, `lastHeartbeatAt` |
-| PATCH | `/operator/settings` | Update global heartbeat ([08-real-world-capabilities.md](08-real-world-capabilities.md) HB-3) |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/operator/settings` | Release gate | Heartbeat, inference, plugin flags |
+| PATCH | `/operator/settings` | Release gate | Update global settings ([08-real-world-capabilities.md](08-real-world-capabilities.md) HB-3) |
+
+Reflection policy is on **world** policy (`GET/PATCH /worlds/{worldId}/policy`), not operator settings.
 
 ## 16. World package (v1.1)
 
@@ -413,7 +486,13 @@ Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then ap
 | GET | `/worlds/{worldId}/package/export` | Zip: DB slice + `assets/` (DM-4) |
 | POST | `/worlds/import` | Multipart package upload |
 
-## 17. Requirements summary
+## 17. Portrait (ComfyUI stub)
+
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| POST | `/worlds/{worldId}/characters/{characterId}/portrait/generate` | Alpha wedge | Enqueue portrait job; mock when ComfyUI URL unset ([19-comfyui-media.md](19-comfyui-media.md)) |
+
+## 18. Requirements summary
 
 | ID | Requirement |
 |----|-------------|
@@ -421,11 +500,14 @@ Client on reconnect: `GET` snapshot (world, active scene, roster, queue) then ap
 | API-2 | Meta messages isolated from scene transcript routes |
 | API-3 | Streaming endpoint or WS tokens for STR-* |
 | API-4 | Per-world eventSeq for ordering |
+| API-5 | World-scoped memory and approval paths (Alpha wedge) |
+| API-6 | Reflection and persona-proposal routes (AO-8) |
 
 ## Related documents
 
 - [11-data-model.md](11-data-model.md)
 - [14-web-ui.md](14-web-ui.md)
 - [00-inference-runtime.md](00-inference-runtime.md)
+- [16-learning.md](16-learning.md)
 - [23-in-world-work.md](23-in-world-work.md)
 - [24-character-authoring.md](24-character-authoring.md)

@@ -13,7 +13,7 @@ This document specifies **how characters learn** (diary, loci, reflection) and *
 | Episodic | Witnessed diary: rolling perceivable scene snippet after each cast reply; group fan-out (MP-6, MP-17, MP-20) | Yes |
 | Semantic facts | `memory_store` → loci (stripped) | Yes |
 | Retrieval | Mandatory recall + optional semantic search | Yes (MP-18) |
-| Reflection | Post-turn output summary → mind loci | Optional Phase 4 |
+| Reflection | Post-turn consolidation → mind loci, MemoryLink, PersonaProposal | Alpha wedge (AO-8; default off) |
 | Forbidden | Reasoning in durable memory; raw transcript RAG as episodic | MP-14, MP-7 |
 
 ## 3. Universal memory requirements (MP-8–MP-19)
@@ -72,9 +72,9 @@ Reference profile: [config/models/qwen3.6-35b-a3b.yaml](../config/models/qwen3.6
 
 Semantic search **assists** `memory_search` / `diary_search` (hybrid with FTS); does **not** replace diary + mandatory recall ([02-memory.md](02-memory.md) §7). Vectors keyed per MP-1 / INF-10. MEM-ACC-1 applies.
 
-## 6. Reflection (AO-8, optional)
+## 6. Reflection (AO-8)
 
-Reflection consolidates episodic diary and existing mind loci into **abstracted durable knowledge** during off-peak windows (nightly batch or on-demand). It uses GpuResourceQueue like any chat call.
+Reflection consolidates episodic diary and existing mind loci into **abstracted durable knowledge** during off-peak windows (nightly batch or on-demand). It uses GpuResourceQueue like any chat call. **Alpha wedge:** implemented; `reflectionEnabled` defaults to false.
 
 ### 6.1 Scheduling
 
@@ -95,11 +95,18 @@ Loci writes auto-approve when `reflectionAutoApproveLoci` is true (default). Per
 
 Mandatory recall prioritizes `reflection:*` and `relationship:*` loci and injects a char-budgeted **Associated memories** block from 1-hop MemoryLink neighbors. Graph enrichment is additive — it does not replace diary tail or FTS search.
 
+### 6.4 Operator workflow
+
+1. **Enable:** World Settings → Character reflection → enable nightly reflection (optional hour UTC).
+2. **Run:** Memory inspector → Reflection tab → **Run reflection now** (on-demand; works even when nightly is off).
+3. **Review:** Inspect reflection runs; approve or reject **PersonaProposal** rows when the model suggests definition updates.
+
 ## 7. Requirements summary
 
 | ID | Summary |
 |----|---------|
 | MP-8–MP-19 | Universal grounding and output-only storage |
+| AO-8 | Reflection pipeline (nightly + on-demand; default off) |
 | — | stripReasoning pipeline |
 
 ## Related documents

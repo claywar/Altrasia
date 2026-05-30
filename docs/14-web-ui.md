@@ -213,6 +213,27 @@ Wireframe: [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-17.
 
 **Scene tab:** `locationName`, description, exits, fixtures.
 
+### 10.1 World policy extensions (Alpha wedge)
+
+| Component | Purpose |
+|-----------|---------|
+| `WorldPolicyPanel` | citeProvenance, world pause, orchestration toggles |
+| `ReflectionPolicySection` | `reflectionEnabled`, `reflectionNightlyHourUtc` (AO-8) |
+| `IdleSocialPolicySection` | Banter gates, tone, depth caps, task affinity |
+| `AmbientDisplaySection` | Show/hide ambient and banter lines in transcript (UI-AMB-*) |
+
+**World commons (MP-22):** API only — no Settings panel in Alpha tree.
+
+### 10.2 Memory inspector — reflection tab
+
+| ID | Requirement |
+|----|-------------|
+| UI-M4-R1 | Memory inspector tabs: **memory** \| **reflection** |
+| UI-M4-R2 | Reflection tab lists recent runs; **Run reflection now** triggers on-demand reflect |
+| UI-M4-R3 | PersonaProposal approve/reject from reflection tab |
+
+Cross-ref AO-8, [16-learning.md](16-learning.md) §6.4, [12-api-sketch.md](12-api-sketch.md) §9b.
+
 ## 11. Operator / server settings (v1.1 heartbeat)
 
 | ID | Requirement |
@@ -361,6 +382,9 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 |-----------|-----------|
 | `ObserverSlideOver`, `MetaTranscript`, `ObserverModeSwitcher` | UI-O* |
 | `MemoryInspector`, `ApprovalsDrawer` | UI-M*, UI-C2; inspector WF-17, right slide-over |
+| `ReflectionPolicySection`, `IdleSocialPolicySection`, `AmbientDisplaySection` | Alpha wedge policy (§10.1) |
+| `BanterTranscriptToggle` | Toggle banter visibility in transcript |
+| `WorldPolicyPanel` | World policy toggles |
 
 ### Settings, media (future)
 
