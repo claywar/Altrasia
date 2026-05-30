@@ -559,9 +559,23 @@
 }
 
 .memory-evidence-toggle {
+  display: inline-flex;
+  align-items: center;
   margin-left: 0.5rem;
-  font-size: 0.75rem;
-  padding: 0 0.35rem;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  color: var(--accent);
+  vertical-align: baseline;
+}
+
+.memory-evidence-toggle:hover:not(:disabled) {
+  background: hsl(235 45% 52% / 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .memory-evidence-list {
@@ -632,13 +646,9 @@
 
 .memory-proposal-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 6px;
-}
-
-.memory-proposal-actions button {
-  font-size: 12px;
-  padding: 4px 10px;
+  margin-top: 8px;
 }
 
 .memory-error {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { api, type Scene, type SpatialGraph } from "../../api/client";
+import { type Scene, type SpatialGraph } from "../../api/client";
 import { RailSection } from "../../ui/RailSection";
 import { adjacentSceneIds, buildPlaceGroups, placeActionLabel } from "./buildPlaceGroups";
 import { CastRow } from "./CastRow";
@@ -10,19 +10,16 @@ import {
   type Roster,
   type RosterPerson,
 } from "./rosterByScene";
-
-type SceneOption = { sceneId: string; locationName: string };
+import type { CharacterProfileRosterContext } from "../../components/CharacterProfileModal";
 
 type Props = {
-  worldId: string;
   scenes: Scene[];
   activeSceneId: string;
   graph?: SpatialGraph | null;
   reachableSceneIds?: Set<string>;
   roster: Roster;
   onSelect: (sceneId: string) => void;
-  onMemory: (characterId: string, displayName: string) => void;
-  onPresenceChanged: () => void;
+  onSelectCharacter: (person: RosterPerson, context: CharacterProfileRosterContext) => void;
 };
 
 function personSceneId(person: RosterPerson): string | null {
@@ -33,28 +30,18 @@ function PlaceSceneBlock({
   row,
   active,
   cast,
-  sceneOptions,
   activeSceneId,
-  worldId,
   forceExpanded,
   onSelect,
-  onMemory,
-  onSummonHere,
-  onPlaceAt,
-  onLeave,
+  onSelectCharacter,
 }: {
   row: PlaceRow;
   active: boolean;
   cast: RosterPerson[];
-  sceneOptions: SceneOption[];
   activeSceneId: string;
-  worldId: string;
   forceExpanded?: boolean;
   onSelect: (sceneId: string) => void;
-  onMemory: (characterId: string, displayName: string) => void;
-  onSummonHere: (characterId: string) => void;
-  onPlaceAt: (characterId: string, sceneId: string) => void;
-  onLeave: (characterId: string, sceneId: string) => void;
+  onSelectCharacter: (person: RosterPerson, context: CharacterProfileRosterContext) => void;
 }) {
   const occupied = cast.length > 0;
   const [expanded, setExpanded] = useState(occupied || active);
@@ -110,16 +97,10 @@ function PlaceSceneBlock({
             cast.map((person) => (
               <CastRow
                 key={person.characterId}
-                worldId={worldId}
                 person={person}
                 activeSceneId={activeSceneId}
                 personSceneId={personSceneId(person) ?? sceneId}
-                scenes={sceneOptions}
-                onMemory={onMemory}
-                onSummonHere={onSummonHere}
-                onPlaceAt={onPlaceAt}
-                onLeave={onLeave}
-                onGoToScene={onSelect}
+                onSelectCharacter={onSelectCharacter}
               />
             ))
           )}
@@ -131,22 +112,12 @@ function PlaceSceneBlock({
 
 function OffStageBlock({
   unplaced,
-  sceneOptions,
   activeSceneId,
-  worldId,
-  onMemory,
-  onSummonHere,
-  onPlaceAt,
-  onLeave,
+  onSelectCharacter,
 }: {
   unplaced: RosterPerson[];
-  sceneOptions: SceneOption[];
   activeSceneId: string;
-  worldId: string;
-  onMemory: (characterId: string, displayName: string) => void;
-  onSummonHere: (characterId: string) => void;
-  onPlaceAt: (characterId: string, sceneId: string) => void;
-  onLeave: (characterId: string, sceneId: string) => void;
+  onSelectCharacter: (person: RosterPerson, context: CharacterProfileRosterContext) => void;
 }) {
   const [open, setOpen] = useState(unplaced.length > 0);
   if (unplaced.length === 0) return null;
@@ -166,15 +137,10 @@ function OffStageBlock({
           {unplaced.map((person) => (
             <CastRow
               key={person.characterId}
-              worldId={worldId}
               person={person}
               activeSceneId={activeSceneId}
               personSceneId={null}
-              scenes={sceneOptions}
-              onMemory={onMemory}
-              onSummonHere={onSummonHere}
-              onPlaceAt={onPlaceAt}
-              onLeave={onLeave}
+              onSelectCharacter={onSelectCharacter}
             />
           ))}
         </ul>
@@ -186,16 +152,11 @@ function OffStageBlock({
 function renderSceneBlock(
   row: PlaceRow,
   activeSceneId: string,
-  worldId: string,
   byScene: Map<string, RosterPerson[]>,
-  sceneOptions: SceneOption[],
   forceExpanded: boolean,
   handlers: {
     onSelect: (sceneId: string) => void;
-    onMemory: (characterId: string, displayName: string) => void;
-    onSummonHere: (characterId: string) => void;
-    onPlaceAt: (characterId: string, sceneId: string) => void;
-    onLeave: (characterId: string, sceneId: string) => void;
+    onSelectCharacter: (person: RosterPerson, context: CharacterProfileRosterContext) => void;
   }
 ) {
   const sceneId = row.scene.sceneId;
@@ -206,9 +167,7 @@ function renderSceneBlock(
       row={row}
       active={sceneId === activeSceneId}
       cast={cast}
-      sceneOptions={sceneOptions}
       activeSceneId={activeSceneId}
-      worldId={worldId}
       forceExpanded={forceExpanded}
       {...handlers}
     />
@@ -216,21 +175,14 @@ function renderSceneBlock(
 }
 
 export function WorldRail({
-  worldId,
   scenes,
   activeSceneId,
   graph,
   reachableSceneIds,
   roster,
   onSelect,
-  onMemory,
-  onPresenceChanged,
+  onSelectCharacter,
 }: Props) {
-  const sceneOptions = useMemo(
-    () => scenes.map((s) => ({ sceneId: s.sceneId, locationName: s.locationName })),
-    [scenes]
-  );
-
   const { byScene, unplaced } = useMemo(() => rosterByScene(roster), [roster]);
 
   const adjacentIds = useMemo(
@@ -267,37 +219,13 @@ export function WorldRail({
 
   const { groupsWithoutActive, flatRest } = sorted;
 
-  const summonHere = async (characterId: string) => {
-    await api.summonPresence(worldId, {
-      characterIds: [characterId],
-      targetSceneId: activeSceneId,
-    });
-    onPresenceChanged();
-  };
-
-  const placeAt = async (characterId: string, sceneId: string) => {
-    await api.joinPresence(worldId, sceneId, characterId);
-    onPresenceChanged();
-  };
-
-  const leaveScene = async (characterId: string, sceneId: string) => {
-    await api.leavePresence(worldId, sceneId, characterId);
-    onPresenceChanged();
-  };
-
-  const handlers = {
-    onSelect,
-    onMemory,
-    onSummonHere: summonHere,
-    onPlaceAt: placeAt,
-    onLeave: leaveScene,
-  };
+  const handlers = { onSelect, onSelectCharacter };
 
   return (
     <RailSection title="World" testId="world-rail" className="world-rail">
       <ul className="places-list world-rail__scenes">
         {activeRow &&
-          renderSceneBlock(activeRow, activeSceneId, worldId, byScene, sceneOptions, true, handlers)}
+          renderSceneBlock(activeRow, activeSceneId, byScene, true, handlers)}
       </ul>
 
       {(groupsWithoutActive.length > 0 || flatRest.length > 0) && activeRow && (
@@ -307,7 +235,7 @@ export function WorldRail({
       {flat ? (
         <ul className="places-list world-rail__scenes">
           {flatRest.map((row) =>
-            renderSceneBlock(row, activeSceneId, worldId, byScene, sceneOptions, false, handlers)
+            renderSceneBlock(row, activeSceneId, byScene, false, handlers)
           )}
         </ul>
       ) : (
@@ -322,15 +250,7 @@ export function WorldRail({
                   )}
                   <ul className="places-list world-rail__scenes">
                     {level.rows.map((row) =>
-                      renderSceneBlock(
-                        row,
-                        activeSceneId,
-                        worldId,
-                        byScene,
-                        sceneOptions,
-                        false,
-                        handlers
-                      )
+                      renderSceneBlock(row, activeSceneId, byScene, false, handlers)
                     )}
                   </ul>
                 </div>
@@ -342,13 +262,8 @@ export function WorldRail({
 
       <OffStageBlock
         unplaced={unplaced}
-        sceneOptions={sceneOptions}
         activeSceneId={activeSceneId}
-        worldId={worldId}
-        onMemory={onMemory}
-        onSummonHere={summonHere}
-        onPlaceAt={placeAt}
-        onLeave={leaveScene}
+        onSelectCharacter={onSelectCharacter}
       />
     </RailSection>
   );

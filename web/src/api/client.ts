@@ -524,7 +524,12 @@ export const api = {
   patchScene: (
     worldId: string,
     sceneId: string,
-    body: { locationName?: string; locationDescription?: string }
+    body: {
+      locationName?: string;
+      locationDescription?: string;
+      fixturesJson?: string;
+      sharedStashJson?: string;
+    }
   ) =>
     request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`, {
       method: "PATCH",
@@ -752,20 +757,6 @@ export const api = {
       `/worlds/${worldId}/characters/${characterId}/inventory`,
       { method: "PATCH", body: JSON.stringify({ inventory }) }
     ),
-  patchScene: (
-    worldId: string,
-    sceneId: string,
-    body: {
-      locationName?: string;
-      locationDescription?: string;
-      fixturesJson?: string;
-      sharedStashJson?: string;
-    }
-  ) =>
-    request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
   getScene: (worldId: string, sceneId: string) =>
     request<Scene>(`/worlds/${worldId}/scenes/${sceneId}`),
   listMessages: (worldId: string, sceneId: string) =>

@@ -289,6 +289,24 @@ Side-effecting Observer tools (UI-C2).
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
+#### WF-17a — Character profile summary (v1)
+
+Center modal from **World** rail: click character name or avatar (UI-D3). Tabs: **Summary** (role, position, worn/held, persona, actions) | **Memory** (mind loci, diary) | **Reflection** (runs, proposals, graph). Esc closes.
+
+```
+┌─────────────────────── Alice Chen ─────────────────────── [Esc — Close] ─┐
+│  ┌────────┐  Alice Chen                                                  │
+│  │   AC   │  Role: Director                                              │
+│  └────────┘                                                              │
+│  [ Summary ● ] [ Memory ] [ Reflection ]                                 │
+│  ─────────────────────────────────────────────────────────────────────── │
+│  Position          Here · Conference Room                                │
+│  Wearing & holding Worn: blazer; Held: tablet                            │
+│  Personality       Direct, analytical…                                   │
+│  Actions           [ Leave ]   Place at… [ Choose scene… ▾ ]             │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
 #### WF-17 — Memory inspector (v1)
 
 Right slide-over from **People** roster (UI-M4). Read-only mind/world loci and diary (UI-M1–M3, UI-TRN-4). Esc closes (UI-M5).

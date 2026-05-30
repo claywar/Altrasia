@@ -10,17 +10,11 @@ import { SpatialPanel } from "../features/spatial/SpatialPanel";
 import type { ExitItem } from "../features/spatial/ExitList";
 import { areAdjacentScenes, reachableSceneIdsFromGraph } from "../features/maps/mapNavigation";
 import { WorldRail } from "../features/rails/WorldRail";
-import type { Roster } from "../features/rails/rosterByScene";
+import type { Roster, RosterPerson } from "../features/rails/rosterByScene";
+import type { CharacterProfileRosterContext } from "../components/CharacterProfileModal";
 import { ToolsRail } from "../features/rails/ToolsRail";
 import { TopBar } from "./TopBar";
 import type { Message, QueueSnapshot } from "../api/client";
-
-type RosterPerson = {
-  characterId: string;
-  displayName: string;
-  sceneId?: string | null;
-  locationName?: string | null;
-};
 
 type Props = {
   world: World;
@@ -53,8 +47,7 @@ type Props = {
   signalToast: ReactNode;
   rightRail: ReactNode;
   roster: Roster | null;
-  onMemory: (characterId: string, displayName: string) => void;
-  onPresenceChanged: () => void;
+  onSelectCharacter: (person: RosterPerson, context: CharacterProfileRosterContext) => void;
   onPauseToggle: () => void;
   onMapOpen: () => void;
   onMapClose: () => void;
@@ -91,8 +84,7 @@ export function SpatialShell({
   signalToast,
   rightRail,
   roster,
-  onMemory,
-  onPresenceChanged,
+  onSelectCharacter,
   onPauseToggle,
   onMapOpen,
   onMapClose,
@@ -219,7 +211,6 @@ export function SpatialShell({
         >
           {roster && (
             <WorldRail
-              worldId={world.worldId}
               scenes={scenes}
               graph={graph}
               activeSceneId={world.activeSceneId}
@@ -228,8 +219,7 @@ export function SpatialShell({
               }
               roster={roster}
               onSelect={onSwitchScene}
-              onMemory={onMemory}
-              onPresenceChanged={onPresenceChanged}
+              onSelectCharacter={onSelectCharacter}
             />
           )}
           {rightRail}

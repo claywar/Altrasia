@@ -172,6 +172,7 @@ Narrate/Intervene in play appear in **scene** transcript with `narrator` scope�
 |----|-------------|
 | UI-D1 | Multi-scene digest in **Observer Studio** (OBS-6); pending signals and channel summary—not a permanent right-rail panel. |
 | UI-D2 | **People** section: presence roster (atLocation, muted) and elsewhere roster (character + `presentSceneId`). |
+| UI-D3 | Click character **name or avatar** in World/People rail → **center modal** (`CharacterProfileModal`): portrait placeholder, role, position, worn/held inventory, persona, presence actions, and **Summary / Memory / Reflection** tabs (embedded memory inspector). No per-row `⋯` menu; no separate memory slide-over. |
 
 ## 8. Memory inspector
 
@@ -182,7 +183,7 @@ Wireframe: [guides/web-ui-wireframes.md](guides/web-ui-wireframes.md) WF-17.
 | UI-M1 | Per-character mind loci, per-scene world loci, diary timeline. |
 | UI-M2 | Output text only in inspector (MP-14). |
 | UI-M3 | MP-1: no cross-mind display. |
-| UI-M4 | Open from **People** roster per character (“Memory” action); MAY also open from `SelectionRationalePopover` (WF-21). |
+| UI-M4 | Memory and reflection tabs inside character profile modal (UI-D3); MAY also open standalone `MemoryInspector` from `SelectionRationalePopover` (WF-21). |
 | UI-M5 | **Right slide-over** overlay; Esc closes; focus trap (UI-A11Y-1); center/left may dim; right rail remains usable. |
 | UI-M6 | Tabs: **Mind loci**, **World loci** (active scene), **Diary**; all read-only; searchable loci list with key, truncated `outputText`, `updatedAt`. |
 
@@ -365,6 +366,7 @@ Aligns with [19-comfyui-media.md](19-comfyui-media.md). **v1:** text-only; optio
 | `CrossSceneSignalBanner` | UI-S3 | Center header |
 | `SignalSidebarList` | UI-S4 | Right rail Signals |
 | `PresenceRoster` / `ElsewhereRoster` | UI-D2 | Right rail People |
+| `CharacterProfileModal` | UI-D3 | Center modal; click cast name/avatar in World rail |
 | `FixtureChip` | LP-* | Header / spatial panel |
 
 ### Chat

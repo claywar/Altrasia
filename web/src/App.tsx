@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { MemoryInspector } from "./components/MemoryInspector";
+import {
+  CharacterProfileModal,
+  type CharacterProfileRosterContext,
+} from "./components/CharacterProfileModal";
 import {
   api,
   connectWorldEvents,
@@ -23,6 +26,7 @@ import { SpatialShell } from "./layouts/SpatialShell";
 import { Button } from "./ui/Button";
 import type { ExitItem } from "./features/spatial/ExitList";
 import { buildMergedExits, pendingKnockTargets } from "./features/spatial/exitAffordances";
+import type { RosterPerson } from "./features/rails/rosterByScene";
 import { splitSceneMessages } from "./lib/parse";
 
 export default function App() {
@@ -44,9 +48,10 @@ export default function App() {
   const [metaText, setMetaText] = useState("");
   const [whisperTarget, setWhisperTarget] = useState("");
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-  const [memoryFor, setMemoryFor] = useState<{
+  const [profileFor, setProfileFor] = useState<{
     characterId: string;
     displayName: string;
+    rosterContext: CharacterProfileRosterContext;
   } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [worldPaused, setWorldPaused] = useState(false);
@@ -426,10 +431,13 @@ export default function App() {
         }}
         signalToast={signalToast}
         roster={roster}
-        onMemory={(characterId, displayName) =>
-          setMemoryFor({ characterId, displayName })
+        onSelectCharacter={(person: RosterPerson, rosterContext: CharacterProfileRosterContext) =>
+          setProfileFor({
+            characterId: person.characterId,
+            displayName: person.displayName,
+            rosterContext,
+          })
         }
-        onPresenceChanged={() => refresh(world)}
         rightRail={
           <>
             {roster && scene && (
@@ -531,12 +539,33 @@ export default function App() {
         />
       )}
 
-      {memoryFor && (
-        <MemoryInspector
+      {profileFor && (
+        <CharacterProfileModal
           worldId={world.worldId}
-          characterId={memoryFor.characterId}
-          displayName={memoryFor.displayName}
-          onClose={() => setMemoryFor(null)}
+          characterId={profileFor.characterId}
+          displayName={profileFor.displayName}
+          rosterContext={profileFor.rosterContext}
+          scenes={scenes.map((s) => ({
+            sceneId: s.sceneId,
+            locationName: s.locationName,
+          }))}
+          onClose={() => setProfileFor(null)}
+          onGoToScene={switchScene}
+          onSummonHere={async (characterId) => {
+            await api.summonPresence(world.worldId, {
+              characterIds: [characterId],
+              targetSceneId: world.activeSceneId,
+            });
+            await refresh(world);
+          }}
+          onPlaceAt={async (characterId, sceneId) => {
+            await api.joinPresence(world.worldId, sceneId, characterId);
+            await refresh(world);
+          }}
+          onLeave={async (characterId, sceneId) => {
+            await api.leavePresence(world.worldId, sceneId, characterId);
+            await refresh(world);
+          }}
         />
       )}
 

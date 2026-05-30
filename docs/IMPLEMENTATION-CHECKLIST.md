@@ -28,6 +28,7 @@ Links **Sprint 1/2** work to the **spatial golden path** and **fixture paths**. 
 | diary_read | Doc 02 tool | Done |
 | UI-1 / UI-2 | Queue strip + selection rationale | Done (`GpuQueueStrip`, message ⓘ) |
 | UI-M4 | Memory inspector from People | Done |
+| UI-D3 | Character profile summary modal (click name/avatar) | Done (`CharacterProfileModal`, `CastRow`) |
 | CC-11b | Dismiss knock signal | Done (PATCH signal) |
 | CC-6 / OBS-6 | Observer digest (signals + channels) | Done (`GET .../observer/digest`, Observer Studio UI) |
 | First-run UX pass | guides/first-run-experience.md | Done (launcher steps + `test_first_run_experience_api`) |

@@ -91,7 +91,7 @@ The automated release gate is the spatial golden path ([17-acceptance-criteria.m
 
 - Scene framing updates on next generation (OBS-2)
 - Meta thread separate from scene transcript (UI-O1)
-- Optional: open **Memory inspector** for a cast member from People (WF-17, UI-M4)
+- Optional: click a cast member’s **name or avatar** in the World rail for the character modal (Summary, Memory, and Reflection tabs) (UI-D3, WF-17a)
 
 ### 7. Rich message rendering (when UI exists)
 
