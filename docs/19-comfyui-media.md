@@ -1,6 +1,6 @@
 # 19 — ComfyUI Media (Future)
 
-**Status:** Post-v1. Same-machine ComfyUI integrated via [GpuResourceQueue](00-inference-runtime.md).
+**Status:** Integrated (post-v1). Same-machine ComfyUI via [GpuResourceQueue](00-inference-runtime.md). Native install only — see [guides/dgx-spark-comfyui-setup.md](guides/dgx-spark-comfyui-setup.md).
 
 ## 1. Goal
 
@@ -26,7 +26,7 @@ Store **caption + assetId** in world locus (`scene:{id}:image` or fixture key)�
 
 ## 4. v1 and Alpha wedge
 
-ComfyUI is **not in the v1 release gate**. **Alpha wedge:** portrait endpoint + stub when ComfyUI URL unset; gray placeholders (UI-IMG-1). GpuResourceQueue schema reserves `kind: image`. Live integration depth: [SPEC-GAPS.md](SPEC-GAPS.md).
+ComfyUI is **optional at runtime**. **Alpha wedge:** mock path when ComfyUI URL unset; gray placeholders (UI-IMG-1). Live integration: profile registry, workflow templates, Settings → Media, `image_generate` tool — see [guides/comfyui-workflows.md](guides/comfyui-workflows.md).
 
 ## 5. Web UI (post-v1)
 

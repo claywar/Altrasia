@@ -211,6 +211,7 @@ export function SpatialShell({
         >
           {roster && (
             <WorldRail
+              worldId={world.worldId}
               scenes={scenes}
               graph={graph}
               activeSceneId={world.activeSceneId}

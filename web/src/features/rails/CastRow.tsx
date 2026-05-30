@@ -1,16 +1,22 @@
 import type { RosterPerson } from "./rosterByScene";
 import type { CharacterProfileRosterContext } from "../../components/CharacterProfileModal";
+import { CharacterPortrait } from "../../components/CharacterPortrait";
 
 type Props = {
+  worldId: string;
   person: RosterPerson;
   activeSceneId: string;
   personSceneId: string | null;
   onSelectCharacter: (person: RosterPerson, context: CharacterProfileRosterContext) => void;
 };
 
-export function CastRow({ person, activeSceneId, personSceneId, onSelectCharacter }: Props) {
-  const initials = person.displayName.slice(0, 2).toUpperCase();
-
+export function CastRow({
+  worldId,
+  person,
+  activeSceneId,
+  personSceneId,
+  onSelectCharacter,
+}: Props) {
   return (
     <li className="cast-row">
       <button
@@ -26,9 +32,12 @@ export function CastRow({ person, activeSceneId, personSceneId, onSelectCharacte
           })
         }
       >
-        <span className="cast-row__avatar" aria-hidden>
-          {initials}
-        </span>
+        <CharacterPortrait
+          worldId={worldId}
+          characterId={person.characterId}
+          displayName={person.displayName}
+          portraitUrl={person.portraitUrl}
+        />
         <span className="cast-row__body">
           <span className="cast-row__name">{person.displayName}</span>
           {person.inventorySummary ? (

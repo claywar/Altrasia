@@ -39,7 +39,7 @@ Optional: **Settings** → **Server** → enable **Server heartbeat** for NPC id
 
 **Settings categories:** **World** (policy, activity status, package, briefing), **Scenes & layout** (geography, map layout), **Cast** (list, AI character draft), **Operations** (commissions), **Server** (heartbeat, plugins). **Play UI:** debate panel (right sidebar), tactical **Map** console (Top bar **Map**, scene chip, or **M** — pan/zoom, layers, click rooms to travel), approvals banner. **Observer Studio:** digest with signals, commissions, debates, approvals.
 
-**Alpha wedge defaults:** Reflection and nightly learning are **off** until enabled in World policy. Idle social/banter is policy-gated. Web-tools and ComfyUI portrait generation use **mock/stub** behavior unless you configure live endpoints (`ALTRASIA_LLM_*`, ComfyUI URL, web-tools allowlist). Server plugins default off. See [SPEC-GAPS.md](../SPEC-GAPS.md) for production-hardening gaps.
+**Alpha wedge defaults:** Reflection and nightly learning are **off** until enabled in World policy. Idle social/banter is policy-gated. Web-tools use **mock/stub** unless configured. ComfyUI returns gray placeholders when `ALTRASIA_COMFY_URL` is unset; configure **Settings → Media** or env for live generation. See [dgx-spark-comfyui-setup.md](dgx-spark-comfyui-setup.md). Server plugins default off. See [SPEC-GAPS.md](../SPEC-GAPS.md) for production-hardening gaps.
 
 ## 3. Real inference (optional)
 

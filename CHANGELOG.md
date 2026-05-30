@@ -12,7 +12,7 @@ All notable changes to Altrasia are documented here.
 - Embedding pipeline (`memory/embeddings.py`) and hybrid search when `ALTRASIA_EMBED_BASE_URL` is set.
 - SSRF-safe `web_fetch`, FS agent tools, scheduler stub, `scene_exit_set_state` (CC-11c).
 - Plugin loader + reference `plugins/web-tools` and `plugins/comfyui-media`.
-- ComfyUI portrait API stub; `WorldMapCanvas`, mini-map shapes/envelopes.
+- ComfyUI live integration: HTTP client, image profile registry, workflow templates (SDXL/FLUX/Z-Image), `image_generate` tool, MediaAsset persistence, Settings → Media UI, DGX Spark HOWTO.
 - Playwright smoke tests (`web/e2e/smoke.spec.ts`).
 - Nightly workflow, OpenAPI export (`packages/openapi/altrasia-v1.json`), `SECURITY.md`, `CONTRIBUTING.md`.
 

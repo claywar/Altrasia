@@ -95,4 +95,23 @@ class AppServices:
         svc.orchestrator = Orchestrator(svc)
         svc.idle_scheduler = IdleScheduler(svc)
         svc.apply_inference_config()
+        svc.gpu_queue.set_cancel_hook(_gpu_cancel_hook(svc))
         return svc
+
+
+def _gpu_cancel_hook(svc: AppServices):
+    async def hook() -> None:
+        lease = svc.gpu_queue.snapshot().get("currentLease")
+        if not lease or lease.get("kind") != "image":
+            return
+        from altrasia.inference.comfyui.client import ComfyUiClient
+        from altrasia.inference.comfyui.profiles import resolve_comfy_url
+        from altrasia.operator_settings import get_image_config
+
+        base = resolve_comfy_url(
+            svc.settings.comfy_url, get_image_config(svc.operator_settings.load())
+        )
+        if base:
+            await ComfyUiClient(base).interrupt()
+
+    return hook

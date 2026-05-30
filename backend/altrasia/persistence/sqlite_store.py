@@ -842,6 +842,66 @@ class SqlitePersistence:
             )
         return self._rows(cur.fetchall())
 
+    @_uses_db_lock
+    def insert_media_asset(
+        self,
+        *,
+        asset_id: str,
+        world_id: str,
+        path: str,
+        sha256: str,
+        workflow_id: str,
+        model_profile_id: str | None = None,
+        character_id: str | None = None,
+        source_job_id: str | None = None,
+        created_at: str,
+    ) -> None:
+        self.conn.execute(
+            """INSERT INTO MediaAsset
+               (assetId, worldId, characterId, path, sha256, workflowId, sourceJobId,
+                modelProfileId, createdAt)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                asset_id,
+                world_id,
+                character_id,
+                path,
+                sha256,
+                workflow_id,
+                source_job_id,
+                model_profile_id,
+                created_at,
+            ),
+        )
+        self.conn.commit()
+
+    @_uses_db_lock
+    def get_media_asset(self, asset_id: str) -> dict[str, Any] | None:
+        cur = self.conn.execute("SELECT * FROM MediaAsset WHERE assetId = ?", (asset_id,))
+        return self._row(cur.fetchone())
+
+    @_uses_db_lock
+    def list_media_assets(
+        self,
+        world_id: str,
+        *,
+        character_id: str | None = None,
+        workflow_id: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        sql = "SELECT * FROM MediaAsset WHERE worldId = ?"
+        params: list[Any] = [world_id]
+        if character_id:
+            sql += " AND characterId = ?"
+            params.append(character_id)
+        if workflow_id:
+            sql += " AND workflowId = ?"
+            params.append(workflow_id)
+        sql += " ORDER BY createdAt DESC LIMIT ?"
+        params.append(limit)
+        cur = self.conn.execute(sql, tuple(params))
+        return self._rows(cur.fetchall())
+
     @staticmethod
     def json_loads(raw: str | None, default: Any = None) -> Any:
         if raw is None or raw == "":

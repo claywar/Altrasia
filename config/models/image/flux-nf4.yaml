@@ -1,0 +1,20 @@
+profileId: flux-nf4
+family: flux
+displayName: FLUX.1 dev (NF4)
+peakMemoryGb: 16
+builtin: true
+comfy:
+  unet: flux1-dev-bnb-nf4.safetensors
+  clip_l: clip_l.safetensors
+  clip_t5: t5xxl_fp16.safetensors
+  vae: ae.safetensors
+defaults:
+  steps: 20
+  cfg: 1.0
+  width: 1024
+  height: 1024
+capabilities:
+  referenceImage: true
+supportedWorkflows:
+  - character_portrait
+  - scene_establishing

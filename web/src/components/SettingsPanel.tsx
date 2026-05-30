@@ -21,6 +21,8 @@ import { ReflectionPolicySection } from "./settings/ReflectionPolicySection";
 import { ServerPluginsSection } from "./settings/ServerPluginsSection";
 import { ServerInferenceSection } from "./settings/ServerInferenceSection";
 import { ServerHeartbeatSection } from "./settings/ServerHeartbeatSection";
+import { ImageGenerationSettingsSection } from "./settings/ImageGenerationSettingsSection";
+import { WorldImagePolicySection } from "./settings/WorldImagePolicySection";
 import { SettingsScenesEmpty } from "./settings/SettingsScenesEmpty";
 import { OperationsDebateHint } from "./settings/OperationsDebateHint";
 import { SettingsGroup } from "./settings/SettingsGroup";
@@ -75,6 +77,7 @@ export function SettingsPanel({
               <AmbientDisplaySection onChanged={onAmbientTranscriptChange} />
               <IdleSocialPolicySection worldId={worldId} />
               <ReflectionPolicySection worldId={worldId} />
+              <WorldImagePolicySection worldId={worldId} />
               <WorldPolicyPanel worldId={worldId} embedded />
               <WorldPackageSection
                 worldId={worldId}
@@ -157,6 +160,18 @@ export function SettingsPanel({
                 <OperationsDebateHint />
                 <CommissionsPanel worldId={worldId} scenes={scenes} embedded />
               </SettingsGroup>
+            )}
+          </SettingsCategoryPane>
+        );
+      case "media":
+        return (
+          <SettingsCategoryPane categoryId="media">
+            {settings ? (
+              <SettingsGroup>
+                <ImageGenerationSettingsSection settings={settings} onUpdated={setSettings} />
+              </SettingsGroup>
+            ) : (
+              <p className="settings-muted settings-loading">Loading media settings…</p>
             )}
           </SettingsCategoryPane>
         );

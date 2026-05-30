@@ -504,6 +504,95 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
             announce=False,
         )
 
+    async def image_generate(params: dict, ctx: ToolContext) -> Any:
+        from altrasia.approvals import create_approval
+        from altrasia.inference.comfyui.pipeline import (
+            WORKFLOW_IDS,
+            run_image_workflow,
+            save_media_asset,
+            write_image_locus,
+        )
+        from altrasia.world_config import get_world_config
+
+        wc = get_world_config(services.store, ctx.world_id)
+
+        workflow_id = str(params.get("workflowId") or "scene_establishing")
+        if workflow_id not in WORKFLOW_IDS:
+            return {"ok": False, "error": f"workflow not allowed: {workflow_id} (IMG-9)"}
+
+        if ctx.character_id and not wc.get("allowCastImageGen", False):
+            return {"ok": False, "error": "cast image generation not allowed (IMG-7)"}
+
+        prompt = str(params.get("prompt") or "").strip()
+        if not prompt:
+            return {"ok": False, "error": "prompt required"}
+
+        if wc.get("requireApprovalForImageGen"):
+            approval = create_approval(
+                services.store,
+                world_id=ctx.world_id,
+                tool_name="image_generate",
+                params=params,
+                state="pending",
+                character_id=ctx.character_id,
+                job_id=ctx.job_id,
+                message_id=ctx.message_id,
+            )
+            services.event_bus.emit(
+                services.store,
+                ctx.world_id,
+                "approval.updated",
+                {"approvalId": approval["approvalId"], "state": "pending"},
+            )
+            return {
+                "ok": False,
+                "approvalRequired": True,
+                "approvalId": approval["approvalId"],
+                "message": "Operator must approve image generation.",
+            }
+
+        gen = await run_image_workflow(
+            services,
+            world_id=ctx.world_id,
+            workflow_id=workflow_id,
+            prompt=prompt,
+            model_profile_id=params.get("modelProfileId"),
+            reference_asset_id=params.get("referenceAssetId"),
+            job_id=ctx.job_id,
+        )
+        if gen.get("mock"):
+            return gen
+        if not gen.get("ok"):
+            return gen
+
+        locus_key = params.get("locusKey")
+        character_id = params.get("characterId") or ctx.character_id
+        scene_id = params.get("sceneId")
+        asset = save_media_asset(
+            services,
+            world_id=ctx.world_id,
+            png_bytes=gen["png"],
+            workflow_id=workflow_id,
+            model_profile_id=gen["modelProfileId"],
+            character_id=character_id if workflow_id == "character_portrait" else None,
+            scene_id=scene_id if workflow_id in ("scene_establishing", "map_thumbnail") else None,
+            source_job_id=gen.get("jobId"),
+        )
+        if locus_key:
+            write_image_locus(
+                services,
+                locus_key=str(locus_key),
+                owner_id=ctx.world_id,
+                caption=prompt,
+                asset_id=asset["assetId"],
+            )
+        return {
+            "ok": True,
+            "assetId": asset["assetId"],
+            "url": asset["url"],
+            "modelProfileId": gen["modelProfileId"],
+        }
+
     async def map_layout_generate(params: dict, ctx: ToolContext) -> Any:
         from altrasia.map_authoring import create_layout_draft
 
@@ -1042,6 +1131,37 @@ def register_core_tools(registry: ToolRegistry, services: Any) -> None:
                 "required": ["targetSceneId", "characterIds"],
             },
             handler=scene_summon,
+        )
+    )
+    registry.register(
+        ToolDef(
+            name="image_generate",
+            description=(
+                "Generate an image via ComfyUI (scene, portrait, fixture icon, or map thumbnail). "
+                "Store caption + assetId in a world locus; never store binary in diary."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "workflowId": {
+                        "type": "string",
+                        "enum": [
+                            "character_portrait",
+                            "scene_establishing",
+                            "fixture_icon",
+                            "map_thumbnail",
+                        ],
+                    },
+                    "prompt": {"type": "string"},
+                    "locusKey": {"type": "string"},
+                    "modelProfileId": {"type": "string"},
+                    "referenceAssetId": {"type": "string"},
+                    "characterId": {"type": "string"},
+                    "sceneId": {"type": "string"},
+                },
+                "required": ["prompt"],
+            },
+            handler=image_generate,
         )
     )
     registry.register(

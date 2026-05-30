@@ -1,0 +1,19 @@
+profileId: sdxl-default
+family: sdxl
+displayName: SDXL default
+peakMemoryGb: 8
+builtin: true
+comfy:
+  checkpoint: sd_xl_base_1.0.safetensors
+defaults:
+  steps: 25
+  cfg: 7.0
+  width: 1024
+  height: 1024
+capabilities:
+  referenceImage: true
+supportedWorkflows:
+  - character_portrait
+  - scene_establishing
+  - fixture_icon
+  - map_thumbnail

@@ -71,6 +71,11 @@ POLICY_KEYS = (
     "reflectionAutoApproveLoci",
     "reflectionLocusMaxChars",
     "reflectionPersonaProposalsEnabled",
+    "imageDefaultProfileId",
+    "imageWorkflowProfiles",
+    "imageUseOperatorDefaults",
+    "requireApprovalForImageGen",
+    "allowCastImageGen",
 )
 
 IDLE_SOCIAL_DEFAULTS: dict[str, Any] = {

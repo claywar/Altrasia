@@ -1,0 +1,21 @@
+profileId: z-image-turbo-default
+family: z_image_turbo
+displayName: Z-Image Turbo (bf16)
+peakMemoryGb: 12
+builtin: true
+comfy:
+  diffusionModel: z_image_turbo_bf16.safetensors
+  textEncoder: qwen_3_4b.safetensors
+  vae: ae.safetensors
+defaults:
+  steps: 9
+  cfg: 1.0
+  width: 1024
+  height: 1024
+capabilities:
+  referenceImage: false
+supportedWorkflows:
+  - scene_establishing
+  - fixture_icon
+  - map_thumbnail
+  - character_portrait

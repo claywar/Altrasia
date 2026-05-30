@@ -13,7 +13,7 @@ Living index of normative requirements **not yet fully accomplished** vs docs `0
 | Spatial golden path | [17](17-acceptance-criteria.md) §2 | Yes (mock LLM) | Nightly real LLM optional |
 | Web UI acceptance | [14](14-web-ui.md), [17](17-acceptance-criteria.md) §3 | Playwright e2e in CI | Full UI-MAP-ACC5–8 manor fixture in demo |
 | Web / FS / plugins | [06](06-web-tools.md), [08](08-real-world-capabilities.md), [15](15-plugin-platform.md) | Tests + allowlist config; mock defaults | Production SSRF matrix expansion |
-| ComfyUI | [19](19-comfyui-media.md) | Stub + portrait endpoint + tests | Live ComfyUI server integration; `image_generate` tool |
+| ComfyUI | [19](19-comfyui-media.md) | Live client, profiles, workflows, `image_generate`, Media settings UI | IP-Adapter reference pipeline depth; production checkpoint validation |
 | Phase 6 maps | [18](18-location-maps.md), [25](25-map-authoring.md) | MapArtifact API, MapDraft, 3D explorer | MAP-ACC-1–6 full UI; layout-draft `sync`/`preview.svg`/etc. |
 | Reflection (AO-8) | [16-learning.md](16-learning.md) §6 | Pipeline + UI + tests; default off | Operator guide in doc 16 §6.4 |
 | Commons (MP-22) | [23-in-world-work.md](23-in-world-work.md) | GET/PUT API | Web UI panel |

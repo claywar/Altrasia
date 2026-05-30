@@ -47,6 +47,7 @@ export function TopBar({
         estimatedWaitMs={queue.estimatedWaitMs}
         currentJob={queue.currentJob ?? undefined}
         leaseKind={queue.gpu?.currentLease?.kind}
+        imageJobMeta={queue.gpu?.imageJobMeta}
         onCancel={currentJobId ? onCancelJob : undefined}
       />
       <nav className="top-bar__actions" aria-label="World controls">

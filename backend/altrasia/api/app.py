@@ -183,10 +183,35 @@ class InferencePatch(BaseModel):
     embeddingModel: str | None = None
 
 
+class ImagePatch(BaseModel):
+    comfyBaseUrl: str | None = None
+    memoryBudgetGb: int | None = None
+    defaultProfileId: str | None = None
+    workflowProfiles: dict[str, str] | None = None
+
+
 class OperatorSettingsPatch(BaseModel):
     heartbeat: HeartbeatPatch | None = None
     enableServerPlugins: bool | None = None
     inference: InferencePatch | None = None
+    image: ImagePatch | None = None
+
+
+class PortraitGenerateBody(BaseModel):
+    prompt: str | None = None
+    modelProfileId: str | None = None
+    referenceAssetId: str | None = None
+
+
+class ImageProfileCreateBody(BaseModel):
+    profileId: str
+    family: str
+    displayName: str
+    peakMemoryGb: float = 8
+    comfy: dict[str, str] = Field(default_factory=dict)
+    defaults: dict[str, Any] | None = None
+    capabilities: dict[str, bool] | None = None
+    supportedWorkflows: list[str] = Field(default_factory=list)
 
 
 class ExitStateBody(BaseModel):
@@ -2176,6 +2201,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if body.inference.embeddingModel is not None:
                 inf["embeddingModel"] = body.inference.embeddingModel
             updates["inference"] = inf
+        if body.image is not None:
+            img: dict[str, Any] = {}
+            if body.image.comfyBaseUrl is not None:
+                img["comfyBaseUrl"] = body.image.comfyBaseUrl
+            if body.image.memoryBudgetGb is not None:
+                img["memoryBudgetGb"] = body.image.memoryBudgetGb
+            if body.image.defaultProfileId is not None:
+                img["defaultProfileId"] = body.image.defaultProfileId
+            if body.image.workflowProfiles is not None:
+                img["workflowProfiles"] = body.image.workflowProfiles
+            updates["image"] = img
         patched = svc.operator_settings.patch(updates)
         svc.apply_inference_config()
         return patched.to_api(svc.settings)
@@ -2198,6 +2234,61 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         result = await list_openai_models(url)
         return {"target": target, "baseUrl": url, **result}
 
+    @app.get("/api/v1/inference/image/profiles", dependencies=[Depends(verify_auth)])
+    def list_image_profiles(svc: AppServices = Depends(get_services)) -> dict:
+        from altrasia.inference.comfyui.profiles import ImageProfileRegistry
+
+        reg = ImageProfileRegistry(svc.settings.data_dir)
+        profiles = [p.to_api() for p in reg.list_profiles(refresh=True)]
+        return {"profiles": profiles}
+
+    @app.post("/api/v1/inference/image/profiles", dependencies=[Depends(verify_auth)])
+    def create_image_profile(
+        body: ImageProfileCreateBody, svc: AppServices = Depends(get_services)
+    ) -> dict:
+        from altrasia.inference.comfyui.profiles import ImageProfileRegistry
+
+        reg = ImageProfileRegistry(svc.settings.data_dir)
+        try:
+            prof = reg.save_user_profile(body.model_dump())
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        return prof.to_api()
+
+    @app.delete(
+        "/api/v1/inference/image/profiles/{profile_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def delete_image_profile(profile_id: str, svc: AppServices = Depends(get_services)) -> dict:
+        from altrasia.inference.comfyui.profiles import ImageProfileRegistry
+
+        reg = ImageProfileRegistry(svc.settings.data_dir)
+        if not reg.delete_user_profile(profile_id):
+            raise HTTPException(404, "profile not found or built-in")
+        return {"profileId": profile_id, "deleted": True}
+
+    @app.get("/api/v1/inference/image/health", dependencies=[Depends(verify_auth)])
+    async def image_inference_health(svc: AppServices = Depends(get_services)) -> dict:
+        from altrasia.inference.comfyui.pipeline import comfy_health
+
+        return await comfy_health(svc)
+
+    @app.get(
+        "/api/v1/worlds/{world_id}/assets/{asset_id}",
+        dependencies=[Depends(verify_auth)],
+    )
+    def get_world_asset(
+        world_id: str, asset_id: str, svc: AppServices = Depends(get_services)
+    ) -> Response:
+        row = svc.store.get_media_asset(asset_id)
+        if not row or row["worldId"] != world_id:
+            raise HTTPException(404, "asset not found")
+        rel = row.get("path") or ""
+        full = svc.settings.data_dir / "assets" / rel
+        if not full.is_file():
+            raise HTTPException(404, "asset file missing")
+        return Response(content=full.read_bytes(), media_type="image/png")
+
     @app.post(
         "/api/v1/worlds/{world_id}/characters/{character_id}/portrait/generate",
         dependencies=[Depends(verify_auth)],
@@ -2205,6 +2296,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def post_portrait_generate(
         world_id: str,
         character_id: str,
+        body: PortraitGenerateBody | None = None,
         svc: AppServices = Depends(get_services),
     ) -> dict:
         from altrasia.inference.comfyui import generate_portrait
@@ -2214,8 +2306,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ch = svc.store.get_character(character_id)
         if not ch:
             raise HTTPException(404, "character not found")
-        prompt = f"Portrait of {ch.get('displayName', character_id)}, character study"
-        return await generate_portrait(svc, character_id=character_id, prompt=prompt)
+        req = body or PortraitGenerateBody()
+        prompt = req.prompt or f"Portrait of {ch.get('displayName', character_id)}, character study"
+        return await generate_portrait(
+            svc,
+            world_id=world_id,
+            character_id=character_id,
+            prompt=prompt,
+            model_profile_id=req.modelProfileId,
+            reference_asset_id=req.referenceAssetId,
+        )
+
+    @app.post("/api/v1/inference/gpu/cancel", dependencies=[Depends(verify_auth)])
+    async def cancel_gpu_lease(svc: AppServices = Depends(get_services)) -> dict:
+        ok = await svc.gpu_queue.cancel_current()
+        return {"cancelled": ok}
 
     @app.get("/api/v1/worlds/{world_id}/approvals", dependencies=[Depends(verify_auth)])
     def get_approvals(

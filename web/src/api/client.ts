@@ -55,6 +55,11 @@ export type WorldPolicy = {
   reflectionAutoApproveLoci?: boolean;
   reflectionLocusMaxChars?: number;
   reflectionPersonaProposalsEnabled?: boolean;
+  imageDefaultProfileId?: string | null;
+  imageWorkflowProfiles?: Record<string, string | null>;
+  imageUseOperatorDefaults?: boolean;
+  requireApprovalForImageGen?: boolean;
+  allowCastImageGen?: boolean;
 };
 
 export type CastCharacter = {
@@ -232,6 +237,7 @@ export type QueueSnapshot = {
   gpu?: {
     busy: boolean;
     currentLease?: { kind: string; jobId: string } | null;
+    imageJobMeta?: { workflowId?: string; modelProfileId?: string; peakMemoryGb?: number };
   };
 };
 
@@ -264,6 +270,8 @@ export type OperatorSettings = {
   enableServerPlugins?: boolean;
   lastHeartbeatAt: string | null;
   inference: InferenceSettings;
+  image?: ImageSettings;
+  imageEffective?: ImageSettings;
   inferenceEffective?: InferenceEffective;
   envDefaults?: {
     primaryBaseUrl: string | null;
@@ -271,7 +279,38 @@ export type OperatorSettings = {
     embeddingBaseUrl: string | null;
     embeddingModel: string;
     mockLlm: boolean;
+    comfyBaseUrl?: string | null;
   };
+};
+
+export type ImageSettings = {
+  comfyBaseUrl: string;
+  memoryBudgetGb: number;
+  defaultProfileId: string;
+  workflowProfiles: Record<string, string>;
+};
+
+export type ImageProfile = {
+  profileId: string;
+  family: string;
+  displayName: string;
+  peakMemoryGb: number;
+  comfy: Record<string, string>;
+  defaults: Record<string, unknown>;
+  capabilities: { referenceImage?: boolean };
+  supportedWorkflows: string[];
+  builtin: boolean;
+};
+
+export type PortraitGenerateResult = {
+  ok: boolean;
+  mock?: boolean;
+  message?: string;
+  error?: string;
+  assetId?: string;
+  portraitUrl?: string | null;
+  url?: string;
+  modelProfileId?: string;
 };
 
 export type WebToolsAccess = "off" | "ask" | "allow";
@@ -932,11 +971,47 @@ export const api = {
     heartbeat?: { enabled?: boolean; intervalSeconds?: number };
     enableServerPlugins?: boolean;
     inference?: Partial<InferenceSettings>;
+    image?: Partial<ImageSettings>;
   }) =>
     request<OperatorSettings>("/operator/settings", {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  listImageProfiles: () =>
+    request<{ profiles: ImageProfile[] }>("/inference/image/profiles"),
+  createImageProfile: (body: {
+    profileId: string;
+    family: string;
+    displayName: string;
+    peakMemoryGb?: number;
+    comfy: Record<string, string>;
+    defaults?: Record<string, unknown>;
+    capabilities?: Record<string, boolean>;
+    supportedWorkflows: string[];
+  }) =>
+    request<ImageProfile>("/inference/image/profiles", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteImageProfile: (profileId: string) =>
+    request<{ profileId: string; deleted: boolean }>(
+      `/inference/image/profiles/${encodeURIComponent(profileId)}`,
+      { method: "DELETE" }
+    ),
+  imageHealth: () => request<{ ok: boolean; reachable?: boolean; message?: string }>(
+    "/inference/image/health"
+  ),
+  generatePortrait: (
+    worldId: string,
+    characterId: string,
+    body?: { prompt?: string; modelProfileId?: string; referenceAssetId?: string }
+  ) =>
+    request<PortraitGenerateResult>(
+      `/worlds/${worldId}/characters/${characterId}/portrait/generate`,
+      { method: "POST", body: JSON.stringify(body ?? {}) }
+    ),
+  assetUrl: (worldId: string, assetId: string) =>
+    `/api/v1/worlds/${worldId}/assets/${assetId}`,
   listInferenceModels: (target: "primary" | "embedding", baseUrl?: string) => {
     const q = new URLSearchParams({ target });
     if (baseUrl?.trim()) q.set("baseUrl", baseUrl.trim());

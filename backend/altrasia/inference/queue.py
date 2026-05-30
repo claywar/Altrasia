@@ -26,10 +26,28 @@ class GpuResourceQueue:
         self._current: GpuLease | None = None
         self._busy = False
         self.max_depth = max(1, max_depth)
+        self._image_job_meta: dict[str, Any] | None = None
+        self._cancel_hook: Callable[[], Awaitable[None]] | None = None
 
     @property
     def busy(self) -> bool:
         return self._busy
+
+    def set_image_job_meta(self, meta: dict[str, Any]) -> None:
+        self._image_job_meta = dict(meta)
+
+    def clear_image_job_meta(self) -> None:
+        self._image_job_meta = None
+
+    def set_cancel_hook(self, hook: Callable[[], Awaitable[None]] | None) -> None:
+        self._cancel_hook = hook
+
+    async def cancel_current(self) -> bool:
+        if not self._current:
+            return False
+        if self._cancel_hook:
+            await self._cancel_hook()
+        return True
 
     async def run(
         self,
@@ -54,7 +72,7 @@ class GpuResourceQueue:
                 self._busy = False
 
     def snapshot(self) -> dict[str, Any]:
-        return {
+        snap: dict[str, Any] = {
             "busy": self._busy,
             "currentLease": (
                 {
@@ -66,6 +84,9 @@ class GpuResourceQueue:
                 else None
             ),
         }
+        if self._image_job_meta:
+            snap["imageJobMeta"] = dict(self._image_job_meta)
+        return snap
 
 
 @dataclass

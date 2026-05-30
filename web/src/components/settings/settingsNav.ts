@@ -1,4 +1,4 @@
-export type SettingsCategoryId = "world" | "architect" | "cast" | "operations" | "server";
+export type SettingsCategoryId = "world" | "architect" | "cast" | "operations" | "media" | "server";
 
 export type SettingsCategory = {
   id: SettingsCategoryId;
@@ -27,6 +27,11 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     id: "operations",
     label: "Operations",
     description: "Commissions and background work assigned to cast.",
+  },
+  {
+    id: "media",
+    label: "Media",
+    description: "ComfyUI connection, image model profiles, and per-workflow defaults.",
   },
   {
     id: "server",

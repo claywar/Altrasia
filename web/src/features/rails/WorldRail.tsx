@@ -13,6 +13,7 @@ import {
 import type { CharacterProfileRosterContext } from "../../components/CharacterProfileModal";
 
 type Props = {
+  worldId: string;
   scenes: Scene[];
   activeSceneId: string;
   graph?: SpatialGraph | null;
@@ -27,6 +28,7 @@ function personSceneId(person: RosterPerson): string | null {
 }
 
 function PlaceSceneBlock({
+  worldId,
   row,
   active,
   cast,
@@ -35,6 +37,7 @@ function PlaceSceneBlock({
   onSelect,
   onSelectCharacter,
 }: {
+  worldId: string;
   row: PlaceRow;
   active: boolean;
   cast: RosterPerson[];
@@ -97,6 +100,7 @@ function PlaceSceneBlock({
             cast.map((person) => (
               <CastRow
                 key={person.characterId}
+                worldId={worldId}
                 person={person}
                 activeSceneId={activeSceneId}
                 personSceneId={personSceneId(person) ?? sceneId}
@@ -111,10 +115,12 @@ function PlaceSceneBlock({
 }
 
 function OffStageBlock({
+  worldId,
   unplaced,
   activeSceneId,
   onSelectCharacter,
 }: {
+  worldId: string;
   unplaced: RosterPerson[];
   activeSceneId: string;
   onSelectCharacter: (person: RosterPerson, context: CharacterProfileRosterContext) => void;
@@ -137,6 +143,7 @@ function OffStageBlock({
           {unplaced.map((person) => (
             <CastRow
               key={person.characterId}
+              worldId={worldId}
               person={person}
               activeSceneId={activeSceneId}
               personSceneId={null}
@@ -150,6 +157,7 @@ function OffStageBlock({
 }
 
 function renderSceneBlock(
+  worldId: string,
   row: PlaceRow,
   activeSceneId: string,
   byScene: Map<string, RosterPerson[]>,
@@ -164,6 +172,7 @@ function renderSceneBlock(
   return (
     <PlaceSceneBlock
       key={sceneId}
+      worldId={worldId}
       row={row}
       active={sceneId === activeSceneId}
       cast={cast}
@@ -175,6 +184,7 @@ function renderSceneBlock(
 }
 
 export function WorldRail({
+  worldId,
   scenes,
   activeSceneId,
   graph,
@@ -225,7 +235,7 @@ export function WorldRail({
     <RailSection title="World" testId="world-rail" className="world-rail">
       <ul className="places-list world-rail__scenes">
         {activeRow &&
-          renderSceneBlock(activeRow, activeSceneId, byScene, true, handlers)}
+          renderSceneBlock(worldId, activeRow, activeSceneId, byScene, true, handlers)}
       </ul>
 
       {(groupsWithoutActive.length > 0 || flatRest.length > 0) && activeRow && (
@@ -235,7 +245,7 @@ export function WorldRail({
       {flat ? (
         <ul className="places-list world-rail__scenes">
           {flatRest.map((row) =>
-            renderSceneBlock(row, activeSceneId, byScene, false, handlers)
+            renderSceneBlock(worldId, row, activeSceneId, byScene, false, handlers)
           )}
         </ul>
       ) : (
@@ -250,7 +260,7 @@ export function WorldRail({
                   )}
                   <ul className="places-list world-rail__scenes">
                     {level.rows.map((row) =>
-                      renderSceneBlock(row, activeSceneId, byScene, false, handlers)
+                      renderSceneBlock(worldId, row, activeSceneId, byScene, false, handlers)
                     )}
                   </ul>
                 </div>
@@ -261,6 +271,7 @@ export function WorldRail({
       )}
 
       <OffStageBlock
+        worldId={worldId}
         unplaced={unplaced}
         activeSceneId={activeSceneId}
         onSelectCharacter={onSelectCharacter}

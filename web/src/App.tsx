@@ -16,7 +16,7 @@ import {
 } from "./api/client";
 import { PhonePanel } from "./components/PhonePanel";
 import { SignalsRail } from "./components/SignalsRail";
-import { ObserverDigest } from "./components/ObserverDigest";
+import { RegenerateImageControl } from "./components/RegenerateImageControl";
 import { CharacterDraftPanel } from "./components/CharacterDraftPanel";
 import { ActivityPanel } from "./components/ActivityPanel";
 import { MarkdownBody } from "./components/MarkdownBody";
@@ -593,6 +593,14 @@ export default function App() {
                   setObserverDigest(await api.observerDigest(world.worldId));
                 }}
               />
+              {roster && (roster.atLocation[0] ?? roster.elsewhere[0]) && (
+                <RegenerateImageControl
+                  worldId={world.worldId}
+                  characterId={(roster.atLocation[0] ?? roster.elsewhere[0])!.characterId}
+                  displayName={(roster.atLocation[0] ?? roster.elsewhere[0])!.displayName}
+                  onGenerated={() => refresh(world)}
+                />
+              )}
           </aside>
             <div className="transcript observer-meta-scroll">
               {metaMessages.map((m) => (

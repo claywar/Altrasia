@@ -42,19 +42,49 @@ class InferenceConfig:
 
 
 @dataclass
+class ImageSettings:
+    """Operator ComfyUI / image profile defaults (persisted in config.yaml)."""
+
+    comfyBaseUrl: str = ""
+    memoryBudgetGb: int = 70
+    defaultProfileId: str = "sdxl-default"
+    workflowProfiles: dict[str, str] | None = None
+
+    def normalized(self) -> "ImageSettings":
+        wf: dict[str, str] = {}
+        for k, v in (self.workflowProfiles or {}).items():
+            if v:
+                wf[str(k)] = str(v).strip()
+        return ImageSettings(
+            comfyBaseUrl=self.comfyBaseUrl.strip(),
+            memoryBudgetGb=max(16, int(self.memoryBudgetGb or 70)),
+            defaultProfileId=(self.defaultProfileId or "sdxl-default").strip(),
+            workflowProfiles=wf,
+        )
+
+
+@dataclass
 class OperatorSettings:
     heartbeat: HeartbeatConfig
     enableServerPlugins: bool = False
     lastHeartbeatAt: str | None = None
     inference: InferenceConfig | None = None
+    image: ImageSettings | None = None
 
     def to_api(self, env: "Settings | None" = None) -> dict[str, Any]:
         inf = (self.inference or InferenceConfig()).normalized()
+        img = (self.image or ImageSettings()).normalized()
         payload: dict[str, Any] = {
             "heartbeat": asdict(self.heartbeat.normalized()),
             "enableServerPlugins": self.enableServerPlugins,
             "lastHeartbeatAt": self.lastHeartbeatAt,
             "inference": asdict(inf),
+            "image": {
+                "comfyBaseUrl": img.comfyBaseUrl,
+                "memoryBudgetGb": img.memoryBudgetGb,
+                "defaultProfileId": img.defaultProfileId,
+                "workflowProfiles": dict(img.workflowProfiles or {}),
+            },
         }
         if env is not None:
             effective = resolve_inference(env, self)
@@ -65,8 +95,33 @@ class OperatorSettings:
                 "embeddingBaseUrl": env.embed_base_url,
                 "embeddingModel": env.embed_model,
                 "mockLlm": env.mock_llm,
+                "comfyBaseUrl": env.comfy_url,
             }
+            payload["imageEffective"] = resolve_image_effective(env, self)
         return payload
+
+
+def get_image_config(op: OperatorSettings) -> "ImageConfig":
+    from altrasia.inference.comfyui.profiles import ImageConfig
+
+    img = (op.image or ImageSettings()).normalized()
+    return ImageConfig(
+        comfy_base_url=img.comfyBaseUrl,
+        memory_budget_gb=img.memoryBudgetGb,
+        default_profile_id=img.defaultProfileId,
+        workflow_profiles=dict(img.workflowProfiles or {}),
+    )
+
+
+def resolve_image_effective(env: "Settings", op: OperatorSettings) -> dict[str, Any]:
+    img = get_image_config(op)
+    base = img.comfy_base_url or (env.comfy_url or "")
+    return {
+        "comfyBaseUrl": base.strip(),
+        "memoryBudgetGb": img.memory_budget_gb,
+        "defaultProfileId": img.default_profile_id,
+        "workflowProfiles": dict(img.workflow_profiles),
+    }
 
 
 def resolve_inference(env: "Settings", op: OperatorSettings) -> dict[str, Any]:
@@ -93,10 +148,16 @@ class OperatorSettingsStore:
 
     def load(self) -> OperatorSettings:
         if not self.path.exists():
-            return OperatorSettings(heartbeat=HeartbeatConfig(), inference=InferenceConfig())
+            return OperatorSettings(
+                heartbeat=HeartbeatConfig(),
+                inference=InferenceConfig(),
+                image=ImageSettings(),
+            )
         raw = yaml.safe_load(self.path.read_text(encoding="utf-8")) or {}
         hb = raw.get("heartbeat") or {}
         inf_raw = raw.get("inference") or {}
+        img_raw = raw.get("image") or {}
+        wf_raw = img_raw.get("workflowProfiles") or {}
         return OperatorSettings(
             heartbeat=HeartbeatConfig(
                 enabled=bool(hb.get("enabled", False)),
@@ -110,16 +171,31 @@ class OperatorSettingsStore:
                 embeddingBaseUrl=str(inf_raw.get("embeddingBaseUrl") or ""),
                 embeddingModel=str(inf_raw.get("embeddingModel") or ""),
             ),
+            image=ImageSettings(
+                comfyBaseUrl=str(img_raw.get("comfyBaseUrl") or ""),
+                memoryBudgetGb=int(img_raw.get("memoryBudgetGb") or 70),
+                defaultProfileId=str(img_raw.get("defaultProfileId") or "sdxl-default"),
+                workflowProfiles={
+                    str(k): str(v) for k, v in wf_raw.items() if v is not None
+                },
+            ),
         )
 
     def save(self, settings: OperatorSettings) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         inf = (settings.inference or InferenceConfig()).normalized()
+        img = (settings.image or ImageSettings()).normalized()
         payload = {
             "heartbeat": asdict(settings.heartbeat.normalized()),
             "enableServerPlugins": settings.enableServerPlugins,
             "lastHeartbeatAt": settings.lastHeartbeatAt,
             "inference": asdict(inf),
+            "image": {
+                "comfyBaseUrl": img.comfyBaseUrl,
+                "memoryBudgetGb": img.memoryBudgetGb,
+                "defaultProfileId": img.defaultProfileId,
+                "workflowProfiles": dict(img.workflowProfiles or {}),
+            },
         }
         self.path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
@@ -145,6 +221,20 @@ class OperatorSettingsStore:
                 current.inference.embeddingBaseUrl = str(inf["embeddingBaseUrl"] or "")
             if "embeddingModel" in inf:
                 current.inference.embeddingModel = str(inf["embeddingModel"] or "")
+        if "image" in updates and isinstance(updates["image"], dict):
+            if current.image is None:
+                current.image = ImageSettings()
+            img = updates["image"]
+            if "comfyBaseUrl" in img:
+                current.image.comfyBaseUrl = str(img["comfyBaseUrl"] or "")
+            if "memoryBudgetGb" in img:
+                current.image.memoryBudgetGb = int(img["memoryBudgetGb"] or 70)
+            if "defaultProfileId" in img:
+                current.image.defaultProfileId = str(img["defaultProfileId"] or "sdxl-default")
+            if "workflowProfiles" in img and isinstance(img["workflowProfiles"], dict):
+                current.image.workflowProfiles = {
+                    str(k): str(v) for k, v in img["workflowProfiles"].items() if v
+                }
         self.save(current)
         return current
 

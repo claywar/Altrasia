@@ -13,6 +13,7 @@ type Props = {
   estimatedWaitMs?: number;
   currentJob?: QueueJob | null;
   leaseKind?: string | null;
+  imageJobMeta?: { workflowId?: string; modelProfileId?: string; peakMemoryGb?: number } | null;
   onCancel?: () => void;
 };
 
@@ -48,6 +49,7 @@ export function GpuQueueStrip({
   estimatedWaitMs,
   currentJob,
   leaseKind,
+  imageJobMeta,
   onCancel,
 }: Props) {
   const rationale = parseRationale(currentJob?.selectionRationaleJson);
@@ -75,6 +77,12 @@ export function GpuQueueStrip({
         </span>
       )}
       {leaseKind === "image" && <span className="queue-image-badge">Image</span>}
+      {imageJobMeta?.workflowId && (
+        <span className="queue-meta">
+          {imageJobMeta.workflowId}
+          {imageJobMeta.modelProfileId ? ` · ${imageJobMeta.modelProfileId}` : ""}
+        </span>
+      )}
       {lease && !currentJob && <span className="queue-rationale">{lease}</span>}
       {rationale && <span className="queue-rationale">{rationale}</span>}
       {busy && currentJob && onCancel && (
